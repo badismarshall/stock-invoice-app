@@ -1,4 +1,4 @@
-import { Home, Settings, Package, Boxes, ShoppingCart, FileBarChart, Users, HandCoins, Truck } from "lucide-react"
+import { Home, Settings, Package, Boxes, ShoppingCart, FileBarChart, Users, HandCoins, Truck, List, Plus } from "lucide-react"
 
 export const adminSidebarItemsGeneralSetting = [
   {
@@ -9,9 +9,28 @@ export const adminSidebarItemsGeneralSetting = [
   },
   {
     title: 'Produits',
-    url: '/dashboard/products',
     icon: Package,
     isActive: false,
+    items: [
+      {
+        title: 'Tous les produits',
+        url: '/dashboard/products',
+        icon: Package,
+        isActive: true,
+      },
+      {
+        title: 'Nouveau produit',
+        url: '/dashboard/products/new',
+        icon: Plus,
+        isActive: false,
+      },
+      {
+        title: 'Catégories',
+        url: '/dashboard/products/category',
+        icon: List,
+        isActive: false,
+      },
+    ],
   },
   {
     title: 'Stock',
@@ -33,9 +52,22 @@ export const adminSidebarItemsGeneralSetting = [
   },
   {
     title: 'Achats',
-    url: '/dashboard/purchases',
     icon: ShoppingCart,
     isActive: false,
+    items: [
+      {
+        title: 'Tous les bons de commande',
+        url: '/dashboard/purchases',
+        icon: List,
+        isActive: true,
+      },
+      {
+        title: 'Nouveau bon de commande',
+        url: '/dashboard/purchases/new',
+        icon: Plus,
+        isActive: false,
+      },
+    ],
   },
   {
     title: 'Recouvrement',
