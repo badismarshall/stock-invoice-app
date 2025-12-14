@@ -9,12 +9,27 @@ import {
   ArrowUp,
   RotateCcw,
   Badge as BadgeIcon,
+  Ellipsis,
 } from "lucide-react";
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { DataTableColumnHeader } from "@/components/shared/data-table/data-table-column-header";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { formatDate } from "@/lib/data-table/format";
 import type { StockMovementDTOItem } from "@/data/stock/stock.dto";
+import type { Row } from "@tanstack/react-table";
+
+interface GetStockMovementsTableColumnsProps {
+  setRowAction?: (action: { row: Row<StockMovementDTOItem>; variant: "delete" }) => void;
+}
 
 const translations = {
   productCode: "Code Produit",
@@ -25,8 +40,8 @@ const translations = {
   unitCost: "Coût Unitaire",
   totalCost: "Coût Total",
   movementDate: "Date Mouvement",
-  referenceType: "Référence Type",
-  referenceId: "Référence ID",
+  referenceType: "Type de Référence",
+  referenceId: "ID de Référence",
   notes: "Notes",
   createdBy: "Créé par",
   createdAt: "Créé le",
@@ -37,6 +52,18 @@ const translations = {
   sale_local: "Vente Locale",
   sale_export: "Vente Export",
   delivery_note: "Bon de Livraison",
+  return: "Retour",
+  edit: "Modifier",
+  delete: "Supprimer",
+  actions: "Actions",
+};
+
+// Mapping pour traduire les types de référence en français
+const referenceTypeTranslations: Record<string, string> = {
+  purchase_order: "Bon de Commande",
+  invoice: "Facture",
+  delivery_note: "Bon de Livraison",
+  adjustment: "Ajustement",
   return: "Retour",
 };
 
@@ -55,7 +82,9 @@ const movementSourceConfig: Record<string, { label: string; variant: "default" |
   return: { label: translations.return, variant: "outline" },
 };
 
-export function getStockMovementsTableColumns(): ColumnDef<StockMovementDTOItem>[] {
+export function getStockMovementsTableColumns({
+  setRowAction,
+}: GetStockMovementsTableColumnsProps = {}): ColumnDef<StockMovementDTOItem>[] {
   return [
     {
       id: "productCode",
@@ -255,13 +284,15 @@ export function getStockMovementsTableColumns(): ColumnDef<StockMovementDTOItem>
       cell: ({ row }) => {
         const refType = row.getValue<string | null>("referenceType");
         const refId = row.original.referenceId;
+        const translatedType = refType ? (referenceTypeTranslations[refType] || refType) : null;
         return (
           <span className="max-w-125 truncate text-muted-foreground">
-            {refType ? `${refType}${refId ? ` #${refId}` : ""}` : "-"}
+            {translatedType ? `${translatedType}${refId ? ` #${refId}` : ""}` : "-"}
           </span>
         );
       },
       enableColumnFilter: false,
+      enableHiding: true,
     },
     {
       id: "createdByName",
@@ -292,6 +323,47 @@ export function getStockMovementsTableColumns(): ColumnDef<StockMovementDTOItem>
         icon: CalendarIcon,
       },
       enableColumnFilter: true,
+    },
+    {
+      id: "actions",
+      cell: function Cell({ row }) {
+        const router = useRouter();
+        const movement = row.original;
+        // Afficher les actions uniquement pour les mouvements d'ajustement
+        if (movement.movementSource !== "adjustment") {
+          return null;
+        }
+
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                aria-label="Ouvrir le menu"
+                variant="ghost"
+                className="flex size-8 p-0 data-[state=open]:bg-muted"
+              >
+                <Ellipsis className="size-4" aria-hidden="true" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuItem
+                onSelect={() => router.push(`/dashboard/stock/movement/modify/${movement.id}`)}
+              >
+                {translations.edit}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onSelect={() => setRowAction?.({ row, variant: "delete" })}
+                className="text-destructive"
+              >
+                {translations.delete}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      },
+      size: 40,
+      enableHiding: false,
     },
   ];
 }

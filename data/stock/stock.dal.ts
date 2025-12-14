@@ -23,7 +23,7 @@ import { addDays, endOfDay, startOfDay } from "date-fns";
 import db from "@/db";
 import { stockCurrent, stockMovement, product, category, user } from "@/db/schema";
 import type { GetStockCurrentSchema, GetStockMovementsSchema } from "@/app/(root)/dashboard/stock/_lib/validation";
-import type { StockCurrentDTO, StockMovementDTO } from "./stock.dto";
+import type { StockCurrentDTO, StockMovementDTO, StockMovementDTOItem } from "./stock.dto";
 import { isEmpty } from "@/db/utils";
 import { filterColumns } from "@/lib/data-table/filter-columns";
 
@@ -786,6 +786,62 @@ export const getStockMovements = async (input: GetStockMovementsSchema): Promise
       movements: [],
       options: { totalCount: 0, limit: input.perPage, offset: (input.page - 1) * input.perPage },
     };
+  }
+};
+
+export const getStockMovementById = async (id: string): Promise<StockMovementDTOItem | null> => {
+  try {
+    const result = await db
+      .select({
+        movement: stockMovement,
+        product: {
+          id: product.id,
+          code: product.code,
+          name: product.name,
+        },
+        creator: {
+          id: user.id,
+          name: user.name,
+        },
+      })
+      .from(stockMovement)
+      .leftJoin(product, eq(stockMovement.productId, product.id))
+      .leftJoin(user, eq(stockMovement.createdBy, user.id))
+      .where(eq(stockMovement.id, id))
+      .limit(1);
+
+    if (result.length === 0) {
+      return null;
+    }
+
+    const item = result[0];
+    const quantity = parseFloat(item.movement.quantity);
+    const unitCost = item.movement.unitCost ? parseFloat(item.movement.unitCost) : null;
+    const totalCost = unitCost !== null ? quantity * unitCost : null;
+
+    return {
+      id: item.movement.id,
+      productId: item.movement.productId,
+      productCode: item.product?.code || null,
+      productName: item.product?.name || null,
+      movementType: item.movement.movementType,
+      movementSource: item.movement.movementSource,
+      referenceType: item.movement.referenceType,
+      referenceId: item.movement.referenceId,
+      quantity,
+      unitCost,
+      totalCost,
+      movementDate: typeof item.movement.movementDate === 'string'
+        ? new Date(item.movement.movementDate + 'T00:00:00')
+        : item.movement.movementDate,
+      notes: item.movement.notes,
+      createdBy: item.movement.createdBy,
+      createdByName: item.creator?.name || null,
+      createdAt: item.movement.createdAt,
+    };
+  } catch (error) {
+    console.error("Error getting stock movement by ID", error);
+    return null;
   }
 };
 

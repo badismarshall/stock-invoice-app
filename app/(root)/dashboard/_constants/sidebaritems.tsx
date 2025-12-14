@@ -1,4 +1,4 @@
-import { Home, Settings, Package, Boxes, ShoppingCart, FileBarChart, Users, HandCoins, Truck, List, Plus } from "lucide-react"
+import { Home, Settings, Package, Boxes, ShoppingCart, FileBarChart, Users, HandCoins, Truck, List, Plus, AlertTriangle } from "lucide-react"
 
 export const adminSidebarItemsGeneralSetting = [
   {
@@ -34,9 +34,40 @@ export const adminSidebarItemsGeneralSetting = [
   },
   {
     title: 'Stock',
-    url: '/dashboard/stock',
     icon: Boxes,
     isActive: false,
+    items: [
+      {
+        title: 'Stock actuel',
+        url: '/dashboard/stock/current',
+        icon: Boxes,
+        isActive: true,
+      },
+      {
+        title: 'Vue d\'ensemble',
+        url: '/dashboard/stock/overview',
+        icon: Boxes,
+        isActive: false,
+      },
+      {
+        title: 'Mouvements de stock',
+        url: '/dashboard/stock/movements',
+        icon: List,
+        isActive: false,
+      },
+      {
+        title: 'Nouveau stock',
+        url: '/dashboard/stock/new',
+        icon: Plus,
+        isActive: false,
+      },
+      {
+        title: 'Alertes de stock',
+        url: '/dashboard/stock/alerts',
+        icon: AlertTriangle,
+        isActive: false,
+      },
+    ],
   },
   {
     title: 'Vente',
@@ -56,13 +87,13 @@ export const adminSidebarItemsGeneralSetting = [
     isActive: false,
     items: [
       {
-        title: 'Tous les bons de commande',
+        title: 'Liste des achats',
         url: '/dashboard/purchases',
         icon: List,
         isActive: true,
       },
       {
-        title: 'Nouveau bon de commande',
+        title: 'Nouvel achat',
         url: '/dashboard/purchases/new',
         icon: Plus,
         isActive: false,
