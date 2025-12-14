@@ -22,4 +22,3 @@ export type Partner = typeof partner.$inferSelect;
 export type NewPartner = typeof partner.$inferInsert;
 
 export default partner;
-

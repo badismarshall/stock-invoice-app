@@ -30,7 +30,7 @@ export function DataTableToolbar<TData>({
   const isFiltered = table.getState().columnFilters.length > 0;
 
   const columns = React.useMemo(
-    () => table.getAllColumns().filter((column) => column.getCanFilter()),
+    () => table.getAllColumns().filter((column) => column.columnDef.enableColumnFilter),
     [table],
   );
 

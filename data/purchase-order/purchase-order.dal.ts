@@ -13,7 +13,7 @@ import {
   or,
 } from "drizzle-orm";
 import db from "@/db";
-import { purchaseOrder, partner, user } from "@/db/schema";
+import { purchaseOrder, purchaseOrderItem, partner, user, product } from "@/db/schema";
 import type { GetPurchaseOrdersSchema } from "@/app/(root)/dashboard/purchases/_lib/validation";
 import type { PurchaseOrderDTO } from "./purchase-order.dto";
 import { filterColumns } from "@/lib/data-table/filter-columns";
@@ -215,6 +215,88 @@ export const getPurchaseOrders = async (input: GetPurchaseOrdersSchema): Promise
         offset: 0,
       },
     };
+  }
+};
+
+export const getPurchaseOrderById = async (id: string) => {
+  try {
+    const result = await db
+      .select({
+        purchaseOrder: purchaseOrder,
+        supplier: {
+          id: partner.id,
+          name: partner.name,
+        },
+        creator: {
+          id: user.id,
+          name: user.name,
+        },
+      })
+      .from(purchaseOrder)
+      .leftJoin(partner, eq(purchaseOrder.supplierId, partner.id))
+      .leftJoin(user, eq(purchaseOrder.createdBy, user.id))
+      .where(eq(purchaseOrder.id, id))
+      .limit(1)
+      .execute();
+
+    if (result.length === 0) {
+      return null;
+    }
+
+    const item = result[0];
+    
+    // Fetch purchase order items
+    const items = await db
+      .select({
+        item: purchaseOrderItem,
+        product: {
+          id: product.id,
+          name: product.name,
+          code: product.code,
+        },
+      })
+      .from(purchaseOrderItem)
+      .leftJoin(product, eq(purchaseOrderItem.productId, product.id))
+      .where(eq(purchaseOrderItem.purchaseOrderId, id))
+      .orderBy(asc(purchaseOrderItem.id));
+
+    // PostgreSQL date columns return as strings, convert to Date objects
+    const orderDate = typeof item.purchaseOrder.orderDate === 'string'
+      ? new Date(item.purchaseOrder.orderDate + 'T00:00:00')
+      : item.purchaseOrder.orderDate;
+    const receptionDate = item.purchaseOrder.receptionDate
+      ? (typeof item.purchaseOrder.receptionDate === 'string'
+          ? new Date(item.purchaseOrder.receptionDate + 'T00:00:00')
+          : item.purchaseOrder.receptionDate)
+      : null;
+
+    return {
+      id: item.purchaseOrder.id,
+      orderNumber: item.purchaseOrder.orderNumber,
+      supplierId: item.purchaseOrder.supplierId,
+      supplierName: item.supplier?.name || null,
+      orderDate,
+      receptionDate,
+      status: item.purchaseOrder.status || "pending",
+      totalAmount: item.purchaseOrder.totalAmount,
+      notes: item.purchaseOrder.notes,
+      createdBy: item.purchaseOrder.createdBy,
+      createdByName: item.creator?.name || null,
+      createdAt: item.purchaseOrder.createdAt,
+      updatedAt: item.purchaseOrder.updatedAt,
+      items: items.map((i) => ({
+        id: i.item.id,
+        productId: i.item.productId,
+        productName: i.product?.name || null,
+        productCode: i.product?.code || null,
+        quantity: parseFloat(i.item.quantity),
+        unitCost: parseFloat(i.item.unitCost),
+        lineTotal: parseFloat(i.item.lineTotal),
+      })),
+    };
+  } catch (error) {
+    console.error("Error getting purchase order by ID", error);
+    return null;
   }
 };
 

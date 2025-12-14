@@ -1,6 +1,7 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
+import { useRouter } from "next/navigation";
 import {
   CalendarIcon,
   Ellipsis,
@@ -250,6 +251,7 @@ export function getPurchaseOrdersTableColumns({
     {
       id: "actions",
       cell: function Cell({ row }) {
+        const router = useRouter();
         return (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -263,7 +265,7 @@ export function getPurchaseOrdersTableColumns({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40">
               <DropdownMenuItem
-                onSelect={() => setRowAction({ row, variant: "update" })}
+                onSelect={() => router.push(`/dashboard/purchases/modify/${row.original.id}`)}
               >
                 {translations.edit}
               </DropdownMenuItem>
