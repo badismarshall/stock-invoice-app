@@ -26,9 +26,9 @@ import {
   DrawerTrigger,
 } from "@/components/ui/drawer";
 import { useIsMobile } from "@/hooks/use-mobile";
-import type { PurchaseOrderDTOItem } from "@/data/purchase-order/purchase-order.dto";
+import type { DeliveryNoteDTOItem } from "@/data/delivery-note/delivery-note.dto";
 
-import { deletePurchaseOrders } from "../../_lib/actions";
+import { deleteDeliveryNotes } from "../../_lib/actions";
 
 // French translations
 const fr = {
@@ -37,36 +37,37 @@ const fr = {
   cancel: "Annuler",
   areYouSure: "Êtes-vous absolument sûr ?",
   cannotBeUndone: "Cette action est irréversible. Cela supprimera définitivement ",
-  purchaseOrder: "bon de commande",
-  purchaseOrders: "bons de commande",
-  fromServer: " de serveur.",
-  success: "Bons de commande supprimés",
+  deliveryNote: "bon de livraison",
+  deliveryNotes: "bons de livraison",
+  fromServer: " de nos serveurs.",
+  success: "Bon de livraison supprimé",
+  error: "Erreur lors de la suppression",
 };
 
-interface DeletePurchaseOrdersDialogProps
+interface DeleteDeliveryNotesDialogProps
   extends React.ComponentPropsWithoutRef<typeof Dialog> {
-  purchaseOrders: Row<PurchaseOrderDTOItem>["original"][];
+  deliveryNotes: Row<DeliveryNoteDTOItem>["original"][];
   showTrigger?: boolean;
   onSuccess?: () => void;
 }
 
-export function DeletePurchaseOrdersDialog({
-  purchaseOrders,
+export function DeleteDeliveryNotesDialog({
+  deliveryNotes,
   showTrigger = true,
   onSuccess,
   ...props
-}: DeletePurchaseOrdersDialogProps) {
+}: DeleteDeliveryNotesDialogProps) {
   const [isDeletePending, startDeleteTransition] = React.useTransition();
   const isMobile = useIsMobile();
 
   function onDelete() {
     startDeleteTransition(async () => {
-      const { error } = await deletePurchaseOrders({
-        ids: purchaseOrders.map((po) => po.id),
+      const { error } = await deleteDeliveryNotes({
+        ids: deliveryNotes.map((note) => note.id),
       });
 
       if (error) {
-        toast.error(error);
+        toast.error(fr.error);
         return;
       }
 
@@ -76,11 +77,11 @@ export function DeletePurchaseOrdersDialog({
     });
   }
 
-  const purchaseOrderCount = purchaseOrders.length;
-  const purchaseOrderLabel =
-    purchaseOrderCount === 1
-      ? `1 ${fr.purchaseOrder}`
-      : `${purchaseOrderCount} ${fr.purchaseOrders}`;
+  const deliveryNoteCount = deliveryNotes.length;
+  const deliveryNoteLabel =
+    deliveryNoteCount === 1
+      ? `1 ${fr.deliveryNote}`
+      : `${deliveryNoteCount} ${fr.deliveryNotes}`;
 
   if (!isMobile) {
     return (
@@ -89,7 +90,7 @@ export function DeletePurchaseOrdersDialog({
           <DialogTrigger asChild>
             <Button variant="outline" size="sm">
               <Trash className="mr-2 size-4" aria-hidden="true" />
-              {fr.deleteMany(purchaseOrders.length)}
+              {fr.deleteMany(deliveryNotes.length)}
             </Button>
           </DialogTrigger>
         ) : null}
@@ -98,7 +99,7 @@ export function DeletePurchaseOrdersDialog({
             <DialogTitle>{fr.areYouSure}</DialogTitle>
             <DialogDescription>
               {fr.cannotBeUndone}
-              <span className="font-medium">{purchaseOrderLabel}</span>
+              <span className="font-medium">{deliveryNoteLabel}</span>
               {fr.fromServer}
             </DialogDescription>
           </DialogHeader>
@@ -132,7 +133,7 @@ export function DeletePurchaseOrdersDialog({
         <DrawerTrigger asChild>
           <Button variant="outline" size="sm">
             <Trash className="mr-2 size-4" aria-hidden="true" />
-            {fr.deleteMany(purchaseOrders.length)}
+            {fr.deleteMany(deliveryNotes.length)}
           </Button>
         </DrawerTrigger>
       ) : null}
@@ -141,7 +142,7 @@ export function DeletePurchaseOrdersDialog({
           <DrawerTitle>{fr.areYouSure}</DrawerTitle>
           <DrawerDescription>
             {fr.cannotBeUndone}
-            <span className="font-medium">{purchaseOrderLabel}</span>
+            <span className="font-medium">{deliveryNoteLabel}</span>
             {fr.fromServer}
           </DrawerDescription>
         </DrawerHeader>
@@ -165,4 +166,5 @@ export function DeletePurchaseOrdersDialog({
     </Drawer>
   );
 }
+
 

@@ -241,6 +241,20 @@ export async function addPurchaseOrder(input: {
 
 export async function deletePurchaseOrder(input: { id: string }) {
   try {
+    // Check if purchase order has items
+    const items = await db
+      .select({ id: purchaseOrderItem.id })
+      .from(purchaseOrderItem)
+      .where(eq(purchaseOrderItem.purchaseOrderId, input.id))
+      .limit(1);
+
+    if (items.length > 0) {
+      return {
+        data: null,
+        error: "Impossible de supprimer ce bon de commande car il contient des produits. Veuillez d'abord supprimer tous les produits.",
+      };
+    }
+
     await db.delete(purchaseOrder).where(eq(purchaseOrder.id, input.id));
 
     updateTag("purchaseOrders");
@@ -260,6 +274,31 @@ export async function deletePurchaseOrder(input: { id: string }) {
 
 export async function deletePurchaseOrders(input: { ids: string[] }) {
   try {
+    if (input.ids.length === 0) {
+      return {
+        data: null,
+        error: "Aucun bon de commande sélectionné",
+      };
+    }
+
+    // Check if any purchase order has items
+    const items = await db
+      .select({ 
+        purchaseOrderId: purchaseOrderItem.purchaseOrderId,
+        orderNumber: purchaseOrder.orderNumber,
+      })
+      .from(purchaseOrderItem)
+      .innerJoin(purchaseOrder, eq(purchaseOrderItem.purchaseOrderId, purchaseOrder.id))
+      .where(inArray(purchaseOrderItem.purchaseOrderId, input.ids));
+
+    if (items.length > 0) {
+      const orderNumbers = Array.from(new Set(items.map(item => item.orderNumber)));
+      return {
+        data: null,
+        error: `Impossible de supprimer ${items.length > 1 ? 'ces bons de commande' : 'ce bon de commande'} car ${items.length > 1 ? 'ils contiennent' : 'il contient'} des produits. Veuillez d'abord supprimer tous les produits.`,
+      };
+    }
+
     await db.delete(purchaseOrder).where(inArray(purchaseOrder.id, input.ids));
 
     updateTag("purchaseOrders");
@@ -348,6 +387,152 @@ export async function getPurchaseOrderByIdAction(input: { id: string }) {
     };
   } catch (err) {
     console.error("Error getting purchase order by ID", err);
+    return {
+      data: null,
+      error: getErrorMessage(err),
+    };
+  }
+}
+
+export async function updatePurchaseOrderStatus(input: {
+  id: string;
+  status: "pending" | "received" | "cancelled";
+}) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return {
+        data: null,
+        error: "Utilisateur non authentifié",
+      };
+    }
+
+    // Helper function to format date
+    const formatDateLocal = (date: Date): string => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    // Get the current purchase order data
+    const oldPurchaseOrder = await getPurchaseOrderById(input.id);
+    if (!oldPurchaseOrder) {
+      return {
+        data: null,
+        error: "Bon de commande non trouvé",
+      };
+    }
+
+    const oldStatus = oldPurchaseOrder.status;
+    const newStatus = input.status;
+
+    // If status hasn't changed, no need to update
+    if (oldStatus === newStatus) {
+      return {
+        data: null,
+        error: null,
+      };
+    }
+
+    const movementDate = oldPurchaseOrder.receptionDate 
+      ? (oldPurchaseOrder.receptionDate instanceof Date 
+          ? formatDateLocal(oldPurchaseOrder.receptionDate)
+          : formatDateLocal(new Date(oldPurchaseOrder.receptionDate)))
+      : (oldPurchaseOrder.orderDate instanceof Date 
+          ? formatDateLocal(oldPurchaseOrder.orderDate)
+          : formatDateLocal(new Date(oldPurchaseOrder.orderDate)));
+
+    await db.transaction(async (tx) => {
+      // Handle stock updates based on status changes
+      const oldItems = oldPurchaseOrder.items || [];
+
+      // Case 1: Status changed from "received" to "pending" or "cancelled" - reverse stock
+      if (oldStatus === "received" && (newStatus === "pending" || newStatus === "cancelled")) {
+        // Get all stock movements for this purchase order
+        const movements = await tx
+          .select()
+          .from(stockMovement)
+          .where(
+            and(
+              eq(stockMovement.referenceType, "purchase_order"),
+              eq(stockMovement.referenceId, input.id)
+            )
+          );
+
+        // Reverse stock for each movement
+        for (const movement of movements) {
+          const existingStock = await tx
+            .select()
+            .from(stockCurrent)
+            .where(eq(stockCurrent.productId, movement.productId))
+            .limit(1);
+
+          if (existingStock.length > 0) {
+            const currentStock = existingStock[0];
+            const currentQuantity = parseFloat(currentStock.quantityAvailable || "0");
+            const movementQuantity = parseFloat(movement.quantity || "0");
+            const newQuantity = currentQuantity - movementQuantity;
+
+            if (newQuantity < 0) {
+              throw new Error(
+                `Quantité insuffisante en stock pour le produit ${movement.productId}. Stock actuel: ${currentQuantity}, Tentative de retrait: ${movementQuantity}`
+              );
+            }
+
+            await tx
+              .update(stockCurrent)
+              .set({
+                quantityAvailable: newQuantity.toString(),
+                lastMovementDate: movementDate,
+                lastUpdated: new Date(),
+              })
+              .where(eq(stockCurrent.productId, movement.productId));
+          }
+
+          // Delete the movement
+          await tx
+            .delete(stockMovement)
+            .where(eq(stockMovement.id, movement.id));
+        }
+      }
+      // Case 2: Status changed from "pending" or "cancelled" to "received" - add items to stock
+      else if ((oldStatus === "pending" || oldStatus === "cancelled") && newStatus === "received") {
+        if (oldItems.length > 0) {
+          await updateStockFromPurchaseOrder(
+            tx,
+            oldItems.map(item => ({
+              productId: item.productId,
+              quantity: item.quantity,
+              unitCost: item.unitCost,
+            })),
+            movementDate,
+            input.id,
+            user.id,
+            false
+          );
+        }
+      }
+
+      // Update purchase order status
+      await tx
+        .update(purchaseOrder)
+        .set({
+          status: newStatus,
+        })
+        .where(eq(purchaseOrder.id, input.id));
+    });
+
+    updateTag("purchaseOrders");
+    updateTag("stock");
+    updateTag("stockMovements");
+
+    return {
+      data: null,
+      error: null,
+    };
+  } catch (err) {
+    console.error("Error updating purchase order status", err);
     return {
       data: null,
       error: getErrorMessage(err),

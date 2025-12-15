@@ -15,11 +15,12 @@ import {
 } from "drizzle-orm";
 import db from "@/db";
 import { invoice, partner, user } from "@/db/schema";
-import type { GetInvoicesSchema } from "@/app/(root)/dashboard/invoices/_lib/validation";
+import { GetInvoicesSchema } from "@/app/(root)/dashboard/invoices/_lib/validation";
+import type { z } from "zod";
 import type { InvoiceDTO } from "./invoice.dto";
 import { filterColumns } from "@/lib/data-table/filter-columns";
 
-export const getInvoices = async (input: GetInvoicesSchema): Promise<InvoiceDTO> => {
+export const getInvoices = async (input: z.infer<typeof GetInvoicesSchema>): Promise<InvoiceDTO> => {
   try {
     const offset = (input.page - 1) * input.perPage;
     const advancedTable =
@@ -28,7 +29,7 @@ export const getInvoices = async (input: GetInvoicesSchema): Promise<InvoiceDTO>
 
     const advancedWhere = filterColumns({
       table: invoice,
-      filters: input.filters,
+      filters: input.filters as any,
       joinOperator: input.joinOperator,
     });
 
@@ -146,7 +147,7 @@ export const getInvoices = async (input: GetInvoicesSchema): Promise<InvoiceDTO>
                   : undefined,
               )
             : undefined,
-        );
+        ) || undefined;
 
     // Map sort IDs to actual columns
     const columnMap = {
@@ -194,7 +195,7 @@ export const getInvoices = async (input: GetInvoicesSchema): Promise<InvoiceDTO>
         .from(invoice)
         .leftJoin(partner, eq(invoice.clientId, partner.id))
         .leftJoin(user, eq(invoice.createdBy, user.id))
-        .where(where)
+        .where(where || undefined)
         .limit(input.perPage)
         .offset(offset)
         .orderBy(...orderBy);
@@ -234,7 +235,7 @@ export const getInvoices = async (input: GetInvoicesSchema): Promise<InvoiceDTO>
           count: count(),
         })
         .from(invoice)
-        .where(where)
+        .where(where || undefined)
         .execute()
         .then((res) => res[0]?.count ?? 0);
 
@@ -249,10 +250,10 @@ export const getInvoices = async (input: GetInvoicesSchema): Promise<InvoiceDTO>
           unpaidCount: sql<string>`COUNT(CASE WHEN ${invoice.paymentStatus} = 'unpaid' THEN 1 END)`,
           partiallyPaidCount: sql<string>`COUNT(CASE WHEN ${invoice.paymentStatus} = 'partially_paid' THEN 1 END)`,
           paidCount: sql<string>`COUNT(CASE WHEN ${invoice.paymentStatus} = 'paid' THEN 1 END)`,
-          overdueCount: sql<string>`COUNT(CASE WHEN ${invoice.dueDate} < '${todayStr}' AND ${invoice.paymentStatus} != 'paid' THEN 1 END)`,
+          overdueCount: sql<string>`COUNT(CASE WHEN ${invoice.dueDate} IS NOT NULL AND ${invoice.dueDate}::date < ${sql.raw(`'${todayStr}'`)}::date AND ${invoice.paymentStatus}::text != 'paid' THEN 1 END)`,
         })
         .from(invoice)
-        .where(where)
+        .where(where || undefined)
         .execute()
         .then((res) => res[0] ?? {
           totalInvoices: 0,
@@ -285,7 +286,7 @@ export const getInvoices = async (input: GetInvoicesSchema): Promise<InvoiceDTO>
           : null;
 
         // Check if overdue
-        const isOverdue = dueDate && dueDate < today && item.invoice.paymentStatus !== 'paid';
+        const isOverdue = dueDate ? (dueDate < today && item.invoice.paymentStatus !== 'paid') : undefined;
 
         return {
           id: item.invoice.id,

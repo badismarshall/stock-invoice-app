@@ -5,12 +5,10 @@ import { useRouter } from "next/navigation";
 import {
   CalendarIcon,
   Ellipsis,
-  Text,
   Hash,
   Building2,
   User,
   Badge as BadgeIcon,
-  Clock,
   CheckCircle2,
   XCircle,
 } from "lucide-react";
@@ -22,34 +20,26 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/data-table/format";
-import { getErrorMessage } from "@/lib/handle-error";
-import { toast } from "sonner";
 import type { DataTableRowAction } from "@/types/data-table";
-import type { PurchaseOrderDTOItem } from "@/data/purchase-order/purchase-order.dto";
-import { updatePurchaseOrderStatus } from "../../_lib/actions";
+import type { DeliveryNoteDTOItem } from "@/data/delivery-note/delivery-note.dto";
 
-interface GetPurchaseOrdersTableColumnsProps {
+interface GetDeliveryNotesTableColumnsProps {
   setRowAction: React.Dispatch<
-    React.SetStateAction<DataTableRowAction<PurchaseOrderDTOItem> | null>
+    React.SetStateAction<DataTableRowAction<DeliveryNoteDTOItem> | null>
   >;
+  clients?: Array<{ id: string; name: string }>;
 }
 
 const translations = {
-  orderNumber: "N° Commande",
-  searchOrderNumber: "Rechercher un numéro...",
-  supplier: "Fournisseur",
-  orderDate: "Date commande",
-  receptionDate: "Date réception",
+  noteNumber: "N° Bon de Livraison",
+  searchNoteNumber: "Rechercher un numéro...",
+  client: "Client",
+  noteDate: "Date",
   status: "Statut",
   totalAmount: "Montant total",
   createdBy: "Créé par",
@@ -58,23 +48,19 @@ const translations = {
   delete: "Supprimer",
   selectAll: "Tout sélectionner",
   selectRow: "Sélectionner la ligne",
-  pending: "En attente",
-  received: "Reçu",
+  active: "Actif",
   cancelled: "Annulé",
-  status: "Statut",
-  updating: "Mise à jour...",
-  statusUpdated: "Statut mis à jour",
 };
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  pending: { label: translations.pending, variant: "outline" },
-  received: { label: translations.received, variant: "default" },
+  active: { label: translations.active, variant: "default" },
   cancelled: { label: translations.cancelled, variant: "destructive" },
 };
 
-export function getPurchaseOrdersTableColumns({
+export function getDeliveryNotesTableColumns({
   setRowAction,
-}: GetPurchaseOrdersTableColumnsProps): ColumnDef<PurchaseOrderDTOItem>[] {
+  clients = [],
+}: GetDeliveryNotesTableColumnsProps): ColumnDef<DeliveryNoteDTOItem>[] {
   return [
     {
       id: "select",
@@ -102,70 +88,69 @@ export function getPurchaseOrdersTableColumns({
       size: 40,
     },
     {
-      id: "orderNumber",
-      accessorKey: "orderNumber",
+      id: "noteNumber",
+      accessorKey: "noteNumber",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} label={translations.orderNumber} title={translations.orderNumber} />
+        <DataTableColumnHeader column={column} label={translations.noteNumber} title={translations.noteNumber} />
       ),
       cell: ({ row }) => {
         return (
           <span className="max-w-125 truncate font-medium">
-            {row.getValue("orderNumber")}
+            {row.getValue("noteNumber")}
           </span>
         );
       },
       meta: {
-        label: translations.orderNumber,
-        placeholder: translations.searchOrderNumber,
+        label: translations.noteNumber,
+        placeholder: translations.searchNoteNumber,
         variant: "text",
         icon: Hash,
       },
       enableColumnFilter: true,
     },
     {
-      id: "supplierName",
-      accessorKey: "supplierName",
+      id: "clientId",
+      accessorKey: "clientName",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} label={translations.supplier} title={translations.supplier} />
+        <DataTableColumnHeader column={column} label={translations.client} title={translations.client} />
       ),
       cell: ({ row }) => {
-        const supplierName = row.getValue<string | null>("supplierName");
+        const clientName = row.original.clientName;
         return (
           <span className="max-w-125 truncate">
-            {supplierName || "-"}
+            {clientName || "-"}
           </span>
         );
       },
-      enableColumnFilter: false,
-    },
-    {
-      id: "orderDate",
-      accessorKey: "orderDate",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} label={translations.orderDate} title={translations.orderDate} />
-      ),
-      cell: ({ row }) => {
-        const date = row.getValue<Date>("orderDate");
-        return formatDate(date);
-      },
       meta: {
-        label: translations.orderDate,
-        variant: "dateRange",
-        icon: CalendarIcon,
+        label: translations.client,
+        variant: "multiSelect",
+        options: clients.map((client) => ({
+          label: client.name,
+          value: client.id,
+          count: 0, // Counts would need to be fetched separately if needed
+          icon: Building2,
+        })),
+        icon: Building2,
       },
       enableColumnFilter: true,
     },
     {
-      id: "receptionDate",
-      accessorKey: "receptionDate",
+      id: "noteDate",
+      accessorKey: "noteDate",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} label={translations.receptionDate} title={translations.receptionDate} />
+        <DataTableColumnHeader column={column} label={translations.noteDate} title={translations.noteDate} />
       ),
       cell: ({ row }) => {
-        const date = row.getValue<Date | null>("receptionDate");
-        return date ? formatDate(date) : "-";
+        const date = row.getValue<Date>("noteDate");
+        return formatDate(date);
       },
-      enableColumnFilter: false,
+      meta: {
+        label: translations.noteDate,
+        variant: "dateRange",
+        icon: CalendarIcon,
+      },
+      enableColumnFilter: true,
     },
     {
       id: "status",
@@ -186,24 +171,8 @@ export function getPurchaseOrdersTableColumns({
         label: translations.status,
         variant: "multiSelect",
         options: [
-          {
-            label: translations.pending,
-            value: "pending",
-            count: 0, // Counts would need to be fetched separately if needed
-            icon: Clock,
-          },
-          {
-            label: translations.received,
-            value: "received",
-            count: 0,
-            icon: CheckCircle2,
-          },
-          {
-            label: translations.cancelled,
-            value: "cancelled",
-            count: 0,
-            icon: XCircle,
-          },
+          { label: translations.active, value: "active", count: 0 },
+          { label: translations.cancelled, value: "cancelled", count: 0 },
         ],
         icon: BadgeIcon,
       },
@@ -216,13 +185,14 @@ export function getPurchaseOrdersTableColumns({
         <DataTableColumnHeader column={column} label={translations.totalAmount} title={translations.totalAmount} />
       ),
       cell: ({ row }) => {
-        const amount = row.getValue<string | null>("totalAmount");
-        const amountValue = amount ? parseFloat(amount) : 0;
+        const amount = row.getValue<number | undefined>("totalAmount") || 0;
         return (
           <span className="max-w-125 truncate font-medium">
-            {amountValue.toLocaleString("fr-FR", {
+            {amount.toLocaleString("fr-FR", {
               style: "currency",
               currency: "DZD",
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 0,
             })}
           </span>
         );
@@ -236,10 +206,10 @@ export function getPurchaseOrdersTableColumns({
         <DataTableColumnHeader column={column} label={translations.createdBy} title={translations.createdBy} />
       ),
       cell: ({ row }) => {
-        const createdByName = row.getValue<string | null>("createdByName");
+        const name = row.getValue<string | null>("createdByName");
         return (
           <span className="max-w-125 truncate">
-            {createdByName || "-"}
+            {name || "-"}
           </span>
         );
       },
@@ -263,7 +233,7 @@ export function getPurchaseOrdersTableColumns({
       id: "actions",
       cell: function Cell({ row }) {
         const router = useRouter();
-        const [isUpdatePending, startUpdateTransition] = React.useTransition();
+        const deliveryNote = row.original;
 
         return (
           <DropdownMenu>
@@ -278,55 +248,14 @@ export function getPurchaseOrdersTableColumns({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40">
               <DropdownMenuItem
-                onSelect={() => router.push(`/dashboard/purchases/modify/${row.original.id}`)}
+                onSelect={() => router.push(`/dashboard/sales/modify/${deliveryNote.id}`)}
               >
                 {translations.edit}
               </DropdownMenuItem>
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger>{translations.status}</DropdownMenuSubTrigger>
-                <DropdownMenuSubContent>
-                  <DropdownMenuRadioGroup
-                    value={row.original.status || "pending"}
-                    onValueChange={(value) => {
-                      startUpdateTransition(() => {
-                        toast.promise(
-                          updatePurchaseOrderStatus({
-                            id: row.original.id,
-                            status: value as "pending" | "received" | "cancelled",
-                          }),
-                          {
-                            loading: translations.updating,
-                            success: translations.statusUpdated,
-                            error: (err) => getErrorMessage(err),
-                          },
-                        );
-                      });
-                    }}
-                  >
-                    <DropdownMenuRadioItem
-                      value="pending"
-                      disabled={isUpdatePending}
-                    >
-                      {translations.pending}
-                    </DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem
-                      value="received"
-                      disabled={isUpdatePending}
-                    >
-                      {translations.received}
-                    </DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem
-                      value="cancelled"
-                      disabled={isUpdatePending}
-                    >
-                      {translations.cancelled}
-                    </DropdownMenuRadioItem>
-                  </DropdownMenuRadioGroup>
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onSelect={() => setRowAction({ row, variant: "delete" })}
+                className="text-destructive"
               >
                 {translations.delete}
               </DropdownMenuItem>
@@ -335,7 +264,9 @@ export function getPurchaseOrdersTableColumns({
         );
       },
       size: 40,
+      enableHiding: false,
     },
   ];
 }
+
 

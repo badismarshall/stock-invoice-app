@@ -17,106 +17,58 @@ import { toast } from "sonner"
 import { useState, useEffect } from "react"
 import { Icons } from "@/components/ui/icons"
 
-interface PurchaseOrderItem {
+interface InvoiceItem {
   id: string;
   productId: string;
   productName?: string;
-  productCode?: string;
   quantity: number;
-  unitCost: number;
+  unitPrice: number;
+  discountPercent: number;
   taxRate: number;
+  lineSubtotal: number;
+  lineTax: number;
   lineTotal: number;
 }
 
-interface PurchaseOrderData {
-  id: string;
-  orderNumber: string;
-  supplierId: string;
-  supplierName: string | null;
-  orderDate: Date;
-  receptionDate: Date | null;
-  status: string;
-  totalAmount: string | null;
-  notes: string | null;
-  createdBy: string | null;
-  createdByName: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-  items: Array<{
-    id: string;
-    productId: string;
-    productName: string | null;
-    productCode: string | null;
-    quantity: number;
-    unitCost: number;
-    lineTotal: number;
-  }>;
-}
-
-interface ModifyPurchaseFormProps {
-  purchaseOrder: PurchaseOrderData;
-}
-
-export function ModifyPurchaseForm({ purchaseOrder }: ModifyPurchaseFormProps) {
+export function NewExportInvoiceForm() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [suppliers, setSuppliers] = useState<Array<{ id: string; name: string }>>([]);
+  const [clients, setClients] = useState<Array<{ id: string; name: string }>>([]);
   const [products, setProducts] = useState<Array<{ 
     id: string; 
     name: string; 
     code: string;
-    purchasePrice: string | null;
-    taxRate: string | null;
+    salePriceExport: number | null;
+    taxRate: number;
     unitOfMeasure: string;
   }>>([]);
+  const [deliveryNotes, setDeliveryNotes] = useState<Array<{ id: string; noteNumber: string }>>([]);
 
   const [formData, setFormData] = useState({
-    orderNumber: purchaseOrder.orderNumber,
-    supplierId: purchaseOrder.supplierId,
-    orderDate: purchaseOrder.orderDate,
-    receptionDate: purchaseOrder.receptionDate || new Date(),
-    status: purchaseOrder.status as "pending" | "received" | "cancelled",
-    notes: purchaseOrder.notes || "",
-    items: purchaseOrder.items.map((item) => ({
-      id: item.id,
-      productId: item.productId,
-      productName: item.productName || undefined,
-      productCode: item.productCode || undefined,
-      quantity: item.quantity,
-      unitCost: item.unitCost,
-      taxRate: 0, // Calculate from lineTotal and unitCost
-      lineTotal: item.lineTotal,
-    })) as PurchaseOrderItem[],
+    invoiceNumber: "",
+    clientId: "",
+    invoiceDate: new Date(),
+    dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    deliveryNoteId: "",
+    destinationCountry: "",
+    deliveryLocation: "",
+    currency: "USD",
+    notes: "",
+    items: [] as InvoiceItem[],
   });
-
-  useEffect(() => {
-    // Calculate tax rate for existing items
-    setFormData((prev) => ({
-      ...prev,
-      items: prev.items.map((item) => {
-        const subtotal = item.quantity * item.unitCost;
-        const taxAmount = item.lineTotal - subtotal;
-        const taxRate = subtotal > 0 ? (taxAmount / subtotal) * 100 : 0;
-        return { ...item, taxRate };
-      }),
-    }));
-  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [{ getAllSuppliers }, { getAllActiveProducts }] = await Promise.all([
-          import("../../../_lib/actions"),
-          import("../../../_lib/actions"),
-        ]);
+        const { getAllClients, getAllActiveProducts } = await import("../../../_lib/invoice-actions");
 
-        const [suppliersResult, productsResult] = await Promise.all([
-          getAllSuppliers(),
+        const [clientsResult, productsResult] = await Promise.all([
+          getAllClients(),
           getAllActiveProducts(),
         ]);
 
-        if (suppliersResult.data) {
-          setSuppliers(suppliersResult.data);
+        if (clientsResult.data) {
+          setClients(clientsResult.data);
         }
         if (productsResult.data) {
           setProducts(productsResult.data);
@@ -129,6 +81,26 @@ export function ModifyPurchaseForm({ purchaseOrder }: ModifyPurchaseFormProps) {
     fetchData();
   }, []);
 
+  // Fetch delivery notes when client changes
+  useEffect(() => {
+    const fetchDeliveryNotes = async () => {
+      if (!formData.clientId) {
+        setDeliveryNotes([]);
+        return;
+      }
+
+      try {
+        // TODO: Create action to get delivery notes by client
+        // For now, we'll leave it empty
+        setDeliveryNotes([]);
+      } catch (error) {
+        console.error("Error fetching delivery notes", error);
+      }
+    };
+
+    fetchDeliveryNotes();
+  }, [formData.clientId]);
+
   const addItem = () => {
     setFormData((prev) => ({
       ...prev,
@@ -138,15 +110,18 @@ export function ModifyPurchaseForm({ purchaseOrder }: ModifyPurchaseFormProps) {
           id: crypto.randomUUID(),
           productId: "",
           quantity: 1,
-          unitCost: 0,
+          unitPrice: 0,
+          discountPercent: 0,
           taxRate: 0,
+          lineSubtotal: 0,
+          lineTax: 0,
           lineTotal: 0,
         },
       ],
     }));
   };
 
-  const updateItem = (index: number, field: keyof PurchaseOrderItem, value: any) => {
+  const updateItem = (index: number, field: keyof InvoiceItem, value: any) => {
     setFormData((prev) => {
       const newItems = [...prev.items];
       const item = { ...newItems[index], [field]: value };
@@ -156,16 +131,17 @@ export function ModifyPurchaseForm({ purchaseOrder }: ModifyPurchaseFormProps) {
         const product = products.find((p) => p.id === value);
         if (product) {
           item.productName = product.name;
-          item.productCode = product.code;
-          item.unitCost = product.purchasePrice ? parseFloat(product.purchasePrice) : 0;
-          item.taxRate = product.taxRate ? parseFloat(product.taxRate) : 0;
+          item.unitPrice = product.salePriceExport || 0;
+          item.taxRate = product.taxRate || 0;
         }
       }
 
-      // Recalculate line total
-      const subtotal = item.quantity * item.unitCost;
-      const taxAmount = subtotal * (item.taxRate / 100);
-      item.lineTotal = subtotal + taxAmount;
+      // Recalculate line totals
+      const subtotal = item.quantity * item.unitPrice;
+      const discountAmount = subtotal * (item.discountPercent / 100);
+      item.lineSubtotal = subtotal - discountAmount;
+      item.lineTax = item.lineSubtotal * (item.taxRate / 100);
+      item.lineTotal = item.lineSubtotal + item.lineTax;
 
       newItems[index] = item;
       return { ...prev, items: newItems };
@@ -180,14 +156,8 @@ export function ModifyPurchaseForm({ purchaseOrder }: ModifyPurchaseFormProps) {
   };
 
   // Calculate totals
-  const totalHT = formData.items.reduce(
-    (acc, item) => acc + item.quantity * item.unitCost,
-    0
-  );
-  const totalTax = formData.items.reduce(
-    (acc, item) => acc + item.quantity * item.unitCost * (item.taxRate / 100),
-    0
-  );
+  const totalHT = formData.items.reduce((acc, item) => acc + item.lineSubtotal, 0);
+  const totalTax = formData.items.reduce((acc, item) => acc + item.lineTax, 0);
   const totalTTC = formData.items.reduce((acc, item) => acc + item.lineTotal, 0);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -195,49 +165,64 @@ export function ModifyPurchaseForm({ purchaseOrder }: ModifyPurchaseFormProps) {
     setLoading(true);
 
     try {
-      if (!formData.supplierId) {
-        toast.error("Veuillez sélectionner un fournisseur");
+      if (!formData.clientId) {
+        toast.error("Veuillez sélectionner un client");
         setLoading(false);
         return;
       }
 
-      // Allow saving purchase order even with 0 items
+      if (!formData.destinationCountry) {
+        toast.error("Veuillez saisir le pays de destination");
+        setLoading(false);
+        return;
+      }
 
-      const { updatePurchaseOrder } = await import("../../../_lib/actions");
-      const result = await updatePurchaseOrder({
-        id: purchaseOrder.id,
-        orderNumber: formData.orderNumber,
-        supplierId: formData.supplierId,
-        orderDate: formData.orderDate,
-        receptionDate: formData.receptionDate,
-        status: formData.status,
-        totalAmount: totalTTC.toString(),
+      if (formData.items.length === 0) {
+        toast.error("Veuillez ajouter au moins un produit");
+        setLoading(false);
+        return;
+      }
+
+      const { addInvoice } = await import("../../../_lib/invoice-actions");
+      const result = await addInvoice({
+        invoiceNumber: formData.invoiceNumber,
+        invoiceType: "sale_export",
+        clientId: formData.clientId,
+        invoiceDate: formData.invoiceDate,
+        dueDate: formData.dueDate,
+        status: "active",
+        paymentStatus: "unpaid",
+        currency: formData.currency,
+        destinationCountry: formData.destinationCountry,
+        deliveryLocation: formData.deliveryLocation || undefined,
+        deliveryNoteId: formData.deliveryNoteId || undefined,
         notes: formData.notes || undefined,
-        items: formData.items.length > 0 
-          ? formData.items.map((item) => ({
-              id: item.id,
-              productId: item.productId,
-              quantity: item.quantity,
-              unitCost: item.unitCost,
-              lineTotal: item.lineTotal,
-            }))
-          : [], // Allow empty items array
+        items: formData.items.map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          discountPercent: item.discountPercent,
+          taxRate: item.taxRate,
+          lineSubtotal: item.lineSubtotal,
+          lineTax: item.lineTax,
+          lineTotal: item.lineTotal,
+        })),
       });
 
       if (result.error) {
         throw new Error(result.error);
       }
 
-      toast.success("Bon de commande modifié avec succès", {
+      toast.success("Facture export créée avec succès", {
         position: "bottom-center",
         duration: 3000,
       });
 
-      router.push("/dashboard/purchases");
+      router.push("/dashboard/export");
       router.refresh();
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Échec de la modification du bon de commande",
+        error instanceof Error ? error.message : "Échec de la création de la facture export",
         {
           position: "bottom-center",
           duration: 3000,
@@ -255,14 +240,14 @@ export function ModifyPurchaseForm({ purchaseOrder }: ModifyPurchaseFormProps) {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => router.push("/dashboard/purchases")}
+            onClick={() => router.push("/dashboard/export")}
             className="hover:bg-muted"
           >
             <ArrowLeft size={24} />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Modifier Bon de Commande</h1>
-            <p className="text-muted-foreground">Modification d'un bon de commande</p>
+            <h1 className="text-2xl font-bold text-foreground">Nouvelle Facture Export</h1>
+            <p className="text-muted-foreground">Création d'une facture pour vente export</p>
           </div>
         </div>
       </div>
@@ -272,13 +257,13 @@ export function ModifyPurchaseForm({ purchaseOrder }: ModifyPurchaseFormProps) {
         <div className="bg-card rounded-xl shadow-sm border border-border p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">
-              N° Facture Fournisseur
+              N° Facture *
             </label>
             <Input
-              placeholder="Ex: FAC-2023-001"
-              value={formData.orderNumber}
+              placeholder="Ex: FAC-EXP-2023-001"
+              value={formData.invoiceNumber}
               onChange={(e) =>
-                setFormData((prev) => ({ ...prev, orderNumber: e.target.value }))
+                setFormData((prev) => ({ ...prev, invoiceNumber: e.target.value }))
               }
               required
               disabled={loading}
@@ -286,21 +271,21 @@ export function ModifyPurchaseForm({ purchaseOrder }: ModifyPurchaseFormProps) {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Fournisseur</label>
+            <label className="text-sm font-medium text-foreground">Client *</label>
             <Select
-              value={formData.supplierId}
+              value={formData.clientId}
               onValueChange={(value) =>
-                setFormData((prev) => ({ ...prev, supplierId: value }))
+                setFormData((prev) => ({ ...prev, clientId: value }))
               }
               disabled={loading}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Sélectionner un fournisseur" />
+                <SelectValue placeholder="Sélectionner un client" />
               </SelectTrigger>
               <SelectContent>
-                {suppliers.map((supplier) => (
-                  <SelectItem key={supplier.id} value={supplier.id}>
-                    {supplier.name}
+                {clients.map((client) => (
+                  <SelectItem key={client.id} value={client.id}>
+                    {client.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -308,19 +293,19 @@ export function ModifyPurchaseForm({ purchaseOrder }: ModifyPurchaseFormProps) {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Date</label>
+            <label className="text-sm font-medium text-foreground">Date *</label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   className={cn(
                     "w-full pl-3 text-left font-normal",
-                    !formData.orderDate && "text-muted-foreground"
+                    !formData.invoiceDate && "text-muted-foreground"
                   )}
                   disabled={loading}
                 >
-                  {formData.orderDate ? (
-                    format(formData.orderDate, "PPP", { locale: fr })
+                  {formData.invoiceDate ? (
+                    format(formData.invoiceDate, "PPP", { locale: fr })
                   ) : (
                     <span>Sélectionner une date</span>
                   )}
@@ -330,10 +315,10 @@ export function ModifyPurchaseForm({ purchaseOrder }: ModifyPurchaseFormProps) {
               <PopoverContent className="w-auto p-0" align="start">
                 <Calendar
                   mode="single"
-                  selected={formData.orderDate}
+                  selected={formData.invoiceDate}
                   onSelect={(date) => {
                     if (date) {
-                      setFormData((prev) => ({ ...prev, orderDate: date }));
+                      setFormData((prev) => ({ ...prev, invoiceDate: date }));
                     }
                   }}
                   disabled={loading}
@@ -345,19 +330,19 @@ export function ModifyPurchaseForm({ purchaseOrder }: ModifyPurchaseFormProps) {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Date de réception</label>
+            <label className="text-sm font-medium text-foreground">Date d'échéance</label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   className={cn(
                     "w-full pl-3 text-left font-normal",
-                    !formData.receptionDate && "text-muted-foreground"
+                    !formData.dueDate && "text-muted-foreground"
                   )}
                   disabled={loading}
                 >
-                  {formData.receptionDate ? (
-                    format(formData.receptionDate, "PPP", { locale: fr })
+                  {formData.dueDate ? (
+                    format(formData.dueDate, "PPP", { locale: fr })
                   ) : (
                     <span>Sélectionner une date</span>
                   )}
@@ -367,12 +352,10 @@ export function ModifyPurchaseForm({ purchaseOrder }: ModifyPurchaseFormProps) {
               <PopoverContent className="w-auto p-0" align="start">
                 <Calendar
                   mode="single"
-                  selected={formData.receptionDate}
+                  selected={formData.dueDate}
                   onSelect={(date) => {
                     if (date) {
-                      setFormData((prev) => ({ ...prev, receptionDate: date }));
-                    } else {
-                      setFormData((prev) => ({ ...prev, receptionDate: new Date() }));
+                      setFormData((prev) => ({ ...prev, dueDate: date }));
                     }
                   }}
                   disabled={loading}
@@ -384,23 +367,71 @@ export function ModifyPurchaseForm({ purchaseOrder }: ModifyPurchaseFormProps) {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Statut</label>
+            <label className="text-sm font-medium text-foreground">Bon de Livraison</label>
             <Select
-              value={formData.status}
+              value={formData.deliveryNoteId}
               onValueChange={(value) =>
-                setFormData((prev) => ({ ...prev, status: value as "pending" | "received" | "cancelled" }))
+                setFormData((prev) => ({ ...prev, deliveryNoteId: value }))
+              }
+              disabled={loading || deliveryNotes.length === 0}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Sélectionner un bon de livraison (optionnel)" />
+              </SelectTrigger>
+              <SelectContent>
+                {deliveryNotes.map((note) => (
+                  <SelectItem key={note.id} value={note.id}>
+                    {note.noteNumber}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Pays de destination *</label>
+            <Input
+              placeholder="Ex: France, Espagne..."
+              value={formData.destinationCountry}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, destinationCountry: e.target.value }))
+              }
+              required
+              disabled={loading}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Devise</label>
+            <Select
+              value={formData.currency}
+              onValueChange={(value) =>
+                setFormData((prev) => ({ ...prev, currency: value }))
               }
               disabled={loading}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Sélectionner un statut" />
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="pending">En attente</SelectItem>
-                <SelectItem value="received">Reçu</SelectItem>
-                <SelectItem value="cancelled">Annulé</SelectItem>
+                <SelectItem value="USD">USD</SelectItem>
+                <SelectItem value="EUR">EUR</SelectItem>
+                <SelectItem value="GBP">GBP</SelectItem>
+                <SelectItem value="DZD">DZD</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-2 md:col-span-3">
+            <label className="text-sm font-medium text-foreground">Lieu de livraison</label>
+            <Input
+              placeholder="Adresse de livraison (optionnel)"
+              value={formData.deliveryLocation}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, deliveryLocation: e.target.value }))
+              }
+              disabled={loading}
+            />
           </div>
         </div>
 
@@ -426,7 +457,8 @@ export function ModifyPurchaseForm({ purchaseOrder }: ModifyPurchaseFormProps) {
                 <tr>
                   <th className="px-4 py-3 w-1/3">Produit</th>
                   <th className="px-4 py-3 w-24 text-right">Qté</th>
-                  <th className="px-4 py-3 w-32 text-right">Prix Achat</th>
+                  <th className="px-4 py-3 w-32 text-right">Prix Unitaire</th>
+                  <th className="px-4 py-3 w-24 text-right">Remise %</th>
                   <th className="px-4 py-3 w-24 text-right">TVA %</th>
                   <th className="px-4 py-3 w-32 text-right">Total</th>
                   <th className="px-4 py-3 w-16"></th>
@@ -471,9 +503,23 @@ export function ModifyPurchaseForm({ purchaseOrder }: ModifyPurchaseFormProps) {
                         type="number"
                         min="0"
                         step="0.01"
-                        value={item.unitCost}
+                        value={item.unitPrice}
                         onChange={(e) =>
-                          updateItem(index, "unitCost", parseFloat(e.target.value) || 0)
+                          updateItem(index, "unitPrice", parseFloat(e.target.value) || 0)
+                        }
+                        className="w-full text-right"
+                        disabled={loading}
+                      />
+                    </td>
+                    <td className="px-4 py-2">
+                      <Input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        value={item.discountPercent}
+                        onChange={(e) =>
+                          updateItem(index, "discountPercent", parseFloat(e.target.value) || 0)
                         }
                         className="w-full text-right"
                         disabled={loading}
@@ -516,7 +562,7 @@ export function ModifyPurchaseForm({ purchaseOrder }: ModifyPurchaseFormProps) {
               {formData.items.length > 0 && (
                 <tfoot className="bg-muted font-medium">
                   <tr>
-                    <td colSpan={4} className="px-4 py-3 text-right text-card-foreground">
+                    <td colSpan={5} className="px-4 py-3 text-right text-card-foreground">
                       Total HT
                     </td>
                     <td className="px-4 py-3 text-right text-card-foreground">
@@ -528,7 +574,7 @@ export function ModifyPurchaseForm({ purchaseOrder }: ModifyPurchaseFormProps) {
                     <td></td>
                   </tr>
                   <tr>
-                    <td colSpan={4} className="px-4 py-3 text-right text-card-foreground">
+                    <td colSpan={5} className="px-4 py-3 text-right text-card-foreground">
                       Total TVA
                     </td>
                     <td className="px-4 py-3 text-right text-card-foreground">
@@ -540,7 +586,7 @@ export function ModifyPurchaseForm({ purchaseOrder }: ModifyPurchaseFormProps) {
                     <td></td>
                   </tr>
                   <tr className="text-lg font-bold text-card-foreground">
-                    <td colSpan={4} className="px-4 py-3 text-right">
+                    <td colSpan={5} className="px-4 py-3 text-right">
                       Total TTC
                     </td>
                     <td className="px-4 py-3 text-right">
@@ -548,7 +594,7 @@ export function ModifyPurchaseForm({ purchaseOrder }: ModifyPurchaseFormProps) {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2,
                       })}{" "}
-                      DZD
+                      {formData.currency}
                     </td>
                     <td></td>
                   </tr>
@@ -575,7 +621,7 @@ export function ModifyPurchaseForm({ purchaseOrder }: ModifyPurchaseFormProps) {
           <Button
             type="button"
             variant="outline"
-            onClick={() => router.push("/dashboard/purchases")}
+            onClick={() => router.push("/dashboard/export")}
             disabled={loading}
           >
             Annuler
@@ -586,11 +632,12 @@ export function ModifyPurchaseForm({ purchaseOrder }: ModifyPurchaseFormProps) {
             ) : (
               <Save className="mr-2 h-4 w-4" />
             )}
-            Enregistrer les modifications
+            Enregistrer la facture export
           </Button>
         </div>
       </form>
     </div>
   );
 }
+
 

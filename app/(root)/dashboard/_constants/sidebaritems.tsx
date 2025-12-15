@@ -74,12 +74,64 @@ export const adminSidebarItemsGeneralSetting = [
     url: '/dashboard/sales',
     icon: ShoppingCart,
     isActive: false,
+    items: [
+      {
+        title: 'Liste des ventes',
+        url: '/dashboard/sales',
+        icon: List,
+        isActive: false,
+      },
+      {
+        title: 'Nouvelle vente',
+        url: '/dashboard/sales/new',
+        icon: Plus,
+        isActive: false,
+      },
+    ],
   },
   {
     title: 'Export',
     url: '/dashboard/export',
     icon: FileBarChart,
     isActive: false,
+    items: [
+      {
+        title: 'Liste des bons de livraison',
+        url: '/dashboard/export/delivery-notes',
+        icon: List,
+        isActive: false,
+      },
+      {
+        title: 'Ajouter un bon de livraison',
+        url: '/dashboard/export/delivery-note/new',
+        icon: Plus,
+        isActive: false,
+      },
+      {
+        title: 'Liste des factures proforma',
+        url: '/dashboard/export/proforma',
+        icon: List,
+        isActive: false,
+      },
+      {
+        title: 'Ajouter une facture proforma',
+        url: '/dashboard/export/proforma/new',
+        icon: Plus,
+        isActive: false,
+      },
+      {
+        title: 'Liste des factures export',
+        url: '/dashboard/export/invoices',
+        icon: List,
+        isActive: false,
+      },
+      {
+        title: 'Ajouter une facture export',
+        url: '/dashboard/export/invoice/new',
+        icon: Plus,
+        isActive: false,
+      },
+    ],
   },
   {
     title: 'Achats',

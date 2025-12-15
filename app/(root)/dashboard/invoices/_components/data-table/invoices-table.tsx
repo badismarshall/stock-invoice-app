@@ -22,7 +22,7 @@ interface InvoicesTableProps {
 export function InvoicesTable({ promises, queryKeys }: InvoicesTableProps) {
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
 
-  const [{ invoices, pageCount }] = React.use(promises);
+  const { data: invoices, pageCount } = React.use(promises);
 
   const columns = React.useMemo(
     () => getInvoicesTableColumns(),
