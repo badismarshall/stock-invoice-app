@@ -67,7 +67,7 @@ export function DeleteDeliveryNotesDialog({
       });
 
       if (error) {
-        toast.error(fr.error);
+        toast.error(error);
         return;
       }
 

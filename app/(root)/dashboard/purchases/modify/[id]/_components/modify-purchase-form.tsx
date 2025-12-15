@@ -462,7 +462,7 @@ export function ModifyPurchaseForm({ purchaseOrder }: ModifyPurchaseFormProps) {
                         onChange={(e) =>
                           updateItem(index, "quantity", parseFloat(e.target.value) || 0)
                         }
-                        className="w-full text-right"
+                        className="w-full text-right no-spinner"
                         disabled={loading}
                       />
                     </td>
@@ -475,7 +475,7 @@ export function ModifyPurchaseForm({ purchaseOrder }: ModifyPurchaseFormProps) {
                         onChange={(e) =>
                           updateItem(index, "unitCost", parseFloat(e.target.value) || 0)
                         }
-                        className="w-full text-right"
+                        className="w-full text-right no-spinner"
                         disabled={loading}
                       />
                     </td>
@@ -488,7 +488,7 @@ export function ModifyPurchaseForm({ purchaseOrder }: ModifyPurchaseFormProps) {
                         onChange={(e) =>
                           updateItem(index, "taxRate", parseFloat(e.target.value) || 0)
                         }
-                        className="w-full text-right"
+                        className="w-full text-right no-spinner"
                         disabled={loading}
                       />
                     </td>

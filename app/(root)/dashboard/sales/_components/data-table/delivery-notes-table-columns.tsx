@@ -20,10 +20,18 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/handle-error";
+import { updateDeliveryNoteStatus } from "../../_lib/actions";
 import { formatDate } from "@/lib/data-table/format";
 import type { DataTableRowAction } from "@/types/data-table";
 import type { DeliveryNoteDTOItem } from "@/data/delivery-note/delivery-note.dto";
@@ -50,6 +58,9 @@ const translations = {
   selectRow: "Sélectionner la ligne",
   active: "Actif",
   cancelled: "Annulé",
+  status: "Statut",
+  updating: "Mise à jour...",
+  statusUpdated: "Statut mis à jour",
 };
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -234,6 +245,7 @@ export function getDeliveryNotesTableColumns({
       cell: function Cell({ row }) {
         const router = useRouter();
         const deliveryNote = row.original;
+        const [isUpdatePending, startUpdateTransition] = React.useTransition();
 
         return (
           <DropdownMenu>
@@ -252,6 +264,42 @@ export function getDeliveryNotesTableColumns({
               >
                 {translations.edit}
               </DropdownMenuItem>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>{translations.status}</DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuRadioGroup
+                    value={deliveryNote.status || "active"}
+                    onValueChange={(value) => {
+                      startUpdateTransition(() => {
+                        toast.promise(
+                          updateDeliveryNoteStatus({
+                            id: deliveryNote.id,
+                            status: value as "active" | "cancelled",
+                          }),
+                          {
+                            loading: translations.updating,
+                            success: translations.statusUpdated,
+                            error: (err) => getErrorMessage(err),
+                          }
+                        );
+                      });
+                    }}
+                  >
+                    <DropdownMenuRadioItem
+                      value="active"
+                      disabled={isUpdatePending}
+                    >
+                      {translations.active}
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem
+                      value="cancelled"
+                      disabled={isUpdatePending}
+                    >
+                      {translations.cancelled}
+                    </DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onSelect={() => setRowAction({ row, variant: "delete" })}
