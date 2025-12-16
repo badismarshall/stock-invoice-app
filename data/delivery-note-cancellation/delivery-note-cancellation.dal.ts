@@ -209,7 +209,7 @@ export const getDeliveryNoteCancellations = async (
 
               case "notInArray":
                 if (Array.isArray(filter.value)) {
-                  return sql`${column} NOT IN (${sql.join(filter.value.map(v => sql`${v}`), sql`, `)})`;
+                  return sql`${column} NOT IN (${sql.join(filter.value.map((v: string | number) => sql`${v}`), sql`, `)})`;
                 }
                 return undefined;
 

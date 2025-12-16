@@ -17,7 +17,7 @@ import { z } from "zod"
 const addCategorySchema = z.object({
   name: z.string().min(1, "Le nom est requis"),
   description: z.string().optional(),
-  isActive: z.boolean().default(true),
+  isActive: z.boolean(),
 });
 
 type AddCategoryFormValues = z.infer<typeof addCategorySchema>;

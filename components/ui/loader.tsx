@@ -10,7 +10,7 @@ export const LoaderOne = () => {
       repeatType: "loop" as const,
       delay: x * 0.2,
       ease: "easeInOut",
-    };
+    } as const;
   };
   return (
     <div className="flex items-center gap-2">
@@ -56,7 +56,7 @@ export const LoaderTwo = () => {
       repeatType: "loop" as const,
       delay: x * 0.2,
       ease: "easeInOut",
-    };
+    } as const;
   };
   return (
     <div className="flex items-center">
@@ -129,8 +129,10 @@ export const LoaderFour = ({ text = "Loading..." }: { text?: string }) => {
     <div className="relative font-bold text-black [perspective:1000px] dark:text-white">
       <motion.span
         animate={{
-          skew: [0, -40, 0],
           scaleX: [1, 2, 1],
+        }}
+        style={{
+          transform: "skew(0deg)",
         }}
         transition={{
           duration: 0.05,

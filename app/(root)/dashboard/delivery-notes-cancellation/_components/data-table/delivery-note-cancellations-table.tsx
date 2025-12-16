@@ -8,11 +8,13 @@ import { DataTableFilterMenu } from "@/components/shared/data-table/data-table-f
 import { DataTableSortList } from "@/components/shared/data-table/data-table-sort-list";
 import { DataTableToolbar } from "@/components/shared/data-table/data-table-toolbar";
 import { useDataTable } from "@/hooks/data-table/use-data-table";
-import type { QueryKeys } from "@/types/data-table";
+import type { QueryKeys, DataTableRowAction } from "@/types/data-table";
 import type { DeliveryNoteCancellationDTOItem } from "@/data/delivery-note-cancellation/delivery-note-cancellation.dto";
 import type { getDeliveryNoteCancellations } from "../../_lib/queries";
 import { getDeliveryNoteCancellationsTableColumns } from "./delivery-note-cancellations-table-columns";
+import { DeliveryNoteCancellationsTableActionBar } from "./delivery-note-cancellations-table-action-bar";
 import { useFeatureFlags } from "@/app/(root)/dashboard/_components/feature-flags-provider";
+import { DeleteDeliveryNoteCancellationsDialog } from "./delete-delivery-note-cancellations-dialog";
 
 interface DeliveryNoteCancellationsTableProps {
   promises: Promise<
@@ -27,6 +29,9 @@ export function DeliveryNoteCancellationsTable({ promises, clients = [], queryKe
 
   const { data, pageCount } = React.use(promises);
 
+  const [rowAction, setRowAction] =
+    React.useState<DataTableRowAction<DeliveryNoteCancellationDTOItem> | null>(null);
+
   const columns = React.useMemo(
     () =>
       getDeliveryNoteCancellationsTableColumns({ clients }),
@@ -40,6 +45,7 @@ export function DeliveryNoteCancellationsTable({ promises, clients = [], queryKe
     enableAdvancedFilter,
     initialState: {
       sorting: [{ id: "cancellationDate", desc: true }],
+      columnPinning: { right: ["actions"] },
     },
     queryKeys,
     getRowId: (originalRow) => originalRow.id,
@@ -51,6 +57,7 @@ export function DeliveryNoteCancellationsTable({ promises, clients = [], queryKe
     <>
       <DataTable
         table={table}
+        actionBar={<DeliveryNoteCancellationsTableActionBar table={table} setRowAction={setRowAction} />}
       >
         {enableAdvancedFilter ? (
           <DataTableAdvancedToolbar table={table}>
@@ -78,6 +85,20 @@ export function DeliveryNoteCancellationsTable({ promises, clients = [], queryKe
           </DataTableToolbar>
         )}
       </DataTable>
+      <DeleteDeliveryNoteCancellationsDialog
+        open={rowAction?.variant === "delete"}
+        onOpenChange={() => setRowAction(null)}
+        cancellations={
+          rowAction?.variant === "delete"
+            ? table.getFilteredSelectedRowModel().rows.map((row) => row.original)
+            : []
+        }
+        showTrigger={false}
+        onSuccess={() => {
+          table.toggleAllRowsSelected(false);
+          setRowAction(null);
+        }}
+      />
     </>
   );
 }

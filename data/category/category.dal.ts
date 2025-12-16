@@ -114,7 +114,7 @@ export const getCategories = async (input: GetCategoriesSchema): Promise<Categor
         id: c.id,
         name: c.name,
         description: c.description,
-        isActive: c.isActive,
+        isActive: c.isActive ?? false,
         createdAt: c.createdAt,
       })),
       options: {

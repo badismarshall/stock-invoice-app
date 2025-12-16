@@ -15,10 +15,32 @@ import {
 } from "drizzle-orm";
 import db from "@/db";
 import { invoice, partner, user } from "@/db/schema";
-import { GetInvoicesSchema } from "@/app/(root)/dashboard/invoices/_lib/validation";
-import type { z } from "zod";
+import { z } from "zod";
 import type { InvoiceDTO } from "./invoice.dto";
 import { filterColumns } from "@/lib/data-table/filter-columns";
+
+// Schema for invoice queries
+const invoiceTypes = ["sale_local", "sale_export", "proforma", "purchase"] as const;
+const paymentStatuses = ["unpaid", "partially_paid", "paid"] as const;
+const statuses = ["active", "cancelled"] as const;
+
+export const GetInvoicesSchema = z.object({
+  page: z.number().min(1).default(1),
+  perPage: z.number().min(1).max(100).default(10),
+  sort: z.array(z.object({ id: z.string(), desc: z.boolean() })).default([]),
+  filters: z.array(z.object({ id: z.string(), value: z.union([z.string(), z.array(z.string())]) })).default([]),
+  filterFlag: z.enum(["advancedFilters", "commandFilters"]).optional(),
+  joinOperator: z.enum(["and", "or"]).default("and"),
+  invoiceNumber: z.string().default(""),
+  invoiceType: z.array(z.enum(invoiceTypes)).default([]),
+  paymentStatus: z.array(z.enum(paymentStatuses)).default([]),
+  status: z.array(z.enum(statuses)).default([]),
+  clientId: z.array(z.string()).default([]),
+  supplierId: z.array(z.string()).default([]),
+  invoiceDate: z.array(z.date()).default([]),
+  dueDate: z.array(z.date()).default([]),
+  createdAt: z.array(z.date()).default([]),
+});
 
 export const getInvoices = async (input: z.infer<typeof GetInvoicesSchema>): Promise<InvoiceDTO> => {
   try {

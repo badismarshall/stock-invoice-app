@@ -61,7 +61,6 @@ const translations = {
   pending: "En attente",
   received: "Reçu",
   cancelled: "Annulé",
-  status: "Statut",
   updating: "Mise à jour...",
   statusUpdated: "Statut mis à jour",
 };

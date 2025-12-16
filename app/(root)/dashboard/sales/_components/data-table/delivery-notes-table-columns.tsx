@@ -58,7 +58,6 @@ const translations = {
   selectRow: "Sélectionner la ligne",
   active: "Actif",
   cancelled: "Annulé",
-  status: "Statut",
   updating: "Mise à jour...",
   statusUpdated: "Statut mis à jour",
 };

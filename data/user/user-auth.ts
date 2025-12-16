@@ -19,6 +19,18 @@ export const getCurrentUser = cache(async () => {
             name: session.user.name,
         }
     } catch (error) {
+        // During prerendering, headers() rejects when the prerender is complete
+        // This is expected and we should return null instead of logging an error
+        if (error instanceof Error) {
+            const hasPrerenderError = 
+                error.message.includes('prerender') || 
+                error.message.includes('headers()') ||
+                ('digest' in error && (error as { digest?: string }).digest === 'HANGING_PROMISE_REJECTION');
+            
+            if (hasPrerenderError) {
+                return null
+            }
+        }
         console.error('Error getting current user', error)
         return null
     }

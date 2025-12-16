@@ -12,6 +12,7 @@ import {
 import * as React from "react";
 import { DataTableColumnHeader } from "@/components/shared/data-table/data-table-column-header";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,6 +25,8 @@ import { formatDate } from "@/lib/data-table/format";
 import type { DeliveryNoteCancellationDTOItem } from "@/data/delivery-note-cancellation/delivery-note-cancellation.dto";
 
 const translations = {
+  selectAll: "Tout sélectionner",
+  selectRow: "Sélectionner la ligne",
   cancellationNumber: "N° Annulation",
   searchCancellationNumber: "Rechercher un numéro...",
   client: "Client",
@@ -41,6 +44,31 @@ interface GetDeliveryNoteCancellationsTableColumnsProps {
 
 export function getDeliveryNoteCancellationsTableColumns({ clients = [] }: GetDeliveryNoteCancellationsTableColumnsProps): ColumnDef<DeliveryNoteCancellationDTOItem>[] {
   return [
+    {
+      id: "select",
+      header: ({ table }) => (
+        <Checkbox
+          aria-label={translations.selectAll}
+          className="translate-y-0.5"
+          checked={
+            table.getIsAllPageRowsSelected() ||
+            (table.getIsSomePageRowsSelected() && "indeterminate")
+          }
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          aria-label={translations.selectRow}
+          className="translate-y-0.5"
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+      size: 40,
+    },
     {
       id: "cancellationNumber",
       accessorKey: "cancellationNumber",

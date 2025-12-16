@@ -24,9 +24,7 @@ async function DeleteCancellationPageContent({ id }: { id: string }) {
   }
 
   return <DeleteCancellationForm cancellation={cancellationResult.data} />;
-}
-
-function DeleteCancellationPageLoading() {
+}function DeleteCancellationPageLoading() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -55,9 +53,7 @@ export default function DeleteCancellationPage({
       <DeleteCancellationPageContentWrapper params={params} />
     </Suspense>
   );
-}
-
-async function DeleteCancellationPageContentWrapper({
+}async function DeleteCancellationPageContentWrapper({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -65,4 +61,8 @@ async function DeleteCancellationPageContentWrapper({
   const { id } = await params;
   return <DeleteCancellationPageContent id={id} />;
 }
+
+
+
+
 

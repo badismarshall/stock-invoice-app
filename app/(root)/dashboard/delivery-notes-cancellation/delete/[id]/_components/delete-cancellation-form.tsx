@@ -2,11 +2,9 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Loader, Trash2 } from "lucide-react";
+import { ArrowLeft, Loader } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -19,6 +17,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { deleteDeliveryNoteCancellation, deleteCancellationItem, getCancellationItemsForDelete } from "../../../_lib/actions";
+import { DeleteCancellationItemsTable } from "./delete-cancellation-items-table";
 
 interface DeleteCancellationFormProps {
   cancellation: {
@@ -75,7 +74,7 @@ export function DeleteCancellationForm({ cancellation }: DeleteCancellationFormP
   const router = useRouter();
   const [isLoadingItems, setIsLoadingItems] = React.useState(false);
   const [items, setItems] = React.useState(cancellation.items);
-  const [itemToDelete, setItemToDelete] = React.useState<{ id: string; productName: string | null } | null>(null);
+  const [itemsToDelete, setItemsToDelete] = React.useState<Array<{ id: string; productName: string | null }>>([]);
   const [showDeleteAllDialog, setShowDeleteAllDialog] = React.useState(false);
   const [isDeletingItem, setIsDeletingItem] = React.useState(false);
   const [isDeletingAll, setIsDeletingAll] = React.useState(false);
@@ -93,48 +92,51 @@ export function DeleteCancellationForm({ cancellation }: DeleteCancellationFormP
     loadItems();
   }, [cancellation.id]);
 
-  function handleDeleteItem() {
-    if (!itemToDelete) return;
+  const handleDeleteItem = React.useCallback((item: { id: string; productName: string | null }) => {
+    setItemsToDelete([item]);
+  }, []);
 
+  const handleDeleteItems = React.useCallback(async (itemIds: string[]) => {
     setIsDeletingItem(true);
-    const item = items.find(i => i.id === itemToDelete.id);
-    if (!item) {
-      setIsDeletingItem(false);
-      setItemToDelete(null);
-      return;
-    }
+    
+    try {
+      // Delete items one by one
+      for (const itemId of itemIds) {
+        const item = items.find(i => i.id === itemId);
+        if (!item) continue;
 
-    deleteCancellationItem({
-      cancellationId: cancellation.id,
-      itemId: item.id,
-      productId: item.productId,
-      quantity: item.cancelledQuantity,
-    }).then(({ error }) => {
-      if (error) {
-        toast.error(error);
-        setIsDeletingItem(false);
-        setItemToDelete(null);
-        return;
+        const { error } = await deleteCancellationItem({
+          cancellationId: cancellation.id,
+          itemId: item.id,
+          productId: item.productId,
+          quantity: item.cancelledQuantity,
+        });
+
+        if (error) {
+          toast.error(error);
+          setIsDeletingItem(false);
+          return;
+        }
       }
 
       // Reload items
-      getCancellationItemsForDelete({ id: cancellation.id }).then(({ data, error: fetchError }) => {
-        if (!fetchError && data) {
-          setItems(data);
-          if (data.length === 0) {
-            // No items left, redirect back
-            toast.success(translations.cancellationDeleted);
-            router.push("/dashboard/delivery-notes-cancellation");
-            router.refresh();
-          } else {
-            toast.success(translations.itemDeleted);
-          }
+      const { data, error: fetchError } = await getCancellationItemsForDelete({ id: cancellation.id });
+      if (!fetchError && data) {
+        setItems(data);
+        if (data.length === 0) {
+          // No items left, redirect back
+          toast.success(translations.cancellationDeleted);
+          router.push("/dashboard/delivery-notes-cancellation");
+          router.refresh();
+        } else {
+          toast.success(itemIds.length === 1 ? translations.itemDeleted : `${itemIds.length} articles supprimés`);
         }
-        setIsDeletingItem(false);
-        setItemToDelete(null);
-      });
-    });
-  }
+      }
+    } finally {
+      setIsDeletingItem(false);
+      setItemsToDelete([]);
+    }
+  }, [cancellation.id, items, router]);
 
   function handleDeleteAll() {
     setIsDeletingAll(true);
@@ -186,83 +188,41 @@ export function DeleteCancellationForm({ cancellation }: DeleteCancellationFormP
           ) : items.length > 0 ? (
             <>
               <p className="text-sm text-muted-foreground">{translations.hasItems}</p>
-              <div className="rounded-md border">
-                <ScrollArea className="h-[400px]">
-                  <Table>
-                    <TableHeader className="sticky top-0 bg-background z-10">
-                      <TableRow>
-                        <TableHead className="min-w-[100px]">{translations.noteNumber}</TableHead>
-                        <TableHead className="min-w-[150px]">{translations.product}</TableHead>
-                        <TableHead className="text-right min-w-[80px]">{translations.quantity}</TableHead>
-                        <TableHead className="text-right min-w-[100px]">{translations.unitPrice}</TableHead>
-                        <TableHead className="text-right min-w-[100px]">{translations.lineTotal}</TableHead>
-                        <TableHead className="text-right w-[80px]">{translations.actions}</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {items.map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell className="font-medium">{item.noteNumber}</TableCell>
-                          <TableCell>
-                            <div>
-                              <div className="font-medium">{item.productName || "-"}</div>
-                              {item.productCode && (
-                                <div className="text-xs text-muted-foreground">
-                                  {item.productCode}
-                                </div>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right">{item.cancelledQuantity.toFixed(3)}</TableCell>
-                          <TableCell className="text-right">{item.unitPrice.toFixed(2)}</TableCell>
-                          <TableCell className="text-right">{item.lineTotal.toFixed(2)}</TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setItemToDelete({ id: item.id, productName: item.productName })}
-                              disabled={isDeletingItem || isDeletingAll}
-                              className="h-8 w-8 p-0"
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </ScrollArea>
-              </div>
+              <DeleteCancellationItemsTable 
+                items={items}
+                cancellationId={cancellation.id}
+                onDeleteItem={handleDeleteItem}
+                onDeleteItems={handleDeleteItems}
+                onDeleteAll={() => setShowDeleteAllDialog(true)}
+                isDeleting={isDeletingItem || isDeletingAll}
+                onItemsChange={setItems}
+                onRedirect={() => {
+                  router.push("/dashboard/delivery-notes-cancellation");
+                  router.refresh();
+                }}
+              />
             </>
           ) : (
             <p className="text-sm text-muted-foreground py-4">{translations.noItems}</p>
           )}
 
-          <div className="flex justify-end pt-4 border-t">
-            <Button
-              variant="destructive"
-              onClick={() => setShowDeleteAllDialog(true)}
-              disabled={isDeletingItem || isDeletingAll || items.length === 0}
-            >
-              {isDeletingAll && (
-                <Loader className="mr-2 h-4 w-4 animate-spin" />
-              )}
-              {translations.deleteAll}
-            </Button>
-          </div>
         </CardContent>
       </Card>
 
-      {/* Delete item confirmation dialog */}
-      <AlertDialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
+      {/* Delete items confirmation dialog */}
+      <AlertDialog open={itemsToDelete.length > 0} onOpenChange={(open) => !open && setItemsToDelete([])}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{translations.areYouSure}</AlertDialogTitle>
             <AlertDialogDescription>
-              {translations.deleteItemConfirm}
-              {itemToDelete && (
+              {itemsToDelete.length === 1 
+                ? translations.deleteItemConfirm
+                : `Êtes-vous sûr de vouloir supprimer ${itemsToDelete.length} articles ?`}
+              {itemsToDelete.length > 0 && (
                 <span className="font-medium block mt-2">
-                  {itemToDelete.productName || "Cet article"}
+                  {itemsToDelete.length === 1 
+                    ? itemsToDelete[0].productName || "Cet article"
+                    : `${itemsToDelete.length} articles`}
                 </span>
               )}
             </AlertDialogDescription>
@@ -270,7 +230,10 @@ export function DeleteCancellationForm({ cancellation }: DeleteCancellationFormP
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeletingItem}>Annuler</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDeleteItem}
+              onClick={() => {
+                const itemIds = itemsToDelete.map(item => item.id);
+                handleDeleteItems(itemIds);
+              }}
               disabled={isDeletingItem}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >

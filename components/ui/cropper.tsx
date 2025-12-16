@@ -1,31 +1,44 @@
 "use client"
 
-import { Cropper as CropperPrimitive } from "@origin-space/image-cropper"
-
 import { cn } from "@/lib/utils"
+import * as React from "react"
+
+interface CropperProps extends React.HTMLAttributes<HTMLDivElement> {
+  image?: string
+  zoom?: number
+  onCropChange?: (pixels: { x: number; y: number; width: number; height: number } | null) => void
+  onZoomChange?: (zoom: number) => void
+}
 
 function Cropper({
   className,
+  image,
+  zoom = 1,
+  onCropChange,
+  onZoomChange,
+  children,
   ...props
-}: React.ComponentProps<typeof CropperPrimitive.Root>) {
+}: CropperProps) {
   return (
-    <CropperPrimitive.Root
+    <div
       data-slot="cropper"
       className={cn(
         "relative flex w-full cursor-move touch-none items-center justify-center overflow-hidden focus:outline-none",
         className
       )}
       {...props}
-    />
+    >
+      {children}
+    </div>
   )
 }
 
 function CropperDescription({
   className,
   ...props
-}: React.ComponentProps<typeof CropperPrimitive.Description>) {
+}: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <CropperPrimitive.Description
+    <div
       data-slot="cropper-description"
       className={cn("sr-only", className)}
       {...props}
@@ -36,9 +49,9 @@ function CropperDescription({
 function CropperImage({
   className,
   ...props
-}: React.ComponentProps<typeof CropperPrimitive.Image>) {
+}: React.ImgHTMLAttributes<HTMLImageElement>) {
   return (
-    <CropperPrimitive.Image
+    <img
       data-slot="cropper-image"
       className={cn(
         "pointer-events-none h-full w-full object-cover",
@@ -52,9 +65,9 @@ function CropperImage({
 function CropperCropArea({
   className,
   ...props
-}: React.ComponentProps<typeof CropperPrimitive.CropArea>) {
+}: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <CropperPrimitive.CropArea
+    <div
       data-slot="cropper-crop-area"
       className={cn(
         "pointer-events-none absolute border-3 border-white shadow-[0_0_0_9999px_rgba(0,0,0,0.3)] in-[[data-slot=cropper]:focus-visible]:ring-[3px] in-[[data-slot=cropper]:focus-visible]:ring-white/50",
