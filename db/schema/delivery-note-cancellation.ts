@@ -1,13 +1,15 @@
 import { pgTable, text, timestamp, date } from "drizzle-orm/pg-core";
 import { deliveryNote } from "./delivery-note";
+import { partner } from "./partner";
 import { user } from "./user";
 
 export const deliveryNoteCancellation = pgTable("delivery_note_cancellation", {
   id: text("id").primaryKey(),
   cancellationNumber: text("cancellation_number").notNull().unique(),
   originalDeliveryNoteId: text("original_delivery_note_id")
-    .notNull()
     .references(() => deliveryNote.id, { onDelete: "restrict" }),
+  clientId: text("client_id")
+    .references(() => partner.id, { onDelete: "restrict" }),
   cancellationDate: date("cancellation_date").notNull(),
   reason: text("reason"),
   createdBy: text("created_by").references(() => user.id, {

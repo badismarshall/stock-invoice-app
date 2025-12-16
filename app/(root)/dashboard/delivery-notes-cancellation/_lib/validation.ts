@@ -20,6 +20,7 @@ export const searchParamsCache = createSearchParamsCache({
   ]),
   search: parseAsString.withDefault(""),
   cancellationNumber: parseAsString.withDefault(""),
+  clientId: parseAsArrayOf(parseAsString).withDefault([]),
   cancellationDate: parseAsArrayOf(parseAsInteger).withDefault([]),
   createdAt: parseAsArrayOf(parseAsInteger).withDefault([]),
   // advanced filter

@@ -6,8 +6,9 @@ export const deliveryNoteCancellationSchema = z.object({
     z.object({
       id: z.string(),
       cancellationNumber: z.string(),
-      originalDeliveryNoteId: z.string(),
-      originalNoteNumber: z.string().nullable(),
+      originalDeliveryNoteId: z.string().nullable(),
+      clientId: z.string().nullable(),
+      clientName: z.string().nullable(),
       cancellationDate: z.date(),
       reason: z.string().nullable(),
       createdBy: z.string().nullable(),

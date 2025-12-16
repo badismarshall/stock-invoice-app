@@ -18,18 +18,19 @@ interface DeliveryNoteCancellationsTableProps {
   promises: Promise<
     Awaited<ReturnType<typeof getDeliveryNoteCancellations>>
   >;
+  clients?: Array<{ id: string; name: string }>;
   queryKeys?: Partial<QueryKeys>;
 }
 
-export function DeliveryNoteCancellationsTable({ promises, queryKeys }: DeliveryNoteCancellationsTableProps) {
+export function DeliveryNoteCancellationsTable({ promises, clients = [], queryKeys }: DeliveryNoteCancellationsTableProps) {
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
 
   const { data, pageCount } = React.use(promises);
 
   const columns = React.useMemo(
     () =>
-      getDeliveryNoteCancellationsTableColumns(),
-    [],
+      getDeliveryNoteCancellationsTableColumns({ clients }),
+    [clients],
   );
 
   const { table, shallow, debounceMs, throttleMs } = useDataTable({

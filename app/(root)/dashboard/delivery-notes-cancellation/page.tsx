@@ -2,6 +2,9 @@ import { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { getCurrentUser } from "@/data/user/user-auth"
 import { Suspense } from "react"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { Plus } from "lucide-react"
 import { FeatureFlagsProvider } from "../_components/feature-flags-provider"
 import { SearchParams } from "@/types"
 import { DeliveryNoteCancellationsTableWrapper } from "./_components/data-table/delivery-note-cancellations-table-wrapper"
@@ -31,6 +34,12 @@ async function DeliveryNoteCancellationsPageContent(props: DeliveryNoteCancellat
               Liste de toutes les annulations de bons de livraison
             </p>
           </div>
+          <Link href="/dashboard/delivery-notes-cancellation/new">
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Nouvelle Annulation
+            </Button>
+          </Link>
         </div>
         <Suspense 
             fallback={    

@@ -16,6 +16,7 @@ export { default as product } from "./product";
 export { default as deliveryNote } from "./delivery-note";
 export { default as deliveryNoteItem } from "./delivery-note-item";
 export { default as deliveryNoteCancellation } from "./delivery-note-cancellation";
+export { default as deliveryNoteCancellationItem } from "./delivery-note-cancellation-item";
 export { default as invoice } from "./invoice";
 export { default as invoiceItem } from "./invoice-item";
 export { default as invoiceCancellation } from "./invoice-cancellation";
@@ -52,6 +53,10 @@ export type {
   DeliveryNoteCancellation,
   NewDeliveryNoteCancellation,
 } from "./delivery-note-cancellation";
+export type {
+  DeliveryNoteCancellationItem,
+  NewDeliveryNoteCancellationItem,
+} from "./delivery-note-cancellation-item";
 export type { Invoice, NewInvoice } from "./invoice";
 export type { InvoiceItem, NewInvoiceItem } from "./invoice-item";
 export type {

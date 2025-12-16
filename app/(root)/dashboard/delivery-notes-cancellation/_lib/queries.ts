@@ -15,6 +15,10 @@ export async function getDeliveryNoteCancellations(input: GetDeliveryNoteCancell
       ...input,
       filterFlag: input.filterFlag ?? undefined,
       search: input.search || undefined,
+      cancellationNumber: input.cancellationNumber || undefined,
+      clientId: input.clientId && input.clientId.length > 0 ? input.clientId : undefined,
+      cancellationDate: input.cancellationDate && input.cancellationDate.length > 0 ? input.cancellationDate : undefined,
+      createdAt: input.createdAt && input.createdAt.length > 0 ? input.createdAt : undefined,
     };
     
     const result = await getDeliveryNoteCancellationsDAL(dalInput);
