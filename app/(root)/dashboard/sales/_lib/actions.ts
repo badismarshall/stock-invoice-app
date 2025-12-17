@@ -12,8 +12,11 @@ import {
   stockCurrent, 
   stockMovement,
   deliveryNoteCancellation,
+  deliveryNoteCancellationItem,
+  invoice,
+  invoiceItem,
 } from "@/db/schema";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, or } from "drizzle-orm";
 import { getCurrentUser } from "@/data/user/user-auth";
 import { getDeliveryNoteById } from "@/data/delivery-note/delivery-note.dal";
 
@@ -325,10 +328,25 @@ export async function updateDeliveryNote(input: {
         await tx.delete(stockMovement).where(eq(stockMovement.id, movement.id));
       }
 
-      // 2) Delete existing items
-      await tx
-        .delete(deliveryNoteItem)
+      // 2) Get existing items and check which ones are referenced by cancellations
+      const existingItems = await tx
+        .select()
+        .from(deliveryNoteItem)
         .where(eq(deliveryNoteItem.deliveryNoteId, input.id));
+
+      // Get items that are referenced by cancellation items (cannot be deleted)
+      const cancellationItems = await tx
+        .select({ deliveryNoteItemId: deliveryNoteCancellationItem.deliveryNoteItemId })
+        .from(deliveryNoteCancellationItem)
+        .innerJoin(
+          deliveryNoteItem,
+          eq(deliveryNoteCancellationItem.deliveryNoteItemId, deliveryNoteItem.id)
+        )
+        .where(eq(deliveryNoteItem.deliveryNoteId, input.id));
+
+      const protectedItemIds = new Set(
+        cancellationItems.map((ci) => ci.deliveryNoteItemId)
+      );
 
       // 3) Update delivery note main fields
       await tx
@@ -346,18 +364,54 @@ export async function updateDeliveryNote(input: {
         })
         .where(eq(deliveryNote.id, input.id));
 
-      // 4) Insert new items
-      const itemsToInsert = input.items.map((item) => ({
-        id: item.id || generateId(),
-        deliveryNoteId: input.id,
-        productId: item.productId,
-        quantity: item.quantity.toString(),
-        unitPrice: item.unitPrice.toString(),
-        discountPercent: (item.discountPercent || 0).toString(),
-        lineTotal: item.lineTotal.toString(),
-      }));
+      // 4) Process items: update existing, insert new, delete unused (if not protected)
+      const inputItemIds = new Set(input.items.map((item) => item.id));
+      const existingItemIds = new Set(existingItems.map((item) => item.id));
 
-      await tx.insert(deliveryNoteItem).values(itemsToInsert);
+      // Update existing items
+      for (const inputItem of input.items) {
+        if (existingItemIds.has(inputItem.id)) {
+          await tx
+            .update(deliveryNoteItem)
+            .set({
+              productId: inputItem.productId,
+              quantity: inputItem.quantity.toString(),
+              unitPrice: inputItem.unitPrice.toString(),
+              discountPercent: (inputItem.discountPercent || 0).toString(),
+              lineTotal: inputItem.lineTotal.toString(),
+            })
+            .where(eq(deliveryNoteItem.id, inputItem.id));
+        }
+      }
+
+      // Insert new items (those with IDs not in existing items)
+      const itemsToInsert = input.items
+        .filter((item) => !existingItemIds.has(item.id))
+        .map((item) => ({
+          id: item.id || generateId(),
+          deliveryNoteId: input.id,
+          productId: item.productId,
+          quantity: item.quantity.toString(),
+          unitPrice: item.unitPrice.toString(),
+          discountPercent: (item.discountPercent || 0).toString(),
+          lineTotal: item.lineTotal.toString(),
+        }));
+
+      if (itemsToInsert.length > 0) {
+        await tx.insert(deliveryNoteItem).values(itemsToInsert);
+      }
+
+      // Delete items that are no longer in the input (only if not protected by cancellations)
+      const itemsToDelete = existingItems.filter(
+        (item) => !inputItemIds.has(item.id) && !protectedItemIds.has(item.id)
+      );
+
+      if (itemsToDelete.length > 0) {
+        const idsToDelete = itemsToDelete.map((item) => item.id);
+        await tx
+          .delete(deliveryNoteItem)
+          .where(inArray(deliveryNoteItem.id, idsToDelete));
+      }
 
       // 5) Re-apply stock movements for new items (out movement)
       await updateStockFromDeliveryNote(
@@ -610,6 +664,224 @@ export async function getAllActiveProducts() {
     console.error("Error getting active products", err);
     return {
       data: [],
+      error: getErrorMessage(err),
+    };
+  }
+}
+
+export async function getInvoicesByDeliveryNoteId(input: { deliveryNoteId: string }) {
+  try {
+    const invoices = await db
+      .select({
+        id: invoice.id,
+        invoiceNumber: invoice.invoiceNumber,
+        invoiceType: invoice.invoiceType,
+      })
+      .from(invoice)
+      .where(
+        and(
+          eq(invoice.deliveryNoteId, input.deliveryNoteId),
+          eq(invoice.status, "active")
+        )
+      );
+
+    return {
+      data: invoices,
+      error: null,
+    };
+  } catch (err) {
+    console.error("Error getting invoices by delivery note ID", err);
+    return {
+      data: [],
+      error: getErrorMessage(err),
+    };
+  }
+}
+
+export async function createInvoiceFromDeliveryNote(input: { 
+  deliveryNoteId: string; 
+  invoiceType: "delivery_note_invoice" | "sale_invoice";
+  invoiceNumber?: string;
+}) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return {
+        data: null,
+        error: "Utilisateur non authentifié",
+      };
+    }
+
+    // Get delivery note with items
+    const deliveryNoteData = await getDeliveryNoteById(input.deliveryNoteId);
+    
+    if (!deliveryNoteData) {
+      return {
+        data: null,
+        error: "Bon de livraison non trouvé",
+      };
+    }
+
+    if (!deliveryNoteData.items || deliveryNoteData.items.length === 0) {
+      return {
+        data: null,
+        error: "Le bon de livraison ne contient aucun produit",
+      };
+    }
+
+    // Check if invoice already exists for this delivery note and type
+    const existingInvoice = await db
+      .select({ id: invoice.id, invoiceNumber: invoice.invoiceNumber })
+      .from(invoice)
+      .where(
+        and(
+          eq(invoice.deliveryNoteId, input.deliveryNoteId),
+          eq(invoice.invoiceType, input.invoiceType),
+          eq(invoice.status, "active")
+        )
+      )
+      .limit(1)
+      .execute();
+
+    if (existingInvoice.length > 0) {
+      return {
+        data: { invoiceId: existingInvoice[0].id, invoiceNumber: existingInvoice[0].invoiceNumber },
+        error: null,
+        alreadyExists: true,
+      };
+    }
+
+    // Generate invoice number if not provided
+    const prefix = input.invoiceType === "delivery_note_invoice" ? "BL" : "FAC-VTE";
+    const invoiceNumber = input.invoiceNumber || `${prefix}-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 1000000)).padStart(6, '0')}`;
+
+    // Check if invoice number already exists
+    const existingInvoiceNumber = await db
+      .select({ id: invoice.id })
+      .from(invoice)
+      .where(eq(invoice.invoiceNumber, invoiceNumber))
+      .limit(1)
+      .execute();
+
+    if (existingInvoiceNumber.length > 0) {
+      return {
+        data: null,
+        error: `Le numéro de facture "${invoiceNumber}" existe déjà. Veuillez utiliser un numéro différent.`,
+      };
+    }
+
+    // Get products to calculate tax rates
+    const productIds = deliveryNoteData.items.map(item => item.productId);
+    const products = await db
+      .select({
+        id: product.id,
+        taxRate: product.taxRate,
+      })
+      .from(product)
+      .where(inArray(product.id, productIds));
+
+    const productTaxMap = new Map(products.map(p => [p.id, parseFloat(p.taxRate || "0")]));
+
+    // Convert delivery note items to invoice items with tax calculations
+    const invoiceItems = deliveryNoteData.items.map(item => {
+      const taxRate = productTaxMap.get(item.productId) || 0;
+      // Calculate HT (subtotal) from quantity * unitPrice with discount
+      const lineSubtotal = parseFloat(item.quantity.toString()) * parseFloat(item.unitPrice.toString()) * (1 - parseFloat(item.discountPercent?.toString() || "0") / 100);
+      // Calculate TVA from HT
+      const lineTax = lineSubtotal * (taxRate / 100);
+      // Calculate TTC (HT + TVA)
+      const lineTotal = lineSubtotal + lineTax;
+
+      return {
+        productId: item.productId,
+        quantity: parseFloat(item.quantity.toString()),
+        unitPrice: parseFloat(item.unitPrice.toString()),
+        discountPercent: parseFloat(item.discountPercent?.toString() || "0"),
+        taxRate: taxRate,
+        lineSubtotal: lineSubtotal,
+        lineTax: lineTax,
+        lineTotal: lineTotal,
+      };
+    });
+
+    const subtotal = invoiceItems.reduce((sum, item) => sum + item.lineSubtotal, 0);
+    const taxAmount = invoiceItems.reduce((sum, item) => sum + item.lineTax, 0);
+    const totalAmount = invoiceItems.reduce((sum, item) => sum + item.lineTotal, 0);
+
+    // Format dates
+    const formatDateLocal = (date: Date): string => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    const invoiceDate = deliveryNoteData.noteDate;
+    const invoiceDateValue = invoiceDate instanceof Date 
+      ? formatDateLocal(invoiceDate)
+      : formatDateLocal(new Date(invoiceDate));
+    
+    // Due date: 30 days from invoice date (only for sale_invoice)
+    let dueDateValue: string | null = null;
+    if (input.invoiceType === "sale_invoice") {
+      const dueDate = new Date(invoiceDate);
+      dueDate.setDate(dueDate.getDate() + 30);
+      dueDateValue = formatDateLocal(dueDate);
+    }
+
+    const invoiceId = generateId();
+
+    await db.transaction(async (tx) => {
+      // Insert invoice
+      await tx.insert(invoice).values({
+        id: invoiceId,
+        invoiceNumber: invoiceNumber,
+        invoiceType: input.invoiceType,
+        clientId: deliveryNoteData.clientId,
+        deliveryNoteId: input.deliveryNoteId,
+        invoiceDate: invoiceDateValue,
+        dueDate: dueDateValue,
+        status: "active",
+        paymentStatus: "unpaid",
+        currency: deliveryNoteData.currency || "DZD",
+        destinationCountry: deliveryNoteData.destinationCountry || null,
+        deliveryLocation: deliveryNoteData.deliveryLocation || null,
+        subtotal: subtotal.toString(),
+        taxAmount: taxAmount.toString(),
+        totalAmount: totalAmount.toString(),
+        notes: deliveryNoteData.notes || null,
+        createdBy: user.id,
+      });
+
+      // Insert invoice items
+      const itemsToInsert = invoiceItems.map((item) => ({
+        id: generateId(),
+        invoiceId: invoiceId,
+        productId: item.productId,
+        quantity: item.quantity.toString(),
+        unitPrice: item.unitPrice.toString(),
+        discountPercent: item.discountPercent.toString(),
+        taxRate: item.taxRate.toString(),
+        lineSubtotal: item.lineSubtotal.toString(),
+        lineTax: item.lineTax.toString(),
+        lineTotal: item.lineTotal.toString(),
+      }));
+
+      await tx.insert(invoiceItem).values(itemsToInsert);
+    });
+
+    updateTag("invoices");
+    updateTag("deliveryNotes");
+
+    return {
+      data: { invoiceId, invoiceNumber },
+      error: null,
+      alreadyExists: false,
+    };
+  } catch (err) {
+    console.error("Error creating invoice from delivery note", err);
+    return {
+      data: null,
       error: getErrorMessage(err),
     };
   }

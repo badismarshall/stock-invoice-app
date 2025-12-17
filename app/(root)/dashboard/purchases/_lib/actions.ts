@@ -4,7 +4,7 @@ import { updateTag } from "next/cache";
 import { getErrorMessage } from "@/lib/handle-error";
 import { generateId } from "@/lib/data-table/id";
 import db from "@/db";
-import { purchaseOrder, purchaseOrderItem, partner, product, stockCurrent, stockMovement } from "@/db/schema";
+import { purchaseOrder, purchaseOrderItem, partner, product, stockCurrent, stockMovement, invoice, invoiceItem } from "@/db/schema";
 import { eq, inArray, and, asc, not, or } from "drizzle-orm";
 import { getCurrentUser } from "@/data/user/user-auth";
 import { getPurchaseOrderById } from "@/data/purchase-order/purchase-order.dal";
@@ -387,6 +387,179 @@ export async function getPurchaseOrderByIdAction(input: { id: string }) {
     };
   } catch (err) {
     console.error("Error getting purchase order by ID", err);
+    return {
+      data: null,
+      error: getErrorMessage(err),
+    };
+  }
+}
+
+export async function createInvoiceFromPurchaseOrder(input: { purchaseOrderId: string; invoiceNumber?: string }) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return {
+        data: null,
+        error: "Utilisateur non authentifié",
+      };
+    }
+
+    // Get purchase order with items
+    const purchaseOrderData = await getPurchaseOrderById(input.purchaseOrderId);
+    
+    if (!purchaseOrderData) {
+      return {
+        data: null,
+        error: "Bon de commande non trouvé",
+      };
+    }
+
+    if (!purchaseOrderData.items || purchaseOrderData.items.length === 0) {
+      return {
+        data: null,
+        error: "Le bon de commande ne contient aucun produit",
+      };
+    }
+
+    // Check if invoice already exists for this purchase order
+    const existingInvoice = await db
+      .select({ id: invoice.id, invoiceNumber: invoice.invoiceNumber })
+      .from(invoice)
+      .where(eq(invoice.purchaseOrderId, input.purchaseOrderId))
+      .limit(1)
+      .execute();
+
+    if (existingInvoice.length > 0) {
+      return {
+        data: { invoiceId: existingInvoice[0].id, invoiceNumber: existingInvoice[0].invoiceNumber },
+        error: null,
+        alreadyExists: true,
+      };
+    }
+
+    // Generate invoice number if not provided
+    const invoiceNumber = input.invoiceNumber || `FAC-ACH-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 1000000)).padStart(6, '0')}`;
+
+    // Check if invoice number already exists
+    const existingInvoiceNumber = await db
+      .select({ id: invoice.id })
+      .from(invoice)
+      .where(eq(invoice.invoiceNumber, invoiceNumber))
+      .limit(1)
+      .execute();
+
+    if (existingInvoiceNumber.length > 0) {
+      return {
+        data: null,
+        error: `Le numéro de facture "${invoiceNumber}" existe déjà. Veuillez utiliser un numéro différent.`,
+      };
+    }
+
+    // Get products to calculate tax rates
+    const productIds = purchaseOrderData.items.map(item => item.productId);
+    const products = await db
+      .select({
+        id: product.id,
+        taxRate: product.taxRate,
+      })
+      .from(product)
+      .where(inArray(product.id, productIds));
+
+    const productTaxMap = new Map(products.map(p => [p.id, parseFloat(p.taxRate || "0")]));
+
+    // Convert purchase order items to invoice items with tax calculations
+    const invoiceItems = purchaseOrderData.items.map(item => {
+      const taxRate = productTaxMap.get(item.productId) || 0;
+      // Calculate HT (subtotal) from quantity * unitCost
+      const lineSubtotal = item.quantity * item.unitCost;
+      // Calculate TVA from HT
+      const lineTax = lineSubtotal * (taxRate / 100);
+      // Calculate TTC (HT + TVA)
+      const lineTotal = lineSubtotal + lineTax;
+
+      return {
+        productId: item.productId,
+        quantity: item.quantity,
+        unitPrice: item.unitCost,
+        discountPercent: 0,
+        taxRate: taxRate,
+        lineSubtotal: lineSubtotal,
+        lineTax: lineTax,
+        lineTotal: lineTotal,
+      };
+    });
+
+    const subtotal = invoiceItems.reduce((sum, item) => sum + item.lineSubtotal, 0);
+    const taxAmount = invoiceItems.reduce((sum, item) => sum + item.lineTax, 0);
+    const totalAmount = invoiceItems.reduce((sum, item) => sum + item.lineTotal, 0);
+
+    // Format dates
+    const formatDateLocal = (date: Date): string => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    const invoiceDate = purchaseOrderData.receptionDate || purchaseOrderData.orderDate;
+    const invoiceDateValue = invoiceDate instanceof Date 
+      ? formatDateLocal(invoiceDate)
+      : formatDateLocal(new Date(invoiceDate));
+    
+    // Due date: 30 days from invoice date
+    const dueDate = new Date(invoiceDate);
+    dueDate.setDate(dueDate.getDate() + 30);
+    const dueDateValue = formatDateLocal(dueDate);
+
+    const invoiceId = generateId();
+
+    await db.transaction(async (tx) => {
+      // Insert invoice
+      await tx.insert(invoice).values({
+        id: invoiceId,
+        invoiceNumber: invoiceNumber,
+        invoiceType: "purchase",
+        supplierId: purchaseOrderData.supplierId,
+        purchaseOrderId: input.purchaseOrderId,
+        invoiceDate: invoiceDateValue,
+        dueDate: dueDateValue,
+        status: "active",
+        paymentStatus: "unpaid",
+        currency: "DZD",
+        subtotal: subtotal.toString(),
+        taxAmount: taxAmount.toString(),
+        totalAmount: totalAmount.toString(),
+        notes: purchaseOrderData.notes || null,
+        createdBy: user.id,
+      });
+
+      // Insert invoice items
+      const itemsToInsert = invoiceItems.map((item) => ({
+        id: generateId(),
+        invoiceId: invoiceId,
+        productId: item.productId,
+        quantity: item.quantity.toString(),
+        unitPrice: item.unitPrice.toString(),
+        discountPercent: item.discountPercent.toString(),
+        taxRate: item.taxRate.toString(),
+        lineSubtotal: item.lineSubtotal.toString(),
+        lineTax: item.lineTax.toString(),
+        lineTotal: item.lineTotal.toString(),
+      }));
+
+      await tx.insert(invoiceItem).values(itemsToInsert);
+    });
+
+    updateTag("invoices");
+    updateTag("purchaseOrders");
+
+    return {
+      data: { invoiceId, invoiceNumber },
+      error: null,
+      alreadyExists: false,
+    };
+  } catch (err) {
+    console.error("Error creating invoice from purchase order", err);
     return {
       data: null,
       error: getErrorMessage(err),

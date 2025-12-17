@@ -31,10 +31,11 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/handle-error";
-import { updateDeliveryNoteStatus } from "../../_lib/actions";
+import { updateDeliveryNoteStatus, getInvoicesByDeliveryNoteId, createInvoiceFromDeliveryNote } from "../../_lib/actions";
 import { formatDate } from "@/lib/data-table/format";
 import type { DataTableRowAction } from "@/types/data-table";
 import type { DeliveryNoteDTOItem } from "@/data/delivery-note/delivery-note.dto";
+import { FileText } from "lucide-react";
 
 interface GetDeliveryNotesTableColumnsProps {
   setRowAction: React.Dispatch<
@@ -245,6 +246,116 @@ export function getDeliveryNotesTableColumns({
         const router = useRouter();
         const deliveryNote = row.original;
         const [isUpdatePending, startUpdateTransition] = React.useTransition();
+        const [isLoadingInvoices, setIsLoadingInvoices] = React.useState(true);
+        const [invoices, setInvoices] = React.useState<Array<{ id: string; invoiceNumber: string; invoiceType: string }>>([]);
+
+        // Load invoices when component mounts
+        React.useEffect(() => {
+          const loadInvoices = async () => {
+            setIsLoadingInvoices(true);
+            try {
+              const result = await getInvoicesByDeliveryNoteId({ deliveryNoteId: deliveryNote.id });
+              if (result.data) {
+                setInvoices(result.data);
+              }
+            } catch (error) {
+              console.error("Error loading invoices", error);
+            } finally {
+              setIsLoadingInvoices(false);
+            }
+          };
+          loadInvoices();
+        }, [deliveryNote.id]);
+
+        const deliveryNoteInvoice = invoices.find(inv => inv.invoiceType === "delivery_note_invoice");
+        const saleInvoice = invoices.find(inv => inv.invoiceType === "sale_invoice");
+
+        const [isCreatingDeliveryNoteInvoice, setIsCreatingDeliveryNoteInvoice] = React.useState(false);
+        const [isCreatingSaleInvoice, setIsCreatingSaleInvoice] = React.useState(false);
+
+        const handleCreateDeliveryNoteInvoice = async () => {
+          // If invoice already exists, just print it
+          if (deliveryNoteInvoice) {
+            router.push(`/dashboard/invoices/print/${deliveryNoteInvoice.id}`);
+            return;
+          }
+
+          setIsCreatingDeliveryNoteInvoice(true);
+          try {
+            const result = await createInvoiceFromDeliveryNote({
+              deliveryNoteId: deliveryNote.id,
+              invoiceType: "delivery_note_invoice",
+            });
+
+            if (result.error) {
+              toast.error(result.error);
+              return;
+            }
+
+            if (result.alreadyExists && result.data) {
+              toast.info("Bon de livraison déjà créé", {
+                description: `Facture: ${result.data.invoiceNumber}`,
+              });
+              router.push(`/dashboard/invoices/print/${result.data.invoiceId}`);
+            } else if (result.data) {
+              toast.success("Bon de livraison créé", {
+                description: `Facture: ${result.data.invoiceNumber}`,
+              });
+              router.push(`/dashboard/invoices/print/${result.data.invoiceId}`);
+            }
+          } catch (error) {
+            toast.error(getErrorMessage(error));
+          } finally {
+            setIsCreatingDeliveryNoteInvoice(false);
+            // Reload invoices
+            const result = await getInvoicesByDeliveryNoteId({ deliveryNoteId: deliveryNote.id });
+            if (result.data) {
+              setInvoices(result.data);
+            }
+          }
+        };
+
+        const handleCreateSaleInvoice = async () => {
+          // If invoice already exists, just print it
+          if (saleInvoice) {
+            router.push(`/dashboard/invoices/print/${saleInvoice.id}`);
+            return;
+          }
+
+          setIsCreatingSaleInvoice(true);
+          try {
+            const result = await createInvoiceFromDeliveryNote({
+              deliveryNoteId: deliveryNote.id,
+              invoiceType: "sale_invoice",
+            });
+
+            if (result.error) {
+              toast.error(result.error);
+              return;
+            }
+
+            if (result.alreadyExists && result.data) {
+              toast.info("Facture de vente déjà créée", {
+                description: `Facture: ${result.data.invoiceNumber}`,
+              });
+              router.push(`/dashboard/invoices/print/${result.data.invoiceId}`);
+            } else if (result.data) {
+              toast.success("Facture de vente créée", {
+                description: `Facture: ${result.data.invoiceNumber}`,
+              });
+              router.push(`/dashboard/invoices/print/${result.data.invoiceId}`);
+            }
+          } catch (error) {
+            toast.error(getErrorMessage(error));
+          } finally {
+            setIsCreatingSaleInvoice(false);
+            // Reload invoices
+            const result = await getInvoicesByDeliveryNoteId({ deliveryNoteId: deliveryNote.id });
+            if (result.data) {
+              setInvoices(result.data);
+            }
+          }
+        };
 
         return (
           <DropdownMenu>
@@ -299,6 +410,21 @@ export function getDeliveryNotesTableColumns({
                   </DropdownMenuRadioGroup>
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onSelect={handleCreateDeliveryNoteInvoice}
+                disabled={isCreatingDeliveryNoteInvoice || isCreatingSaleInvoice}
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                {isCreatingDeliveryNoteInvoice ? "Création..." : deliveryNoteInvoice ? "Imprimer Bon de Livraison" : "Créer Bon de Livraison"}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={handleCreateSaleInvoice}
+                disabled={isCreatingSaleInvoice || isCreatingDeliveryNoteInvoice}
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                {isCreatingSaleInvoice ? "Création..." : saleInvoice ? "Imprimer Facture de Vente" : "Créer Facture de Vente"}
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onSelect={() => setRowAction({ row, variant: "delete" })}

@@ -25,6 +25,7 @@ export { default as stockMovement } from "./stock-movement";
 export { default as stockCurrent } from "./stock-current";
 export { default as purchaseOrder } from "./purchase-order";
 export { default as purchaseOrderItem } from "./purchase-order-item";
+export { default as companySettings } from "./company-settings";
 
 // Enums
 export * from "./enums";
@@ -71,3 +72,7 @@ export type {
   PurchaseOrderItem,
   NewPurchaseOrderItem,
 } from "./purchase-order-item";
+export type {
+  CompanySettings,
+  NewCompanySettings,
+} from "./company-settings";

@@ -8,6 +8,7 @@ import {
   User,
   Building2,
   Ellipsis,
+  FileText,
 } from "lucide-react";
 import * as React from "react";
 import { DataTableColumnHeader } from "@/components/shared/data-table/data-table-column-header";
@@ -29,6 +30,7 @@ const translations = {
   selectRow: "Sélectionner la ligne",
   cancellationNumber: "N° Annulation",
   searchCancellationNumber: "Rechercher un numéro...",
+  originalDeliveryNote: "Bon de Livraison Original",
   client: "Client",
   cancellationDate: "Date d'annulation",
   reason: "Raison",
@@ -36,6 +38,7 @@ const translations = {
   createdAt: "Créé le",
   edit: "Modifier",
   delete: "Supprimer",
+  print: "Imprimer",
 };
 
 interface GetDeliveryNoteCancellationsTableColumnsProps {
@@ -91,6 +94,22 @@ export function getDeliveryNoteCancellationsTableColumns({ clients = [] }: GetDe
       enableColumnFilter: true,
     },
     {
+      id: "originalDeliveryNoteNumber",
+      accessorKey: "originalDeliveryNoteNumber",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} label={translations.originalDeliveryNote} title={translations.originalDeliveryNote} />
+      ),
+      cell: ({ row }) => {
+        const noteNumber = row.getValue<string | null>("originalDeliveryNoteNumber");
+        return (
+          <span className="max-w-125 truncate">
+            {noteNumber || "-"}
+          </span>
+        );
+      },
+      enableColumnFilter: false,
+    },
+    {
       id: "clientId",
       accessorKey: "clientName",
       header: ({ column }) => (
@@ -134,22 +153,22 @@ export function getDeliveryNoteCancellationsTableColumns({ clients = [] }: GetDe
       },
       enableColumnFilter: true,
     },
-    {
-      id: "reason",
-      accessorKey: "reason",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} label={translations.reason} title={translations.reason} />
-      ),
-      cell: ({ row }) => {
-        const reason = row.getValue<string | null>("reason");
-        return (
-          <span className="max-w-125 truncate">
-            {reason || "-"}
-          </span>
-        );
-      },
-      enableColumnFilter: false,
-    },
+    // {
+    //   id: "reason",
+    //   accessorKey: "reason",
+    //   header: ({ column }) => (
+    //     <DataTableColumnHeader column={column} label={translations.reason} title={translations.reason} />
+    //   ),
+    //   cell: ({ row }) => {
+    //     const reason = row.getValue<string | null>("reason");
+    //     return (
+    //       <span className="max-w-125 truncate">
+    //         {reason || "-"}
+    //       </span>
+    //     );
+    //   },
+    //   enableColumnFilter: false,
+    // },
     {
       id: "createdByName",
       accessorKey: "createdByName",
@@ -198,6 +217,13 @@ export function getDeliveryNoteCancellationsTableColumns({ clients = [] }: GetDe
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuItem
+                onSelect={() => router.push(`/dashboard/delivery-notes-cancellation/print/${cancellation.id}`)}
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                {translations.print}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem
                 onSelect={() => router.push(`/dashboard/delivery-notes-cancellation/modify/${cancellation.id}`)}
               >

@@ -203,7 +203,35 @@ export function DeleteCancellationForm({ cancellation }: DeleteCancellationFormP
               />
             </>
           ) : (
-            <p className="text-sm text-muted-foreground py-4">{translations.noItems}</p>
+            <div className="space-y-4">
+              <div className="bg-muted/50 border border-border rounded-lg p-4">
+                <p className="text-sm text-muted-foreground mb-4">
+                  {translations.noItems}
+                </p>
+                <p className="text-sm font-medium text-foreground">
+                  Vous pouvez toujours supprimer cette annulation même si elle ne contient aucun produit.
+                </p>
+              </div>
+              <div className="flex justify-end gap-3 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => router.push("/dashboard/delivery-notes-cancellation")}
+                  disabled={isDeletingAll}
+                >
+                  Annuler
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => setShowDeleteAllDialog(true)}
+                  disabled={isDeletingAll}
+                >
+                  {isDeletingAll && (
+                    <Loader className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  Supprimer l&apos;annulation
+                </Button>
+              </div>
+            </div>
           )}
 
         </CardContent>

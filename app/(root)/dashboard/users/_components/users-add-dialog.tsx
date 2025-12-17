@@ -44,7 +44,7 @@ export function UsersAddDialog({
   currentRow,
 }: UsersAddDialogProps) {
   const isEdit = !!currentRow
-
+  const [open, setOpen] = React.useState(false)
 
   // NOTE: Edit your form schema below as needed.
   // const form = useForm<SignUpFormValues>({
@@ -72,7 +72,7 @@ export function UsersAddDialog({
   // const isPasswordTouched = !!form.formState.dirtyFields.password
 
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button
           variant='outline'
@@ -197,7 +197,7 @@ export function UsersAddDialog({
             />
           </form>
         </Form> */}
-        <AddUserForm />
+        <AddUserForm onSuccess={() => setOpen(false)} />
         {/* <DialogFooter className='gap-y-2'>
           <DialogClose asChild>
             <Button variant='outline'>Annuler</Button>

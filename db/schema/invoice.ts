@@ -1,6 +1,7 @@
 import { pgTable, text, timestamp, date, numeric, index } from "drizzle-orm/pg-core";
 import { partner } from "./partner";
 import { deliveryNote } from "./delivery-note";
+import { purchaseOrder } from "./purchase-order";
 import { user } from "./user";
 import {
   invoiceTypeEnum,
@@ -22,6 +23,9 @@ export const invoice = pgTable(
       onDelete: "set null",
     }),
     deliveryNoteId: text("delivery_note_id").references(() => deliveryNote.id, {
+      onDelete: "restrict",
+    }),
+    purchaseOrderId: text("purchase_order_id").references(() => purchaseOrder.id, {
       onDelete: "restrict",
     }),
     invoiceDate: date("invoice_date").notNull(),
@@ -54,6 +58,7 @@ export const invoice = pgTable(
   (table) => ({
     clientIdx: index("idx_invoices_client").on(table.clientId),
     supplierIdx: index("idx_invoices_supplier").on(table.supplierId),
+    purchaseOrderIdx: index("idx_invoices_purchase_order").on(table.purchaseOrderId),
     dateIdx: index("idx_invoices_date").on(table.invoiceDate),
     statusIdx: index("idx_invoices_status").on(table.paymentStatus, table.status),
   })

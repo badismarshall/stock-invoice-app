@@ -15,94 +15,8 @@ import {
 import { eq, and } from "drizzle-orm";
 import { getCurrentUser } from "@/data/user/user-auth";
 
-/**
- * Helper function to update stock when invoice items are added (for sale invoices only)
- * Proforma invoices don't affect stock
- */
-async function updateStockFromInvoice(
-  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
-  items: Array<{
-    productId: string;
-    quantity: number;
-  }>,
-  movementDate: string,
-  referenceId: string,
-  userId: string,
-  invoiceType: "sale_local" | "sale_export" | "proforma" | "purchase",
-  isReversal: boolean = false
-) {
-  // Proforma invoices don't affect stock
-  if (invoiceType === "proforma") {
-    return;
-  }
-
-  for (const item of items) {
-    // Check if product exists
-    const productExists = await tx
-      .select({ id: product.id })
-      .from(product)
-      .where(eq(product.id, item.productId))
-      .limit(1);
-
-    if (productExists.length === 0) {
-      throw new Error(`Produit avec l'ID ${item.productId} non trouvé`);
-    }
-
-    // Get current stock
-    const existingStock = await tx
-      .select()
-      .from(stockCurrent)
-      .where(eq(stockCurrent.productId, item.productId))
-      .limit(1);
-
-    if (existingStock.length === 0) {
-      throw new Error(
-        `Produit ${item.productId} n'existe pas en stock`
-      );
-    }
-
-    const movementId = generateId();
-    const currentStock = existingStock[0];
-    const currentQuantity = parseFloat(currentStock.quantityAvailable || "0");
-    const currentAverageCost = parseFloat(currentStock.averageCost || "0");
-    const quantityChange = isReversal ? item.quantity : -item.quantity;
-    const newQuantity = currentQuantity + quantityChange;
-
-    if (newQuantity < 0) {
-      throw new Error(
-        `Quantité insuffisante en stock pour le produit ${item.productId}. Stock actuel: ${currentQuantity}, Tentative de retrait: ${Math.abs(quantityChange)}`
-      );
-    }
-
-    // Create stock movement (out)
-    await tx.insert(stockMovement).values({
-      id: movementId,
-      productId: item.productId,
-      movementType: "out",
-      movementSource: invoiceType === "sale_local" ? "sale_local" : "sale_export",
-      referenceType: "invoice",
-      referenceId: referenceId,
-      quantity: item.quantity.toString(),
-      unitCost: currentAverageCost.toString(),
-      movementDate: movementDate,
-      notes: isReversal 
-        ? `Annulation de la facture ${referenceId}`
-        : `Sortie pour facture ${referenceId}`,
-      createdBy: userId,
-    });
-
-    // Update stock_current
-    await tx
-      .update(stockCurrent)
-      .set({
-        quantityAvailable: newQuantity.toString(),
-        averageCost: currentAverageCost.toFixed(2),
-        lastMovementDate: movementDate,
-        lastUpdated: new Date(),
-      })
-      .where(eq(stockCurrent.productId, item.productId));
-  }
-}
+// Note: Invoices do not affect stock. Only delivery_notes affect stock.
+// Stock updates are handled when delivery notes are created/received.
 
 export async function addInvoice(input: {
   invoiceNumber: string;
@@ -226,23 +140,10 @@ export async function addInvoice(input: {
 
       await tx.insert(invoiceItem).values(itemsToInsert);
 
-      // Update stock (only for sale invoices, not proforma)
-      if (input.invoiceType === "sale_local" || input.invoiceType === "sale_export") {
-        await updateStockFromInvoice(
-          tx,
-          input.items.map(item => ({ productId: item.productId, quantity: item.quantity })),
-          invoiceDateValue,
-          id,
-          user.id,
-          input.invoiceType,
-          false
-        );
-      }
+      // Note: Invoices do not affect stock. Only delivery_notes affect stock.
     });
 
     updateTag("invoices");
-    updateTag("stock");
-    updateTag("stockMovements");
 
     return {
       data: { id },

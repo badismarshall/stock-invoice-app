@@ -13,7 +13,7 @@ export const noteTypeEnum = pgEnum('note_type', ['local', 'export']);
 export const statusEnum = pgEnum('status', ['active', 'cancelled']);
 
 // Invoice types
-export const invoiceTypeEnum = pgEnum('invoice_type', ['sale_local', 'sale_export', 'proforma', 'purchase']);
+export const invoiceTypeEnum = pgEnum('invoice_type', ['sale_local', 'sale_export', 'proforma', 'purchase', 'sale_invoice', 'delivery_note_invoice']);
 
 // Payment status
 export const paymentStatusEnum = pgEnum('payment_status', ['unpaid', 'partially_paid', 'paid']);

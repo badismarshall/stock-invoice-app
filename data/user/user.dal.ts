@@ -242,6 +242,34 @@ export const getUserEmailVerifiedCounts = async (): Promise<UserEmailVerifiedCou
   }
 };
 
+export const getUserById = async (id: string) => {
+  try {
+    const result = await db
+      .select()
+      .from(user)
+      .where(eq(user.id, id))
+      .limit(1);
+
+    if (result.length === 0) {
+      return null;
+    }
+
+    const u = result[0];
+    return {
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      emailVerified: u.emailVerified,
+      role: u.role || "",
+      banned: u.banned ?? false,
+      createdAt: u.createdAt,
+    };
+  } catch (error) {
+    console.error("Error getting user by ID", error);
+    return null;
+  }
+};
+
 export const updateUser = async (input: {
   id: string;
   name?: string;

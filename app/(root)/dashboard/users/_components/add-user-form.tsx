@@ -14,18 +14,34 @@ import {
   SignUpFormValues,
   signUpSchema,
 } from "@/app/(auth)/_lib/authform.schema";
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { signUp } from "@/lib/auth-client"
 import { Eye, EyeOff } from "lucide-react"
 
-interface AddUserFormProps extends React.HTMLAttributes<HTMLDivElement> {}
+interface AddUserFormProps extends React.HTMLAttributes<HTMLDivElement> {
+  onSuccess?: () => void;
+}
 
-export function AddUserForm({ className, ...props }: AddUserFormProps) {
+// Helper function to generate username from firstName and lastName
+function generateUsername(firstName: string, lastName: string): string {
+  const first = firstName.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  const last = lastName.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  
+  if (!first && !last) return '';
+  if (!first) return last;
+  if (!last) return first;
+  
+  return `${first}_${last}`;
+}
+
+export function AddUserForm({ className, onSuccess, ...props }: AddUserFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordConfirmation, setShowPasswordConfirmation] = useState(false);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
 
   const form = useForm<SignUpFormValues>({
     resolver: zodResolver(signUpSchema),
@@ -37,11 +53,20 @@ export function AddUserForm({ className, ...props }: AddUserFormProps) {
     },
   })
 
+  // Generate username automatically when firstName or lastName changes
+  useEffect(() => {
+    const generatedUsername = generateUsername(firstName, lastName);
+    form.setValue('username', generatedUsername, { shouldValidate: false });
+  }, [firstName, lastName, form])
+
   async function onSubmit(values: SignUpFormValues) {
+      // Combine firstName and lastName for the name field
+      const fullName = `${firstName} ${lastName}`.trim();
+      
       await signUp.email({
         email: values.email,
         password: values.password,
-        name: values.username,
+        name: fullName || values.username, // Use full name if available, otherwise use username
         callbackURL: `/dashboard/administrator`,
         fetchOptions: {
           onResponse: () => {
@@ -62,6 +87,12 @@ export function AddUserForm({ className, ...props }: AddUserFormProps) {
               duration: 3000,
             })
             router.refresh();
+            // Reset form
+            form.reset();
+            setFirstName('');
+            setLastName('');
+            // Close dialog
+            onSuccess?.();
           },
         },
       });
@@ -74,30 +105,40 @@ export function AddUserForm({ className, ...props }: AddUserFormProps) {
         onSubmit={form.handleSubmit(onSubmit)}
         className={cn("grid gap-6", className)}
       >
-        <FormField
-          control={form.control}
-          name="username"
-          render={({ field }) => (
-            <FormItem className="grid gap-1">
-              <FormLabel htmlFor="username">
-                Nom d'utilisateur
-              </FormLabel>
-              <FormControl>
-                <Input
-                    id="username"
-                    placeholder="Votre nom d'utilisateur (ex: jean_dupond)"
-                    type="text"
-                    autoCapitalize="none"
-                    autoCorrect="off"
-                    disabled={loading}
-                    required
-                    {...field}
-                  />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-1">
+            <label htmlFor="firstName" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+              Prénom
+            </label>
+            <Input
+              id="firstName"
+              placeholder="Prénom"
+              type="text"
+              disabled={loading}
+              required
+              value={firstName}
+              onChange={(e) => {
+                setFirstName(e.target.value);
+              }}
+            />
+          </div>
+          <div className="grid gap-1">
+            <label htmlFor="lastName" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+              Nom
+            </label>
+            <Input
+              id="lastName"
+              placeholder="Nom"
+              type="text"
+              disabled={loading}
+              required
+              value={lastName}
+              onChange={(e) => {
+                setLastName(e.target.value);
+              }}
+            />
+          </div>
+        </div>
         <FormField
           control={form.control}
           name="email"

@@ -103,6 +103,16 @@ export function CreateCancellationForm() {
       const newMap = new Map(prev);
       const selected = newMap.get(itemId);
       if (selected) {
+        // Check if quantity exceeds available quantity
+        if (quantity > selected.availableQuantity) {
+          toast.error(
+            `La quantité à annuler (${quantity.toFixed(3)}) ne peut pas dépasser la quantité disponible (${selected.availableQuantity.toFixed(3)}). Veuillez corriger la valeur.`,
+            { duration: 5000 }
+          );
+          // Clamp to available quantity
+          quantity = selected.availableQuantity;
+        }
+        
         const clampedQuantity = Math.max(0, Math.min(quantity, selected.availableQuantity));
         newMap.set(itemId, {
           ...selected,
@@ -155,6 +165,40 @@ export function CreateCancellationForm() {
 
       if (itemsToCancel.length === 0) {
         toast.error("Veuillez sélectionner au moins un produit à annuler");
+        setLoading(false);
+        return;
+      }
+
+      // Validate all quantities before submission
+      const validationErrors: string[] = [];
+      for (const itemToCancel of itemsToCancel) {
+        const item = clientItems.find(
+          (i) => i.deliveryNoteItemId === itemToCancel.deliveryNoteItemId
+        );
+        
+        if (!item) {
+          validationErrors.push(
+            `L'item ${itemToCancel.deliveryNoteItemId} n'existe plus`
+          );
+          continue;
+        }
+
+        if (itemToCancel.quantity <= 0) {
+          validationErrors.push(
+            `La quantité à annuler doit être supérieure à 0 pour le produit ${item.productName || item.productCode || itemToCancel.deliveryNoteItemId}`
+          );
+          continue;
+        }
+
+        if (itemToCancel.quantity > item.availableQuantity) {
+          validationErrors.push(
+            `La quantité à annuler (${itemToCancel.quantity.toFixed(3)}) dépasse la quantité disponible (${item.availableQuantity.toFixed(3)}) pour le produit ${item.productName || item.productCode || itemToCancel.deliveryNoteItemId}. Veuillez corriger la valeur.`
+          );
+        }
+      }
+
+      if (validationErrors.length > 0) {
+        validationErrors.forEach((error) => toast.error(error, { duration: 5000 }));
         setLoading(false);
         return;
       }

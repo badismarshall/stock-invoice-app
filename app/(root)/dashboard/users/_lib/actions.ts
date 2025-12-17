@@ -3,12 +3,37 @@
 import { updateTag } from "next/cache";
 import { getErrorMessage } from "@/lib/handle-error";
 import {
+  getUserById as getUserByIdDAL,
   updateUser as updateUserDAL,
   deleteUser as deleteUserDAL,
   deleteUsers as deleteUsersDAL,
   seedUsers as seedUsersDAL,
 } from "@/data/user/user.dal";
 import type { UpdateUserSchema } from "./update-user.schemas";
+
+export async function getUserById(input: { id: string }) {
+  try {
+    const user = await getUserByIdDAL(input.id);
+    
+    if (!user) {
+      return {
+        data: null,
+        error: "Utilisateur non trouvé",
+      };
+    }
+
+    return {
+      data: user,
+      error: null,
+    };
+  } catch (err) {
+    console.error("Error getting user by ID", err);
+    return {
+      data: null,
+      error: getErrorMessage(err),
+    };
+  }
+}
 
 export async function seedUsers(input: { count: number }) {
   const count = input.count ?? 100;

@@ -36,7 +36,8 @@ import { getErrorMessage } from "@/lib/handle-error";
 import { toast } from "sonner";
 import type { DataTableRowAction } from "@/types/data-table";
 import type { PurchaseOrderDTOItem } from "@/data/purchase-order/purchase-order.dto";
-import { updatePurchaseOrderStatus } from "../../_lib/actions";
+import { updatePurchaseOrderStatus, createInvoiceFromPurchaseOrder } from "../../_lib/actions";
+import { FileText } from "lucide-react";
 
 interface GetPurchaseOrdersTableColumnsProps {
   setRowAction: React.Dispatch<
@@ -56,6 +57,8 @@ const translations = {
   createdAt: "Créé le",
   edit: "Modifier",
   delete: "Supprimer",
+  createInvoice: "Créer facture",
+  printInvoice: "Imprimer facture",
   selectAll: "Tout sélectionner",
   selectRow: "Sélectionner la ligne",
   pending: "En attente",
@@ -63,6 +66,9 @@ const translations = {
   cancelled: "Annulé",
   updating: "Mise à jour...",
   statusUpdated: "Statut mis à jour",
+  creatingInvoice: "Création de la facture...",
+  invoiceCreated: "Facture créée avec succès",
+  invoiceAlreadyExists: "Une facture existe déjà pour cette commande",
 };
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -263,6 +269,37 @@ export function getPurchaseOrdersTableColumns({
       cell: function Cell({ row }) {
         const router = useRouter();
         const [isUpdatePending, startUpdateTransition] = React.useTransition();
+        const [isCreatingInvoice, setIsCreatingInvoice] = React.useState(false);
+
+        const handleCreateInvoice = async () => {
+          setIsCreatingInvoice(true);
+          try {
+            const result = await createInvoiceFromPurchaseOrder({
+              purchaseOrderId: row.original.id,
+            });
+
+            if (result.error) {
+              toast.error(result.error);
+              return;
+            }
+
+            if (result.alreadyExists && result.data) {
+              toast.info(translations.invoiceAlreadyExists, {
+                description: `Facture: ${result.data.invoiceNumber}`,
+              });
+              router.push(`/dashboard/invoices/print/${result.data.invoiceId}`);
+            } else if (result.data) {
+              toast.success(translations.invoiceCreated, {
+                description: `Facture: ${result.data.invoiceNumber}`,
+              });
+              router.push(`/dashboard/invoices/print/${result.data.invoiceId}`);
+            }
+          } catch (error) {
+            toast.error(getErrorMessage(error));
+          } finally {
+            setIsCreatingInvoice(false);
+          }
+        };
 
         return (
           <DropdownMenu>
@@ -323,6 +360,14 @@ export function getPurchaseOrdersTableColumns({
                   </DropdownMenuRadioGroup>
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onSelect={handleCreateInvoice}
+                disabled={isCreatingInvoice}
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                {isCreatingInvoice ? translations.creatingInvoice : translations.createInvoice}
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onSelect={() => setRowAction({ row, variant: "delete" })}

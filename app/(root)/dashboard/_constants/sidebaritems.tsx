@@ -99,6 +99,18 @@ export const adminSidebarItemsGeneralSetting = [
         icon: Plus,
         isActive: false,
       },
+      {
+        title: 'Liste des bons de livraison',
+        url: '/dashboard/sales/delivery_notes',
+        icon: List,
+        isActive: false,
+      },
+      {
+        title: 'Liste des factures de vente',
+        url: '/dashboard/sales/sale_invoice',
+        icon: List,
+        isActive: false,
+      },
     ],
   },
   {
@@ -162,6 +174,32 @@ export const adminSidebarItemsGeneralSetting = [
         icon: Plus,
         isActive: false,
       },
+      {
+        title: 'Liste des factures d\'achat',
+        url: '/dashboard/purchases/purchase_invoice',
+        icon: List,
+        isActive: false,
+      },
+    ],
+  },
+  {
+    title: 'Facturation',
+    url: '/dashboard/invoices',
+    icon: FileBarChart,
+    isActive: false,
+    items: [
+      {
+        title: 'Liste des factures',
+        url: '/dashboard/invoices',
+        icon: List,
+        isActive: false,
+      },
+      {
+        title: 'Nouvelle facture',
+        url: '/dashboard/invoices/new',
+        icon: Plus,
+        isActive: false,
+      },
     ],
   },
   {
@@ -189,10 +227,17 @@ export const adminSidebarItemsGeneralSetting = [
     isActive: false,
   },
   {
-    title: 'Paramètre',
-    url: '/dashboard/settings',
+    title: 'Paramètres',
     icon: Settings,
     isActive: false,
+    items: [
+      {
+        title: 'Informations de l\'entreprise',
+        url: '/dashboard/settings/company-settings',
+        icon: Settings,
+        isActive: false,
+      },
+    ],
   }
 ];
 

@@ -398,6 +398,7 @@ export const getDeliveryNoteCancellations = async (
         : [desc(deliveryNoteCancellation.cancellationDate)];
 
     // Get data with joins
+    // Use COALESCE to get note number from either originalDeliveryNoteId or from cancellation items
     const query = db
       .select({
         cancellation: deliveryNoteCancellation,
@@ -409,6 +410,24 @@ export const getDeliveryNoteCancellations = async (
           id: user.id,
           name: user.name,
         },
+        originalDeliveryNote: {
+          id: deliveryNote.id,
+          noteNumber: deliveryNote.noteNumber,
+        },
+        // Combined note number: use originalDeliveryNote if available, otherwise get from cancellation items
+        combinedNoteNumber: sql<string | null>`
+          COALESCE(
+            ${deliveryNote.noteNumber},
+            (
+              SELECT dn.note_number
+              FROM ${deliveryNoteCancellationItem}
+              INNER JOIN ${deliveryNoteItem} ON ${deliveryNoteCancellationItem.deliveryNoteItemId} = ${deliveryNoteItem.id}
+              INNER JOIN ${deliveryNote} AS dn ON ${deliveryNoteItem.deliveryNoteId} = dn.id
+              WHERE ${deliveryNoteCancellationItem.deliveryNoteCancellationId} = ${deliveryNoteCancellation.id}
+              LIMIT 1
+            )
+          )
+        `.as("combinedNoteNumber"),
       })
       .from(deliveryNoteCancellation)
       .leftJoin(
@@ -416,6 +435,10 @@ export const getDeliveryNoteCancellations = async (
         eq(deliveryNoteCancellation.clientId, partner.id)
       )
       .leftJoin(user, eq(deliveryNoteCancellation.createdBy, user.id))
+      .leftJoin(
+        deliveryNote,
+        eq(deliveryNoteCancellation.originalDeliveryNoteId, deliveryNote.id)
+      )
       .where(where)
       .orderBy(...orderBy)
       .limit(input.perPage)
@@ -435,21 +458,27 @@ export const getDeliveryNoteCancellations = async (
     const total = Number(countResult[0]?.count || 0);
 
     return {
-      cancellations: data.map((item) => ({
-        id: item.cancellation.id,
-        cancellationNumber: item.cancellation.cancellationNumber,
-        originalDeliveryNoteId: item.cancellation.originalDeliveryNoteId,
-        clientId: item.cancellation.clientId,
-        clientName: item.client?.name || null,
-        cancellationDate:
-          typeof item.cancellation.cancellationDate === "string"
-            ? new Date(item.cancellation.cancellationDate + "T00:00:00")
-            : item.cancellation.cancellationDate,
-        reason: item.cancellation.reason,
-        createdBy: item.cancellation.createdBy,
-        createdByName: item.creator?.name || null,
-        createdAt: item.cancellation.createdAt,
-      })),
+      cancellations: data.map((item) => {
+        // Use combinedNoteNumber from COALESCE query (originalDeliveryNote or from items)
+        const noteNumber = item.combinedNoteNumber ? String(item.combinedNoteNumber) : null;
+        
+        return {
+          id: item.cancellation.id,
+          cancellationNumber: item.cancellation.cancellationNumber,
+          originalDeliveryNoteId: item.cancellation.originalDeliveryNoteId,
+          originalDeliveryNoteNumber: noteNumber,
+          clientId: item.cancellation.clientId,
+          clientName: item.client?.name || null,
+          cancellationDate:
+            typeof item.cancellation.cancellationDate === "string"
+              ? new Date(item.cancellation.cancellationDate + "T00:00:00")
+              : item.cancellation.cancellationDate,
+          reason: item.cancellation.reason,
+          createdBy: item.cancellation.createdBy,
+          createdByName: item.creator?.name || null,
+          createdAt: item.cancellation.createdAt,
+        };
+      }),
       options: {
         totalCount: total,
         limit: input.perPage,
@@ -567,15 +596,26 @@ export const getDeliveryNoteCancellationById = async (id: string) => {
         client: {
           id: partner.id,
           name: partner.name,
+          address: partner.address,
+          phone: partner.phone,
+          email: partner.email,
         },
         creator: {
           id: user.id,
           name: user.name,
         },
+        originalDeliveryNote: {
+          id: deliveryNote.id,
+          noteNumber: deliveryNote.noteNumber,
+        },
       })
       .from(deliveryNoteCancellation)
       .leftJoin(partner, eq(deliveryNoteCancellation.clientId, partner.id))
       .leftJoin(user, eq(deliveryNoteCancellation.createdBy, user.id))
+      .leftJoin(
+        deliveryNote,
+        eq(deliveryNoteCancellation.originalDeliveryNoteId, deliveryNote.id)
+      )
       .where(eq(deliveryNoteCancellation.id, id))
       .limit(1);
 
@@ -608,6 +648,7 @@ export const getDeliveryNoteCancellationById = async (id: string) => {
           id: product.id,
           name: product.name,
           code: product.code,
+          taxRate: product.taxRate,
         },
       })
       .from(deliveryNoteCancellationItem)
@@ -626,6 +667,7 @@ export const getDeliveryNoteCancellationById = async (id: string) => {
       id: cancellationData.cancellation.id,
       cancellationNumber: cancellationData.cancellation.cancellationNumber,
       originalDeliveryNoteId: cancellationData.cancellation.originalDeliveryNoteId,
+      originalDeliveryNoteNumber: cancellationData.originalDeliveryNote?.noteNumber || null,
       clientId: cancellationData.cancellation.clientId,
       cancellationDate:
         typeof cancellationData.cancellation.cancellationDate === "string"
@@ -635,10 +677,13 @@ export const getDeliveryNoteCancellationById = async (id: string) => {
       createdBy: cancellationData.cancellation.createdBy,
       createdByName: cancellationData.creator?.name || null,
       createdAt: cancellationData.cancellation.createdAt,
-      client: cancellationData.client
+      client: cancellationData.client && cancellationData.client.id
         ? {
             id: cancellationData.client.id,
             name: cancellationData.client.name,
+            address: (cancellationData.client as any).address ?? null,
+            phone: (cancellationData.client as any).phone ?? null,
+            email: (cancellationData.client as any).email ?? null,
           }
         : null,
       items: cancellationItems.map((item) => ({
@@ -648,6 +693,7 @@ export const getDeliveryNoteCancellationById = async (id: string) => {
         productId: item.deliveryNoteItem.productId,
         productName: item.product?.name || null,
         productCode: item.product?.code || null,
+        productTaxRate: item.product?.taxRate ? parseFloat(item.product.taxRate) : 0,
         noteNumber: item.deliveryNote.noteNumber,
         noteDate:
           typeof item.deliveryNote.noteDate === "string"

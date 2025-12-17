@@ -21,7 +21,7 @@ import { DeleteUsersDialog } from "./delete-users-dialog";
 import { useFeatureFlags } from "../../../_components/feature-flags-provider";
 import { UsersTableActionBar } from "./users-table-action-bar";
 import { getUsersTableColumns } from "./users-table-columns";
-import { UpdateUserSheet } from "./update-user-sheet";
+import { ModifyUserDialog } from "../modify-user-dialog";
 
 interface UsersTableProps {
   promises: Promise<
@@ -106,10 +106,14 @@ export function UsersTable({ promises, queryKeys }: UsersTableProps) {
           </DataTableToolbar>
         )}
       </DataTable>
-      <UpdateUserSheet
+      <ModifyUserDialog
+        userId={rowAction?.row.original.id || ""}
         open={rowAction?.variant === "update"}
-        onOpenChange={() => setRowAction(null)}
-        user={rowAction?.row.original ?? null}
+        onOpenChange={(open) => !open && setRowAction(null)}
+        onSuccess={() => {
+          rowAction?.row.toggleSelected(false);
+          setRowAction(null);
+        }}
       />
       <DeleteUsersDialog
         open={rowAction?.variant === "delete"}

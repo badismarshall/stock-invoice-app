@@ -466,204 +466,189 @@ export function ModifyDeliveryNoteForm({ deliveryNote }: ModifyDeliveryNoteFormP
             </Button>
           </div>
 
-          <div className="border border-border rounded-lg overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted">
-                <tr>
-                  <th className="px-4 py-2 text-left align-middle min-w-[220px]">
-                    <span className="block text-xs font-semibold leading-tight">
-                      Produit
-                    </span>
-                  </th>
-                  <th className="px-4 py-2 text-right align-middle min-w-[90px]">
-                    <span className="block text-xs font-semibold leading-tight">
-                      Qté
-                    </span>
-                  </th>
-                  <th className="px-4 py-2 text-right align-middle min-w-[120px]">
-                    <span className="block text-xs font-semibold leading-tight">
-                      Prix d&apos;achat
-                    </span>
-                  </th>
-                  <th className="px-4 py-2 text-right align-middle min-w-[120px]">
-                    <span className="block text-xs font-semibold leading-tight">
-                      Prix unitaire
-                    </span>
-                  </th>
-                  <th className="px-4 py-2 text-right align-middle min-w-[90px]">
-                    <span className="block text-xs font-semibold leading-tight">
-                      Remise %
-                    </span>
-                  </th>
-                  <th className="px-4 py-2 text-right align-middle min-w-[90px]">
-                    <span className="block text-xs font-semibold leading-tight">
-                      TVA %
-                    </span>
-                  </th>
-                  <th className="px-4 py-2 text-right align-middle min-w-[110px]">
-                    <span className="block text-xs font-semibold leading-tight">
-                      Marge
-                    </span>
-                  </th>
-                  <th className="px-4 py-2 text-right align-middle min-w-[110px]">
-                    <span className="block text-xs font-semibold leading-tight">
-                      % Marge
-                    </span>
-                  </th>
-                  <th className="px-4 py-2 text-right align-middle min-w-[120px]">
-                    <span className="block text-xs font-semibold leading-tight">
-                      Total HT
-                    </span>
-                  </th>
-                  <th className="px-4 py-2 text-right align-middle min-w-[110px]">
-                    <span className="block text-xs font-semibold leading-tight">
-                      TVA
-                    </span>
-                  </th>
-                  <th className="px-4 py-2 text-right align-middle min-w-[130px]">
-                    <span className="block text-xs font-semibold leading-tight">
-                      Total TTC
-                    </span>
-                  </th>
-                  <th className="px-4 py-2 text-center align-middle min-w-[80px]">
-                    <span className="block text-xs font-semibold leading-tight">
-                      Actions
-                    </span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {formData.items.map((item, index) => (
-                  <tr key={item.id} className="border-t border-border">
-                    <td className="px-4 py-2 min-w-[220px]">
-                      <Select
-                        value={item.productId}
-                        onValueChange={(value) =>
-                          updateItem(index, "productId", value)
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Sélectionner un produit" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {products.map((product) => (
-                            <SelectItem key={product.id} value={product.id}>
-                              {product.name} ({product.code})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </td>
-                    <td className="px-4 py-2 text-right min-w-[90px]">
-                      <Input
-                        type="number"
-                        min={0}
-                        value={item.quantity}
-                        onChange={(e) =>
-                          updateItem(index, "quantity", Number(e.target.value) || 0)
-                        }
-                        className="text-right no-spinner"
-                      />
-                    </td>
-                    <td className="px-4 py-2 text-right min-w-[120px]">
-                      <Input
-                        type="number"
-                        min={0}
-                        value={item.purchasePrice}
-                        disabled
-                        className="text-right bg-muted/50 no-spinner"
-                      />
-                    </td>
-                    <td className="px-4 py-2 text-right min-w-[120px]">
-                      <Input
-                        type="number"
-                        min={0}
-                        value={item.unitPrice}
-                        onChange={(e) =>
-                          updateItem(index, "unitPrice", Number(e.target.value) || 0)
-                        }
-                        className="text-right no-spinner"
-                      />
-                    </td>
-                    <td className="px-4 py-2 text-right min-w-[90px]">
-                      <Input
-                        type="number"
-                        min={0}
-                        value={item.discountPercent}
-                        onChange={(e) =>
-                          updateItem(
-                            index,
-                            "discountPercent",
-                            Number(e.target.value) || 0
-                          )
-                        }
-                        className="text-right no-spinner"
-                      />
-                    </td>
-                    <td className="px-4 py-2 text-right min-w-[90px]">
-                      <Input
-                        type="number"
-                        min={0}
-                        value={item.taxRate}
-                        onChange={(e) =>
-                          updateItem(index, "taxRate", Number(e.target.value) || 0)
-                        }
-                        className="text-right no-spinner"
-                      />
-                    </td>
-                    <td className="px-4 py-2 text-right min-w-[110px]">
-                      <Input
-                        type="number"
-                        value={item.margin}
-                        onChange={(e) =>
-                          updateItem(index, "margin", Number(e.target.value) || 0)
-                        }
-                        className="text-right no-spinner"
-                      />
-                    </td>
-                    <td className="px-4 py-2 text-right min-w-[110px]">
-                      <Input
-                        type="number"
-                        value={Number.isFinite(item.marginPercent) ? item.marginPercent.toFixed(2) : 0}
-                        disabled
-                        className="text-right bg-muted/50 no-spinner"
-                      />
-                    </td>
-                    <td className="px-4 py-2 text-right min-w-[120px]">
-                      {item.lineSubtotal.toFixed(2)}
-                    </td>
-                    <td className="px-4 py-2 text-right min-w-[110px]">
-                      {item.lineTax.toFixed(2)}
-                    </td>
-                    <td className="px-4 py-2 text-right min-w-[130px]">
-                      {item.lineTotal.toFixed(2)}
-                    </td>
-                    <td className="px-4 py-2 text-center min-w-[80px]">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeItem(index)}
-                        className="hover:bg-destructive/10 hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-
-                {formData.items.length === 0 && (
+          <div className="border border-border rounded-lg overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted">
                   <tr>
-                    <td
-                      colSpan={12}
-                      className="px-4 py-6 text-center text-muted-foreground"
-                    >
-                      Aucun produit ajouté. Cliquez sur &quot;Ajouter un produit&quot; pour commencer.
-                    </td>
+                    <th className="px-4 py-2 text-left text-xs font-semibold min-w-[200px]">
+                      Produit
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-semibold min-w-[100px]">
+                      Qté
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-semibold min-w-[110px]">
+                      Prix d&apos;achat
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-semibold min-w-[110px]">
+                      Prix unitaire
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-semibold min-w-[90px]">
+                      Remise %
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-semibold min-w-[90px]">
+                      TVA %
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-semibold min-w-[100px]">
+                      Marge
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-semibold min-w-[100px]">
+                      % Marge
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-semibold min-w-[110px]">
+                      Total HT
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-semibold min-w-[100px]">
+                      TVA
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-semibold min-w-[120px]">
+                      Total TTC
+                    </th>
+                    <th className="px-4 py-2 text-center text-xs font-semibold min-w-[80px]">
+                      Actions
+                    </th>
                   </tr>
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {formData.items.map((item, index) => (
+                    <tr key={item.id} className="border-b hover:bg-muted/50">
+                      <td className="px-4 py-2 min-w-[200px]">
+                        <Select
+                          value={item.productId}
+                          onValueChange={(value) =>
+                            updateItem(index, "productId", value)
+                          }
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Sélectionner un produit" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {products.map((product) => (
+                              <SelectItem key={product.id} value={product.id}>
+                                {product.name} ({product.code})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </td>
+                      <td className="px-4 py-2 text-right min-w-[100px]">
+                        <Input
+                          type="number"
+                          min={0}
+                          step="0.001"
+                          value={item.quantity}
+                          onChange={(e) =>
+                            updateItem(index, "quantity", Number(e.target.value) || 0)
+                          }
+                          className="w-full text-right no-spinner"
+                        />
+                      </td>
+                      <td className="px-4 py-2 text-right min-w-[110px]">
+                        <Input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          value={item.purchasePrice.toFixed(2)}
+                          disabled
+                          className="w-full text-right bg-muted/50 no-spinner"
+                        />
+                      </td>
+                      <td className="px-4 py-2 text-right min-w-[110px]">
+                        <Input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          value={item.unitPrice}
+                          onChange={(e) =>
+                            updateItem(index, "unitPrice", Number(e.target.value) || 0)
+                          }
+                          className="w-full text-right no-spinner"
+                        />
+                      </td>
+                      <td className="px-4 py-2 text-right min-w-[90px]">
+                        <Input
+                          type="number"
+                          min={0}
+                          max={100}
+                          step="0.01"
+                          value={item.discountPercent}
+                          onChange={(e) =>
+                            updateItem(
+                              index,
+                              "discountPercent",
+                              Number(e.target.value) || 0
+                            )
+                          }
+                          className="w-full text-right no-spinner"
+                        />
+                      </td>
+                      <td className="px-4 py-2 text-right min-w-[90px]">
+                        <Input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          value={item.taxRate}
+                          onChange={(e) =>
+                            updateItem(index, "taxRate", Number(e.target.value) || 0)
+                          }
+                          className="w-full text-right no-spinner"
+                        />
+                      </td>
+                      <td className="px-4 py-2 text-right min-w-[100px]">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={item.margin.toFixed(2)}
+                          onChange={(e) =>
+                            updateItem(index, "margin", Number(e.target.value) || 0)
+                          }
+                          className="w-full text-right no-spinner"
+                        />
+                      </td>
+                      <td className="px-4 py-2 text-right min-w-[100px]">
+                        <Input
+                          type="number"
+                          value={Number.isFinite(item.marginPercent) ? item.marginPercent.toFixed(2) : "0.00"}
+                          disabled
+                          className="w-full text-right bg-muted/50 no-spinner"
+                        />
+                      </td>
+                      <td className="px-4 py-2 text-sm text-right min-w-[110px]">
+                        {item.lineSubtotal.toFixed(2)} DZD
+                      </td>
+                      <td className="px-4 py-2 text-sm text-right min-w-[100px]">
+                        {item.lineTax.toFixed(2)} DZD
+                      </td>
+                      <td className="px-4 py-2 text-sm text-right min-w-[120px]">
+                        {item.lineTotal.toFixed(2)} DZD
+                      </td>
+                      <td className="px-4 py-2 text-center min-w-[80px]">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeItem(index)}
+                          className="hover:bg-destructive/10 hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+
+                  {formData.items.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={12}
+                        className="px-4 py-6 text-center text-muted-foreground"
+                      >
+                        Aucun produit ajouté. Cliquez sur &quot;Ajouter un produit&quot; pour commencer.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {/* Totals */}

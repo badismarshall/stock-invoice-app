@@ -15,6 +15,7 @@ import { PartnersTableActionBar } from "./partners-table-action-bar";
 import { getPartnersTableColumns } from "./partners-table-columns";
 import { useFeatureFlags } from "../../../_components/feature-flags-provider";
 import { DeletePartnersDialog } from "./delete-partners-dialog";
+import { ModifyPartnerDialog } from "../modify-partner-dialog";
 
 interface PartnersTableProps {
   promises: Promise<
@@ -86,6 +87,15 @@ export function PartnersTable({ promises, queryKeys }: PartnersTableProps) {
           </DataTableToolbar>
         )}
       </DataTable>
+      <ModifyPartnerDialog
+        partnerId={rowAction?.row.original.id || ""}
+        open={rowAction?.variant === "update"}
+        onOpenChange={(open) => !open && setRowAction(null)}
+        onSuccess={() => {
+          rowAction?.row.toggleSelected(false);
+          setRowAction(null);
+        }}
+      />
       <DeletePartnersDialog
         open={rowAction?.variant === "delete"}
         onOpenChange={() => setRowAction(null)}

@@ -88,3 +88,75 @@ export async function deletePartners(input: { ids: string[] }) {
   }
 }
 
+export async function getPartnerById(input: { id: string }) {
+  try {
+    const result = await db
+      .select()
+      .from(partner)
+      .where(eq(partner.id, input.id))
+      .limit(1);
+
+    if (result.length === 0) {
+      return {
+        data: null,
+        error: "Partenaire non trouvé",
+      };
+    }
+
+    return {
+      data: result[0],
+      error: null,
+    };
+  } catch (err) {
+    console.error("Error getting partner by ID", err);
+    return {
+      data: null,
+      error: getErrorMessage(err),
+    };
+  }
+}
+
+export async function updatePartner(input: {
+  id: string;
+  name: string;
+  contact?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  credit?: string;
+  nif?: string;
+  rc?: string;
+}) {
+  try {
+    const creditValue = input.credit ? input.credit : "0";
+
+    await db
+      .update(partner)
+      .set({
+        name: input.name,
+        contact: input.contact || null,
+        phone: input.phone || null,
+        email: input.email || null,
+        address: input.address || null,
+        credit: creditValue,
+        nif: input.nif || null,
+        rc: input.rc || null,
+        updatedAt: new Date(),
+      })
+      .where(eq(partner.id, input.id));
+
+    updateTag("partners");
+
+    return {
+      data: { id: input.id },
+      error: null,
+    };
+  } catch (err) {
+    console.error("Error updating partner", err);
+    return {
+      data: null,
+      error: getErrorMessage(err),
+    };
+  }
+}
+

@@ -20,7 +20,7 @@ import type { InvoiceDTO } from "./invoice.dto";
 import { filterColumns } from "@/lib/data-table/filter-columns";
 
 // Schema for invoice queries
-const invoiceTypes = ["sale_local", "sale_export", "proforma", "purchase"] as const;
+const invoiceTypes = ["sale_local", "sale_export", "proforma", "purchase", "sale_invoice", "delivery_note_invoice"] as const;
 const paymentStatuses = ["unpaid", "partially_paid", "paid"] as const;
 const statuses = ["active", "cancelled"] as const;
 
@@ -59,6 +59,10 @@ export const getInvoices = async (input: z.infer<typeof GetInvoicesSchema>): Pro
     const where = advancedTable
       ? advancedWhere
       : and(
+          // Exclude delivery_note_invoice from main invoices table (unless explicitly requested)
+          input.invoiceType && input.invoiceType.length > 0 && input.invoiceType.includes("delivery_note_invoice")
+            ? undefined
+            : sql`${invoice.invoiceType} != 'delivery_note_invoice'`,
           // Search by invoice number
           input.invoiceNumber
             ? ilike(invoice.invoiceNumber, `%${input.invoiceNumber}%`)
@@ -87,7 +91,7 @@ export const getInvoices = async (input: z.infer<typeof GetInvoicesSchema>): Pro
             ? inArray(invoice.supplierId, input.supplierId)
             : undefined,
           // Filter by invoiceDate date range
-          input.invoiceDate.length > 0
+          input.invoiceDate && input.invoiceDate.length > 0
             ? and(
                 input.invoiceDate[0]
                   ? gte(
@@ -116,7 +120,7 @@ export const getInvoices = async (input: z.infer<typeof GetInvoicesSchema>): Pro
               )
             : undefined,
           // Filter by dueDate date range
-          input.dueDate.length > 0
+          input.dueDate && input.dueDate.length > 0
             ? and(
                 input.dueDate[0]
                   ? gte(
@@ -145,7 +149,7 @@ export const getInvoices = async (input: z.infer<typeof GetInvoicesSchema>): Pro
               )
             : undefined,
           // Filter by createdAt date range
-          input.createdAt.length > 0
+          input.createdAt && input.createdAt.length > 0
             ? and(
                 input.createdAt[0]
                   ? gte(
@@ -186,7 +190,7 @@ export const getInvoices = async (input: z.infer<typeof GetInvoicesSchema>): Pro
     } as const;
 
     const orderBy =
-      input.sort.length > 0
+      input.sort && input.sort.length > 0
         ? input.sort
             .map((item) => {
               const column = columnMap[item.id as keyof typeof columnMap];

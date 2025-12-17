@@ -39,11 +39,14 @@ export const getPartners = async (input: GetPartnersSchema & { type: "client" | 
     : and(
       // Filter by type
       eq(partner.type, input.type),
-      // Search by name or email (only two search inputs in toolbar)
-      input.name || input.email
+      // Search by name, email, phone, nif, or rc (basic toolbar filters)
+      input.name || input.email || input.phone || input.nif || input.rc
         ? or(
             input.name ? ilike(partner.name, `%${input.name}%`) : undefined,
             input.email ? ilike(partner.email, `%${input.email}%`) : undefined,
+            input.phone ? ilike(partner.phone, `%${input.phone}%`) : undefined,
+            input.nif ? ilike(partner.nif, `%${input.nif}%`) : undefined,
+            input.rc ? ilike(partner.rc, `%${input.rc}%`) : undefined,
           )
         : undefined,
       // Filter by createdAt date range
