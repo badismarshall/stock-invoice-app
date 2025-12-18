@@ -14,6 +14,13 @@ export const auth = betterAuth({
     database: drizzleAdapter(db, {
         provider: "pg",
     }),
+    // baseURL is auto-detected from the request, but we can set it explicitly for Vercel
+    // Better Auth will use the request origin automatically, so this is optional
+    baseURL: process.env.NEXT_PUBLIC_APP_URL 
+        ? process.env.NEXT_PUBLIC_APP_URL 
+        : process.env.VERCEL_URL 
+            ? `https://${process.env.VERCEL_URL}` 
+            : undefined, // Auto-detect in development
     session: {
         cookieCache: {
             enabled: true,

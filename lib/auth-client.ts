@@ -1,24 +1,48 @@
+"use client";
+
 import { adminClient, organizationClient } from "better-auth/client/plugins"
 import { createAuthClient } from "better-auth/react"
 import { ac, admin as adminAc } from "./permissions";
 
-export const authClient = createAuthClient({
-    /** The base URL of the server (optional if you're using the same domain) */
-    baseURL: "http://localhost:3000",
-    plugins: [
-        organizationClient({
-            ac,
-            roles: {
-                adminAc,
-            },
-            dynamicAccessControl: {
-                enabled: true,
-            },
-            defaultRole: "user",
-        }),
-        adminClient(),
-    ],
-})
+// Create auth client with dynamic baseURL
+// Better Auth will use window.location.origin when available (client-side)
+// This ensures it works on both localhost and Vercel deployments
+export const authClient = createAuthClient(
+    typeof window !== "undefined"
+        ? {
+            // Client-side: use current origin (works for localhost and Vercel)
+            baseURL: window.location.origin,
+            plugins: [
+                organizationClient({
+                    ac,
+                    roles: {
+                        adminAc,
+                    },
+                    dynamicAccessControl: {
+                        enabled: true,
+                    },
+                    defaultRole: "user",
+                }),
+                adminClient(),
+            ],
+        }
+        : {
+            // Server-side: Better Auth will auto-detect
+            plugins: [
+                organizationClient({
+                    ac,
+                    roles: {
+                        adminAc,
+                    },
+                    dynamicAccessControl: {
+                        enabled: true,
+                    },
+                    defaultRole: "user",
+                }),
+                adminClient(),
+            ],
+        }
+)
 
 
 export const { 
