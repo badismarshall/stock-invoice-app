@@ -1,6 +1,5 @@
 'use client'
 
-import { useEffect, useState } from "react";
 import { SidebarContent, SidebarFooter, SidebarGroup, SidebarMenu, SidebarHeader, useSidebar } from "@/components/ui/sidebar";
 import { AppSidebar } from "../../_components/sideBar/app-sidebar";
 import { adminSidebarItemsGeneralSetting } from "../../_constants/sidebaritems";
@@ -8,24 +7,12 @@ import { NavMain } from "../../_components/sideBar/nav-main";
 import {
     Sidebar,
   } from "@/components/ui/sidebar"
-import { NavUser } from "./nav-user";
-import { getCurrentUser } from "@/data/user/user-auth-client";
+import { NavUserWrapper } from "./nav-user-wrapper";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 export default function SideBar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-    const [user, setUser] = useState<{ name: string; email: string } | null>(null);
     const { state } = useSidebar();
-
-    useEffect(() => {
-        const fetchUser = async () => {
-            const userData = await getCurrentUser();
-            if (userData) {
-                setUser(userData);
-            }
-        };
-        fetchUser();
-    }, []);
 
     return (
         <AppSidebar {...props}>
@@ -53,12 +40,7 @@ export default function SideBar({ ...props }: React.ComponentProps<typeof Sideba
                 <SidebarGroup />
             </SidebarContent>
             <SidebarFooter>
-                {user && (
-                    <NavUser user={{
-                        name: user.name,
-                        email: user.email,
-                    }} />
-                )}
+                <NavUserWrapper />
             </SidebarFooter>
         </AppSidebar>
     )
