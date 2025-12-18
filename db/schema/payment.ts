@@ -1,8 +1,9 @@
-import { pgTable, text, timestamp, date, numeric, index } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, date, numeric, index, check } from "drizzle-orm/pg-core";
 import { invoice } from "./invoice";
 import { partner } from "./partner";
 import { user } from "./user";
 import { paymentMethodEnum } from "./enums";
+import { sql } from "drizzle-orm";
 
 export const payment = pgTable(
   "payment",
@@ -13,7 +14,8 @@ export const payment = pgTable(
       .notNull()
       .references(() => invoice.id, { onDelete: "restrict" }),
     clientId: text("client_id")
-      .notNull()
+      .references(() => partner.id, { onDelete: "restrict" }),
+    supplierId: text("supplier_id")
       .references(() => partner.id, { onDelete: "restrict" }),
     paymentDate: date("payment_date").notNull(),
     amount: numeric("amount", { precision: 15, scale: 2 }).notNull(),
@@ -28,7 +30,10 @@ export const payment = pgTable(
   (table) => ({
     invoiceIdx: index("idx_payments_invoice").on(table.invoiceId),
     clientIdx: index("idx_payments_client").on(table.clientId),
+    supplierIdx: index("idx_payments_supplier").on(table.supplierId),
     dateIdx: index("idx_payments_date").on(table.paymentDate),
+    // Constraint: at least one of clientId or supplierId must be non-null
+    clientOrSupplierCheck: check("client_or_supplier_check", sql`(${table.clientId} IS NOT NULL) OR (${table.supplierId} IS NOT NULL)`),
   })
 );
 

@@ -13,6 +13,7 @@ import {
   Clock,
   DollarSign,
   FileText,
+  Wallet,
 } from "lucide-react";
 import * as React from "react";
 import { DataTableColumnHeader } from "@/components/shared/data-table/data-table-column-header";
@@ -50,6 +51,8 @@ const translations = {
   edit: "Modifier",
   delete: "Supprimer",
   print: "Imprimer",
+  managePayments: "Gérer les paiements",
+  addPayment: "Créer un paiement",
   selectAll: "Tout sélectionner",
   selectRow: "Sélectionner la ligne",
   active: "Actif",
@@ -285,6 +288,20 @@ export function getSaleInvoicesTableColumns({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuItem
+                onSelect={() => router.push(`/dashboard/payments/add?invoiceId=${invoice.id}`)}
+              >
+                <Wallet className="mr-2 h-4 w-4" />
+                {translations.addPayment}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onSelect={() => router.push(`/dashboard/payments?invoiceId=${invoice.id}`)}
+              >
+                <Wallet className="mr-2 h-4 w-4" />
+                {translations.managePayments}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem
                 onSelect={() => router.push(`/dashboard/invoices/print/${invoice.id}`)}
               >

@@ -2,11 +2,9 @@
 
 import {
   BadgeCheck,
-  Bell,
   ChevronsUpDown,
-  CreditCard,
   LogOut,
-  Sparkles,
+  Settings,
 } from "lucide-react"
 
 import {
@@ -56,7 +54,14 @@ export function NavUser({
               >
                 <Avatar className='h-8 w-8 rounded-lg'>
                   {/* <AvatarImage src={user.image} alt={user.name} /> */}
-                  <AvatarFallback className='rounded-lg'>SN</AvatarFallback>
+                  <AvatarFallback className='rounded-lg'>
+                    {user.name
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")
+                      .toUpperCase()
+                      .slice(0, 2)}
+                  </AvatarFallback>
                 </Avatar>
                 <div className='grid flex-1 text-start text-sm leading-tight'>
                   <span className='truncate font-semibold'>{user.name}</span>
@@ -75,7 +80,14 @@ export function NavUser({
                 <div className='flex items-center gap-2 px-1 py-1.5 text-start text-sm'>
                   <Avatar className='h-8 w-8 rounded-lg'>
                     {/* <AvatarImage src={user.image} alt={user.name} /> */}
-                    <AvatarFallback className='rounded-lg'>SN</AvatarFallback>
+                    <AvatarFallback className='rounded-lg'>
+                      {user.name
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")
+                        .toUpperCase()
+                        .slice(0, 2)}
+                    </AvatarFallback>
                   </Avatar>
                   <div className='grid flex-1 text-start text-sm leading-tight'>
                     <span className='truncate font-semibold'>{user.name}</span>
@@ -85,31 +97,16 @@ export function NavUser({
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
-                <DropdownMenuItem>
-                  <Sparkles />
-                  Upgrade to Pro
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-              <DropdownMenuSeparator />
-              <DropdownMenuGroup>
                 <DropdownMenuItem asChild>
-                  <Link href='/settings/account'>
+                  <Link href='/dashboard/settings/account'>
                     <BadgeCheck />
-                    Account
+                    Mon compte
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href='/settings'>
-                    <CreditCard />
-                    Billing
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link 
-                    href='/settings/notifications'
-                  >
-                    <Bell />
-                    Notifications
+                  <Link href='/dashboard/settings/company-settings'>
+                    <Settings />
+                    Paramètres
                   </Link>
                 </DropdownMenuItem>
               </DropdownMenuGroup>
@@ -119,7 +116,7 @@ export function NavUser({
                 onClick={() => setOpen(true)}
               >
                 <LogOut />
-                Sign out
+                Se déconnecter
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

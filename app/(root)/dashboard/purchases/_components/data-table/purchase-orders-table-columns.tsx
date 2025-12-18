@@ -13,6 +13,7 @@ import {
   Clock,
   CheckCircle2,
   XCircle,
+  Wallet,
 } from "lucide-react";
 import * as React from "react";
 import { DataTableColumnHeader } from "@/components/shared/data-table/data-table-column-header";
@@ -59,6 +60,8 @@ const translations = {
   delete: "Supprimer",
   createInvoice: "Créer facture",
   printInvoice: "Imprimer facture",
+  addPayment: "Créer un paiement",
+  managePayments: "Gérer les paiements",
   selectAll: "Tout sélectionner",
   selectRow: "Sélectionner la ligne",
   pending: "En attente",
@@ -368,6 +371,29 @@ export function getPurchaseOrdersTableColumns({
                 <FileText className="mr-2 h-4 w-4" />
                 {isCreatingInvoice ? translations.creatingInvoice : translations.createInvoice}
               </DropdownMenuItem>
+              {row.original.invoiceId && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onSelect={() => router.push(`/dashboard/payments/add?invoiceId=${row.original.invoiceId}`)}
+                  >
+                    <Wallet className="mr-2 h-4 w-4" />
+                    {translations.addPayment}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => router.push(`/dashboard/payments?invoiceId=${row.original.invoiceId}`)}
+                  >
+                    <Wallet className="mr-2 h-4 w-4" />
+                    {translations.managePayments}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => router.push(`/dashboard/invoices/print/${row.original.invoiceId}`)}
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    {translations.printInvoice}
+                  </DropdownMenuItem>
+                </>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onSelect={() => setRowAction({ row, variant: "delete" })}

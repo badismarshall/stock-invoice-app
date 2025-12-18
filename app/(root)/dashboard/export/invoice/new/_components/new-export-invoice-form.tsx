@@ -185,7 +185,6 @@ export function NewExportInvoiceForm() {
 
       const { addInvoice } = await import("../../../_lib/invoice-actions");
       const result = await addInvoice({
-        invoiceNumber: formData.invoiceNumber,
         invoiceType: "sale_export",
         clientId: formData.clientId,
         invoiceDate: formData.invoiceDate,
@@ -257,16 +256,12 @@ export function NewExportInvoiceForm() {
         <div className="bg-card rounded-xl shadow-sm border border-border p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">
-              N° Facture *
+              N° Facture (Généré automatiquement)
             </label>
             <Input
-              placeholder="Ex: FAC-EXP-2023-001"
-              value={formData.invoiceNumber}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, invoiceNumber: e.target.value }))
-              }
-              required
-              disabled={loading}
+              value={formData.invoiceNumber || "Génération automatique..."}
+              disabled
+              className="bg-muted"
             />
           </div>
 

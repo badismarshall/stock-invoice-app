@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { useState, useEffect } from "react"
 import { Icons } from "@/components/ui/icons"
+import { generateInvoiceNumber, type InvoiceType } from "@/lib/utils/invoice-number-generator"
 
 interface InvoiceItem {
   id: string;
@@ -60,6 +61,12 @@ export function NewInvoiceForm() {
     notes: "",
     items: [] as InvoiceItem[],
   });
+
+  // Generate invoice number when component mounts or invoice type changes
+  useEffect(() => {
+    const generatedNumber = generateInvoiceNumber(formData.invoiceType as InvoiceType);
+    setFormData((prev) => ({ ...prev, invoiceNumber: generatedNumber }));
+  }, [formData.invoiceType]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -257,16 +264,12 @@ export function NewInvoiceForm() {
         <div className="bg-card rounded-xl shadow-sm border border-border p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">
-              N° Facture *
+              N° Facture (Généré automatiquement)
             </label>
             <Input
-              placeholder="Ex: FAC-2023-001"
               value={formData.invoiceNumber}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, invoiceNumber: e.target.value }))
-              }
-              required
-              disabled={loading}
+              disabled
+              className="bg-muted"
             />
           </div>
 
@@ -274,9 +277,20 @@ export function NewInvoiceForm() {
             <label className="text-sm font-medium text-foreground">Type de facture *</label>
             <Select
               value={formData.invoiceType}
-              onValueChange={(value: "sale_local" | "sale_export" | "proforma" | "purchase" | "sale_invoice" | "delivery_note_invoice") =>
-                setFormData((prev) => ({ ...prev, invoiceType: value, clientId: "", supplierId: "", deliveryNoteId: "", destinationCountry: "", currency: "DZD" }))
-              }
+              onValueChange={(value: "sale_local" | "sale_export" | "proforma" | "purchase" | "sale_invoice" | "delivery_note_invoice") => {
+                // Generate invoice number based on type
+                const generatedNumber = generateInvoiceNumber(value as InvoiceType);
+                setFormData((prev) => ({ 
+                  ...prev, 
+                  invoiceType: value, 
+                  invoiceNumber: generatedNumber,
+                  clientId: "", 
+                  supplierId: "", 
+                  deliveryNoteId: "", 
+                  destinationCountry: "", 
+                  currency: "DZD" 
+                }));
+              }}
               disabled={loading}
             >
               <SelectTrigger>

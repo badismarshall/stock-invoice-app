@@ -17,6 +17,8 @@ export const purchaseOrderSchema = z.object({
       createdByName: z.string().nullable(),
       createdAt: z.date(),
       updatedAt: z.date(),
+      invoiceId: z.string().nullable(),
+      invoiceNumber: z.string().nullable(),
     })
   ),
   options: z.object({

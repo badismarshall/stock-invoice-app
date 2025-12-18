@@ -101,7 +101,6 @@ async function updateStockFromDeliveryNote(
 }
 
 export async function addDeliveryNote(input: {
-  noteNumber: string;
   noteType: "local" | "export";
   clientId: string;
   noteDate: Date;
@@ -134,18 +133,33 @@ export async function addDeliveryNote(input: {
       };
     }
 
-    // Check if note number already exists
-    const existingNote = await db
-      .select({ id: deliveryNote.id })
-      .from(deliveryNote)
-      .where(eq(deliveryNote.noteNumber, input.noteNumber))
-      .limit(1)
-      .execute();
+    // Generate delivery note number automatically
+    const { generateDeliveryNoteNumber } = await import("@/lib/utils/invoice-number-generator");
+    let noteNumber = generateDeliveryNoteNumber(input.noteType);
+    
+    // Check if note number already exists and regenerate if needed
+    let attempts = 0;
+    while (attempts < 10) {
+      const existingNote = await db
+        .select({ id: deliveryNote.id })
+        .from(deliveryNote)
+        .where(eq(deliveryNote.noteNumber, noteNumber))
+        .limit(1)
+        .execute();
 
-    if (existingNote.length > 0) {
+      if (existingNote.length === 0) {
+        break; // Number is unique
+      }
+      
+      // Regenerate if exists
+      noteNumber = generateDeliveryNoteNumber(input.noteType);
+      attempts++;
+    }
+
+    if (attempts >= 10) {
       return {
         data: null,
-        error: `Le numéro de bon de livraison "${input.noteNumber}" existe déjà. Veuillez utiliser un numéro différent.`,
+        error: "Impossible de générer un numéro unique. Veuillez réessayer.",
       };
     }
 
@@ -167,7 +181,7 @@ export async function addDeliveryNote(input: {
       // Insert delivery note
       await tx.insert(deliveryNote).values({
         id,
-        noteNumber: input.noteNumber,
+        noteNumber: noteNumber,
         noteType: input.noteType,
         clientId: input.clientId,
         noteDate: noteDateValue,

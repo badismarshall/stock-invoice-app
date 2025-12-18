@@ -156,7 +156,6 @@ export function NewPurchaseForm() {
 
       const { addPurchaseOrder } = await import("../../_lib/actions");
       const result = await addPurchaseOrder({
-        orderNumber: formData.orderNumber,
         supplierId: formData.supplierId,
         orderDate: formData.orderDate,
         receptionDate: formData.receptionDate,
@@ -219,16 +218,12 @@ export function NewPurchaseForm() {
         <div className="bg-card rounded-xl shadow-sm border border-border p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">
-              N° Facture Fournisseur
+              N° Commande (Généré automatiquement)
             </label>
             <Input
-              placeholder="Ex: FAC-2023-001"
-              value={formData.orderNumber}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, orderNumber: e.target.value }))
-              }
-              required
-              disabled={loading}
+              value={formData.orderNumber || "Génération automatique..."}
+              disabled
+              className="bg-muted"
             />
           </div>
 

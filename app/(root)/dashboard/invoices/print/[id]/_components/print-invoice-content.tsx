@@ -2,12 +2,13 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Printer } from "lucide-react"
+import { ArrowLeft, Printer, Mail } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { format } from "date-fns"
 import { fr } from "date-fns/locale"
 import { toast } from "sonner"
 import { getInvoiceById, getCompanySettings } from "../../../_lib/actions"
+import { getPaymentsByInvoiceId } from "../../../../payments/_lib/actions"
 import { Skeleton } from "@/components/ui/skeleton"
 import Image from "next/image"
 import logo from "@/public/logo.png"
@@ -20,14 +21,17 @@ export function PrintInvoiceContent({ invoiceId }: PrintInvoiceContentProps) {
   const [loading, setLoading] = React.useState(true);
   const [invoice, setInvoice] = React.useState<any>(null);
   const [companyInfo, setCompanyInfo] = React.useState<any>(null);
+  const [payments, setPayments] = React.useState<any>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [sendingEmail, setSendingEmail] = React.useState(false);
 
   React.useEffect(() => {
     const fetchData = async () => {
       try {
-        const [invoiceResult, companyResult] = await Promise.all([
+        const [invoiceResult, companyResult, paymentsResult] = await Promise.all([
           getInvoiceById({ id: invoiceId }),
           getCompanySettings(),
+          getPaymentsByInvoiceId({ invoiceId }),
         ]);
         
         if (invoiceResult.error) {
@@ -41,6 +45,12 @@ export function PrintInvoiceContent({ invoiceId }: PrintInvoiceContentProps) {
         
         if (companyResult.data) {
           setCompanyInfo(companyResult.data);
+          // Debug: log logo path
+          console.log("Company logo path:", companyResult.data.logo);
+        }
+
+        if (paymentsResult.data) {
+          setPayments(paymentsResult.data);
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Erreur lors du chargement de la facture");
@@ -50,6 +60,39 @@ export function PrintInvoiceContent({ invoiceId }: PrintInvoiceContentProps) {
     };
     fetchData();
   }, [invoiceId]);
+
+  const handleSendEmail = async () => {
+    if (!invoice) return;
+
+    const recipientEmail = invoice.client?.email || invoice.supplier?.email;
+    const recipientName = invoice.client?.name || invoice.supplier?.name;
+
+    if (!recipientEmail) {
+      toast.error("Aucune adresse email trouvée pour le client/fournisseur");
+      return;
+    }
+
+    setSendingEmail(true);
+    try {
+      const { sendInvoiceByEmail } = await import("../../../_lib/email-actions");
+      const result = await sendInvoiceByEmail({
+        invoiceId: invoiceId,
+        recipientEmail: recipientEmail,
+        recipientName: recipientName,
+      });
+
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success(`Facture envoyée par email à ${recipientEmail}`);
+      }
+    } catch (err) {
+      console.error("Error sending email:", err);
+      toast.error("Erreur lors de l'envoi de l'email");
+    } finally {
+      setSendingEmail(false);
+    }
+  };
 
   const handlePrint = () => {
     // Create a new window for printing to avoid URL in footer
@@ -73,6 +116,24 @@ export function PrintInvoiceContent({ invoiceId }: PrintInvoiceContentProps) {
     tempDiv.innerHTML = content;
     const notesElements = tempDiv.querySelectorAll('[data-print-remove="true"]');
     notesElements.forEach(el => el.remove());
+    
+    // Replace logo src - use companyInfo.logo if available, otherwise use default
+    const logoImages = tempDiv.querySelectorAll('img[alt*="Logo"]');
+    logoImages.forEach((img) => {
+      if (companyInfo?.logo) {
+        const logoPath = companyInfo.logo.startsWith('/') ? companyInfo.logo : `/${companyInfo.logo}`;
+        // Get absolute URL for the logo in print window
+        const absoluteLogoPath = logoPath.startsWith('http') 
+          ? logoPath 
+          : `${window.location.origin}${logoPath}`;
+        img.setAttribute('src', absoluteLogoPath);
+      } else {
+        // Use default logo
+        const absoluteLogoPath = `${window.location.origin}/logo.png`;
+        img.setAttribute('src', absoluteLogoPath);
+      }
+    });
+    
     content = tempDiv.innerHTML;
     
     // Create a clean HTML document
@@ -281,10 +342,22 @@ export function PrintInvoiceContent({ invoiceId }: PrintInvoiceContentProps) {
           <ArrowLeft className="mr-2 h-4 w-4" />
           Retour
         </Button>
-        <Button onClick={handlePrint}>
-          <Printer className="mr-2 h-4 w-4" />
-          Imprimer
-        </Button>
+        <div className="flex gap-2">
+          {invoice && (invoice.client?.email || invoice.supplier?.email) && (
+            <Button
+              variant="outline"
+              onClick={handleSendEmail}
+              disabled={sendingEmail}
+            >
+              <Mail className="mr-2 h-4 w-4" />
+              {sendingEmail ? "Envoi..." : "Envoyer par email"}
+            </Button>
+          )}
+          <Button onClick={handlePrint}>
+            <Printer className="mr-2 h-4 w-4" />
+            Imprimer
+          </Button>
+        </div>
       </div>
 
       {/* Invoice Content for Print */}
@@ -294,21 +367,28 @@ export function PrintInvoiceContent({ invoiceId }: PrintInvoiceContentProps) {
           <div className="company-info">
             {/* Logo */}
             <div className="company-logo mb-3">
-              {/* Logo */}
-              {companyInfo?.logo ? (
-                <Image 
-                  // src={`/public${companyInfo.logo}`} 
-                  src={logo}
-                  alt={companyInfo.name || "Company Logo"} 
-                  width={200} 
-                  height={60}
-                  className="h-auto"
-                />
-              ) : (
-                <div className="flex h-16 w-48 items-center justify-center border border-gray-300 bg-gray-50 print:h-12 print:w-40">
-                  <span className="text-xs font-bold text-gray-600">{companyInfo?.name || "Company Name"}</span>
-                </div>
-              )}
+              {(() => {
+                // Determine logo source - use companyInfo.logo if available, otherwise default
+                const logoSource = companyInfo?.logo 
+                  ? (companyInfo.logo.startsWith('/') ? companyInfo.logo : `/${companyInfo.logo}`)
+                  : '/logo.png';
+                
+                return (
+                  <Image 
+                    src={logoSource}
+                    alt={companyInfo?.name || "Company Logo"} 
+                    width={200} 
+                    height={60}
+                    className="h-auto"
+                    unoptimized
+                    onError={(e) => {
+                      // Fallback to default logo if custom logo fails to load
+                      const target = e.target as HTMLImageElement;
+                      target.src = '/logo.png';
+                    }}
+                  />
+                );
+              })()}
             </div>
             <h1 className="text-2xl font-bold text-gray-900">{companyInfo?.name || "Company Name"}</h1>
             <div className="mt-2 text-sm text-gray-600">
@@ -495,10 +575,60 @@ export function PrintInvoiceContent({ invoiceId }: PrintInvoiceContentProps) {
                     {invoice.totalAmount.toFixed(2).replace(',', '.')} {invoice.currency}
                   </td>
                 </tr>
+                {payments && payments.totalPaid > 0 && (
+                  <>
+                    <tr>
+                      <td colSpan={6} className="px-4 py-3 text-right text-sm font-semibold text-gray-700">
+                        Montant payé:
+                      </td>
+                      <td colSpan={2}></td>
+                      <td className="px-4 py-3 text-right text-sm font-semibold text-green-700">
+                        {payments.totalPaid.toFixed(2).replace(',', '.')} {invoice.currency}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td colSpan={6} className="px-4 py-3 text-right text-sm font-semibold text-gray-700">
+                        Montant restant:
+                      </td>
+                      <td colSpan={2}></td>
+                      <td className="px-4 py-3 text-right text-sm font-semibold text-gray-900">
+                        {(invoice.totalAmount - payments.totalPaid).toFixed(2).replace(',', '.')} {invoice.currency}
+                      </td>
+                    </tr>
+                  </>
+                )}
               </tfoot>
             )}
           </table>
         </div>
+
+        {/* Payment Information */}
+        {!isDeliveryNoteInvoice && payments && payments.payments && payments.payments.length > 0 && (
+          <div className="mb-8 border-t border-gray-300 pt-4">
+            <h3 className="mb-3 text-sm font-semibold text-gray-700">INFORMATIONS DE PAIEMENT</h3>
+            <div className="space-y-2">
+              {payments.payments.map((payment: any) => {
+                const paymentMethodLabels: Record<string, string> = {
+                  cash: "Espèces",
+                  check: "Chèque",
+                  transfer: "Virement",
+                  other: "Autre",
+                };
+                return (
+                  <div key={payment.id} className="flex justify-between text-sm text-gray-600 border-b border-gray-200 pb-2">
+                    <div>
+                      <span className="font-semibold">Paiement du {format(new Date(payment.paymentDate), "PPP", { locale: fr })}</span>
+                      <span className="ml-2 text-xs text-gray-500">({paymentMethodLabels[payment.paymentMethod] || payment.paymentMethod})</span>
+                    </div>
+                    <div className="font-semibold text-gray-900">
+                      {parseFloat(payment.amount).toFixed(2).replace(',', '.')} {invoice.currency}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Notes - hidden when printing */}
         {invoice.notes && (

@@ -192,7 +192,8 @@ export async function createPartialDeliveryNoteCancellation(input: {
     };
 
     const cancellationId = generateId();
-    const cancellationNumber = `BL-CAN-${new Date().getFullYear()}-${cancellationId.slice(-6)}`;
+    const { generateCancellationNumber } = await import("@/lib/utils/invoice-number-generator");
+    const cancellationNumber = generateCancellationNumber("delivery_note_cancellation", cancellationId.slice(-6));
     const cancellationDateValue = formatDateLocal(input.cancellationDate);
 
     // Get delivery note info for stock update (need noteType)

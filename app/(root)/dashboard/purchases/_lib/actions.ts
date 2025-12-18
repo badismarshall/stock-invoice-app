@@ -119,7 +119,6 @@ async function updateStockFromPurchaseOrder(
 }
 
 export async function addPurchaseOrder(input: {
-  orderNumber: string;
   supplierId: string;
   orderDate: Date;
   receptionDate?: Date;
@@ -142,18 +141,33 @@ export async function addPurchaseOrder(input: {
       };
     }
 
-    // Check if order number already exists
-    const existingOrder = await db
-      .select({ id: purchaseOrder.id })
-      .from(purchaseOrder)
-      .where(eq(purchaseOrder.orderNumber, input.orderNumber))
-      .limit(1)
-      .execute();
+    // Generate purchase order number automatically
+    const { generatePurchaseOrderNumber } = await import("@/lib/utils/invoice-number-generator");
+    let orderNumber = generatePurchaseOrderNumber();
+    
+    // Check if order number already exists and regenerate if needed
+    let attempts = 0;
+    while (attempts < 10) {
+      const existingOrder = await db
+        .select({ id: purchaseOrder.id })
+        .from(purchaseOrder)
+        .where(eq(purchaseOrder.orderNumber, orderNumber))
+        .limit(1)
+        .execute();
 
-    if (existingOrder.length > 0) {
+      if (existingOrder.length === 0) {
+        break; // Number is unique
+      }
+      
+      // Regenerate if exists
+      orderNumber = generatePurchaseOrderNumber();
+      attempts++;
+    }
+
+    if (attempts >= 10) {
       return {
         data: null,
-        error: `Le numéro de commande "${input.orderNumber}" existe déjà. Veuillez utiliser un numéro différent.`,
+        error: "Impossible de générer un numéro unique. Veuillez réessayer.",
       };
     }
 
@@ -181,7 +195,7 @@ export async function addPurchaseOrder(input: {
 
       await tx.insert(purchaseOrder).values({
         id,
-        orderNumber: input.orderNumber,
+        orderNumber: orderNumber,
         supplierId: input.supplierId,
         orderDate: orderDateValue,
         receptionDate: receptionDateValue,
@@ -438,7 +452,8 @@ export async function createInvoiceFromPurchaseOrder(input: { purchaseOrderId: s
     }
 
     // Generate invoice number if not provided
-    const invoiceNumber = input.invoiceNumber || `FAC-ACH-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 1000000)).padStart(6, '0')}`;
+    const { generateInvoiceNumber } = await import("@/lib/utils/invoice-number-generator");
+    const invoiceNumber = input.invoiceNumber || generateInvoiceNumber("purchase");
 
     // Check if invoice number already exists
     const existingInvoiceNumber = await db

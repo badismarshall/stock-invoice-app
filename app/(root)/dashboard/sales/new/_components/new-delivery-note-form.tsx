@@ -186,7 +186,6 @@ export function NewDeliveryNoteForm() {
 
       const { addDeliveryNote } = await import("../../_lib/actions");
       const result = await addDeliveryNote({
-        noteNumber: formData.noteNumber,
         noteType: "local",
         clientId: formData.clientId,
         noteDate: formData.noteDate,
@@ -251,16 +250,12 @@ export function NewDeliveryNoteForm() {
         <div className="bg-card rounded-xl shadow-sm border border-border p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">
-              N° Bon de Livraison *
+              N° Bon de Livraison (Généré automatiquement)
             </label>
             <Input
-              placeholder="Ex: BL-2023-001"
-              value={formData.noteNumber}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, noteNumber: e.target.value }))
-              }
-              required
-              disabled={loading}
+              value={formData.noteNumber || "Génération automatique..."}
+              disabled
+              className="bg-muted"
             />
           </div>
 

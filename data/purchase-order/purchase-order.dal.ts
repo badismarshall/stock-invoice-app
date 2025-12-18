@@ -13,7 +13,7 @@ import {
   or,
 } from "drizzle-orm";
 import db from "@/db";
-import { purchaseOrder, purchaseOrderItem, partner, user, product } from "@/db/schema";
+import { purchaseOrder, purchaseOrderItem, partner, user, product, invoice } from "@/db/schema";
 import type { GetPurchaseOrdersSchema } from "@/app/(root)/dashboard/purchases/_lib/validation";
 import type { PurchaseOrderDTO } from "./purchase-order.dto";
 import { filterColumns } from "@/lib/data-table/filter-columns";
@@ -147,10 +147,15 @@ export const getPurchaseOrders = async (input: GetPurchaseOrdersSchema): Promise
             id: user.id,
             name: user.name,
           },
+          invoice: {
+            id: invoice.id,
+            invoiceNumber: invoice.invoiceNumber,
+          },
         })
         .from(purchaseOrder)
         .leftJoin(partner, eq(purchaseOrder.supplierId, partner.id))
         .leftJoin(user, eq(purchaseOrder.createdBy, user.id))
+        .leftJoin(invoice, eq(purchaseOrder.id, invoice.purchaseOrderId))
         .limit(input.perPage)
         .offset(offset)
         .where(where)
@@ -197,6 +202,8 @@ export const getPurchaseOrders = async (input: GetPurchaseOrdersSchema): Promise
           createdByName: item.creator?.name || null,
           createdAt: item.purchaseOrder.createdAt,
           updatedAt: item.purchaseOrder.updatedAt,
+          invoiceId: item.invoice?.id || null,
+          invoiceNumber: item.invoice?.invoiceNumber || null,
         };
       }),
       options: {

@@ -19,7 +19,7 @@ import { getCurrentUser } from "@/data/user/user-auth";
 // Stock updates are handled when delivery notes are created/received.
 
 export async function addInvoice(input: {
-  invoiceNumber: string;
+  invoiceNumber?: string;
   invoiceType: "sale_local" | "sale_export" | "proforma" | "purchase";
   clientId: string;
   invoiceDate: Date;
@@ -58,18 +58,33 @@ export async function addInvoice(input: {
       };
     }
 
-    // Check if invoice number already exists
-    const existingInvoice = await db
-      .select({ id: invoice.id })
-      .from(invoice)
-      .where(eq(invoice.invoiceNumber, input.invoiceNumber))
-      .limit(1)
-      .execute();
+    // Generate invoice number automatically if not provided
+    const { generateInvoiceNumber } = await import("@/lib/utils/invoice-number-generator");
+    let invoiceNumber = input.invoiceNumber || generateInvoiceNumber(input.invoiceType);
+    
+    // Check if invoice number already exists and regenerate if needed
+    let attempts = 0;
+    while (attempts < 10) {
+      const existingInvoice = await db
+        .select({ id: invoice.id })
+        .from(invoice)
+        .where(eq(invoice.invoiceNumber, invoiceNumber))
+        .limit(1)
+        .execute();
 
-    if (existingInvoice.length > 0) {
+      if (existingInvoice.length === 0) {
+        break; // Number is unique
+      }
+      
+      // Regenerate if exists
+      invoiceNumber = generateInvoiceNumber(input.invoiceType);
+      attempts++;
+    }
+
+    if (attempts >= 10) {
       return {
         data: null,
-        error: `Le numéro de facture "${input.invoiceNumber}" existe déjà. Veuillez utiliser un numéro différent.`,
+        error: "Impossible de générer un numéro unique. Veuillez réessayer.",
       };
     }
 
@@ -106,7 +121,7 @@ export async function addInvoice(input: {
       // Insert invoice
       await tx.insert(invoice).values({
         id,
-        invoiceNumber: input.invoiceNumber,
+        invoiceNumber: invoiceNumber,
         invoiceType: input.invoiceType,
         clientId: input.clientId,
         invoiceDate: invoiceDateValue,
