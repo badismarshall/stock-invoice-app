@@ -11,7 +11,6 @@ export const authClient = createAuthClient(
     typeof window !== "undefined"
         ? {
             // Client-side: use current origin (works for localhost and Vercel)
-            baseURL: window.location.origin,
             plugins: [
                 organizationClient({
                     ac,
