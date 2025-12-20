@@ -123,6 +123,7 @@ export async function addPurchaseOrder(input: {
   orderDate: Date;
   receptionDate?: Date;
   status?: string;
+  supplierOrderNumber?: string;
   totalAmount?: string;
   notes?: string;
   items?: Array<{
@@ -200,6 +201,7 @@ export async function addPurchaseOrder(input: {
         orderDate: orderDateValue,
         receptionDate: receptionDateValue,
         status: (input.status as "pending" | "received" | "cancelled") || "pending",
+        supplierOrderNumber: input.supplierOrderNumber || null,
         totalAmount: input.totalAmount || null,
         notes: input.notes || null,
         createdBy: user.id,
@@ -536,6 +538,7 @@ export async function createInvoiceFromPurchaseOrder(input: { purchaseOrderId: s
         invoiceType: "purchase",
         supplierId: purchaseOrderData.supplierId,
         purchaseOrderId: input.purchaseOrderId,
+        supplierOrderNumber: purchaseOrderData.supplierOrderNumber || null,
         invoiceDate: invoiceDateValue,
         dueDate: dueDateValue,
         status: "active",

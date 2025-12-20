@@ -12,6 +12,7 @@ export const purchaseOrder = pgTable("purchase_order", {
   orderDate: date("order_date").notNull(),
   receptionDate: date("reception_date"),
   status: purchaseOrderStatusEnum("status").default("pending"),
+  supplierOrderNumber: text("supplier_order_number"),
   totalAmount: numeric("total_amount", { precision: 15, scale: 2 }),
   notes: text("notes"),
   createdBy: text("created_by").references(() => user.id, {

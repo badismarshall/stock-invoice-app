@@ -4,7 +4,7 @@ import { updateTag } from "next/cache";
 import { getErrorMessage } from "@/lib/handle-error";
 import { generateId } from "@/lib/data-table/id";
 import db from "@/db";
-import { partner, invoice, invoiceItem, product, purchaseOrder, companySettings } from "@/db/schema";
+import { partner, invoice, invoiceItem, product, purchaseOrder, companySettings, deliveryNote } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { getCurrentUser } from "@/data/user/user-auth";
 
@@ -109,6 +109,7 @@ export async function addInvoice(input: {
   deliveryLocation?: string;
   deliveryNoteId?: string;
   purchaseOrderId?: string;
+  supplierOrderNumber?: string;
   notes?: string;
   items?: Array<{
     productId: string;
@@ -213,6 +214,7 @@ export async function addInvoice(input: {
         deliveryLocation: input.deliveryLocation || null,
         deliveryNoteId: input.deliveryNoteId || null,
         purchaseOrderId: input.purchaseOrderId || null,
+        supplierOrderNumber: input.supplierOrderNumber || null,
         subtotal: subtotal.toString(),
         taxAmount: taxAmount.toString(),
         totalAmount: totalAmount.toString(),
@@ -341,6 +343,34 @@ export async function getInvoiceById(input: { id: string }) {
       }
     }
 
+    // Get delivery note info if invoice is linked to a delivery note
+    let deliveryNoteInfo = null;
+    if (item.invoice.deliveryNoteId) {
+      const deliveryNoteResult = await db
+        .select({
+          id: deliveryNote.id,
+          noteNumber: deliveryNote.noteNumber,
+          noteDate: deliveryNote.noteDate,
+          status: deliveryNote.status,
+        })
+        .from(deliveryNote)
+        .where(eq(deliveryNote.id, item.invoice.deliveryNoteId))
+        .limit(1)
+        .execute();
+      
+      if (deliveryNoteResult.length > 0) {
+        const dn = deliveryNoteResult[0];
+        deliveryNoteInfo = {
+          id: dn.id,
+          noteNumber: dn.noteNumber,
+          noteDate: typeof dn.noteDate === 'string'
+            ? new Date(dn.noteDate + 'T00:00:00')
+            : dn.noteDate,
+          status: dn.status,
+        };
+      }
+    }
+
     // Get invoice items with product info
     const items = await db
       .select({
@@ -375,6 +405,7 @@ export async function getInvoiceById(input: { id: string }) {
         supplier: item.supplier,
         client: clientInfo,
         purchaseOrder: purchaseOrderInfo,
+        deliveryNote: deliveryNoteInfo,
         invoiceDate,
         dueDate,
         currency: item.invoice.currency || "DZD",
@@ -385,6 +416,7 @@ export async function getInvoiceById(input: { id: string }) {
         notes: item.invoice.notes,
         destinationCountry: item.invoice.destinationCountry,
         deliveryLocation: item.invoice.deliveryLocation,
+        supplierOrderNumber: item.invoice.supplierOrderNumber,
         items: items.map((i) => ({
           id: i.item.id,
           productId: i.item.productId,

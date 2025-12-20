@@ -324,6 +324,7 @@ export function PrintInvoiceContent({ invoiceId }: PrintInvoiceContentProps) {
   const supplier = invoice.supplier;
   const client = invoice.client;
   const purchaseOrder = invoice.purchaseOrder;
+  const deliveryNote = invoice.deliveryNote;
   const isPurchaseInvoice = invoice.invoiceType === "purchase";
   const isDeliveryNoteInvoice = invoice.invoiceType === "delivery_note_invoice";
   const isSaleInvoice = invoice.invoiceType === "sale_invoice";
@@ -419,11 +420,11 @@ export function PrintInvoiceContent({ invoiceId }: PrintInvoiceContentProps) {
             <p className="mt-2 text-sm text-gray-600">
               N° {invoice.invoiceNumber}
             </p>
-            {isPurchaseInvoice && purchaseOrder && (
+            {/* {isPurchaseInvoice && purchaseOrder && (
               <p className="mt-1 text-xs text-gray-500">
                 Bon de commande: {purchaseOrder.orderNumber}
               </p>
-            )}
+            )} */}
           </div>
         </div>
 
@@ -453,26 +454,44 @@ export function PrintInvoiceContent({ invoiceId }: PrintInvoiceContentProps) {
                 <span className="font-semibold">Date facture:</span>{" "}
                 {format(invoice.invoiceDate, "PPP", { locale: fr })}
               </p>
-              {isPurchaseInvoice && purchaseOrder ? (
+              {isPurchaseInvoice ? (
                 <>
-                  <p>
-                    <span className="font-semibold">Date commande:</span>{" "}
-                    {format(purchaseOrder.orderDate, "PPP", { locale: fr })}
-                  </p>
-                  {purchaseOrder.receptionDate && (
+                  {purchaseOrder ? (
+                    <>
+                      <p>
+                        <span className="font-semibold">Date commande:</span>{" "}
+                        {format(purchaseOrder.orderDate, "PPP", { locale: fr })}
+                      </p>
+                      {purchaseOrder.receptionDate && (
+                        <p>
+                          <span className="font-semibold">Date réception:</span>{" "}
+                          {format(purchaseOrder.receptionDate, "PPP", { locale: fr })}
+                        </p>
+                      )}
+                    </>
+                  ) : null}
+                  {invoice.supplierOrderNumber && (
                     <p>
-                      <span className="font-semibold">Date réception:</span>{" "}
-                      {format(purchaseOrder.receptionDate, "PPP", { locale: fr })}
+                      <span className="font-semibold">N° de commande fournisseur:</span>{" "}
+                      {invoice.supplierOrderNumber}
                     </p>
                   )}
                 </>
               ) : (
-                !isSaleInvoice && invoice.dueDate && (
-                  <p>
-                    <span className="font-semibold">Date d'échéance:</span>{" "}
-                    {format(invoice.dueDate, "PPP", { locale: fr })}
-                  </p>
-                )
+                <>
+                  {isSaleInvoice && deliveryNote && (
+                    <p>
+                      <span className="font-semibold">N° de bon de livraison:</span>{" "}
+                      {deliveryNote.noteNumber}
+                    </p>
+                  )}
+                  {!isSaleInvoice && invoice.dueDate && (
+                    <p>
+                      <span className="font-semibold">Date d'échéance:</span>{" "}
+                      {format(invoice.dueDate, "PPP", { locale: fr })}
+                    </p>
+                  )}
+                </>
               )}
               {!isPurchaseInvoice && (
                 <>

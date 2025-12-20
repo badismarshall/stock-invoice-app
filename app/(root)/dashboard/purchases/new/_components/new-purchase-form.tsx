@@ -46,6 +46,7 @@ export function NewPurchaseForm() {
     orderDate: new Date(),
     receptionDate: new Date ,
     status: "pending" as "pending" | "received" | "cancelled",
+    supplierOrderNumber: "",
     notes: "",
     items: [] as PurchaseOrderItem[],
   });
@@ -160,6 +161,7 @@ export function NewPurchaseForm() {
         orderDate: formData.orderDate,
         receptionDate: formData.receptionDate,
         status: formData.status,
+        supplierOrderNumber: formData.supplierOrderNumber || undefined,
         totalAmount: totalTTC.toString(),
         notes: formData.notes || undefined,
         items: formData.items.map((item) => ({
@@ -247,6 +249,18 @@ export function NewPurchaseForm() {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">N° de commande fournisseur</label>
+            <Input
+              placeholder="Numéro de commande du fournisseur"
+              value={formData.supplierOrderNumber}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, supplierOrderNumber: e.target.value }))
+              }
+              disabled={loading}
+            />
           </div>
 
           <div className="space-y-2">

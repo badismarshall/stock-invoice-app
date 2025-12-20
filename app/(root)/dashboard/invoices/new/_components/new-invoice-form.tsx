@@ -58,6 +58,7 @@ export function NewInvoiceForm() {
     destinationCountry: "",
     deliveryLocation: "",
     currency: "DZD",
+    supplierOrderNumber: "",
     notes: "",
     items: [] as InvoiceItem[],
   });
@@ -203,6 +204,7 @@ export function NewInvoiceForm() {
         destinationCountry: formData.destinationCountry || undefined,
         deliveryLocation: formData.deliveryLocation || undefined,
         deliveryNoteId: formData.deliveryNoteId || undefined,
+        supplierOrderNumber: formData.invoiceType === "purchase" ? (formData.supplierOrderNumber || undefined) : undefined,
         notes: formData.notes || undefined,
         items: formData.items.map((item) => ({
           productId: item.productId,
@@ -288,7 +290,8 @@ export function NewInvoiceForm() {
                   supplierId: "", 
                   deliveryNoteId: "", 
                   destinationCountry: "", 
-                  currency: "DZD" 
+                  currency: "DZD",
+                  supplierOrderNumber: "" 
                 }));
               }}
               disabled={loading}
@@ -308,27 +311,40 @@ export function NewInvoiceForm() {
           </div>
 
           {formData.invoiceType === "purchase" ? (
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Fournisseur *</label>
-              <Select
-                value={formData.supplierId}
-                onValueChange={(value) =>
-                  setFormData((prev) => ({ ...prev, supplierId: value }))
-                }
-                disabled={loading}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner un fournisseur" />
-                </SelectTrigger>
-                <SelectContent>
-                  {suppliers.map((supplier) => (
-                    <SelectItem key={supplier.id} value={supplier.id}>
-                      {supplier.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Fournisseur *</label>
+                <Select
+                  value={formData.supplierId}
+                  onValueChange={(value) =>
+                    setFormData((prev) => ({ ...prev, supplierId: value }))
+                  }
+                  disabled={loading}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner un fournisseur" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {suppliers.map((supplier) => (
+                      <SelectItem key={supplier.id} value={supplier.id}>
+                        {supplier.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">N° de commande fournisseur</label>
+                <Input
+                  placeholder="Numéro de commande du fournisseur"
+                  value={formData.supplierOrderNumber}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, supplierOrderNumber: e.target.value }))
+                  }
+                  disabled={loading}
+                />
+              </div>
+            </>
           ) : (
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">Client *</label>

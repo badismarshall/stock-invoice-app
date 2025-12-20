@@ -285,6 +285,7 @@ export const getPurchaseOrderById = async (id: string) => {
       orderDate,
       receptionDate,
       status: item.purchaseOrder.status || "pending",
+      supplierOrderNumber: item.purchaseOrder.supplierOrderNumber || null,
       totalAmount: item.purchaseOrder.totalAmount,
       notes: item.purchaseOrder.notes,
       createdBy: item.purchaseOrder.createdBy,

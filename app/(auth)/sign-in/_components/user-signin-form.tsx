@@ -138,14 +138,14 @@ export function LoginUserAuthForm({ className, ...props }: UserAuthFormProps) {
                 </div>
               </FormControl>
               <FormMessage />
-              <FormDescription className="text-primary text-end">
+              {/* <FormDescription className="text-primary text-end">
                 <Link
                   href="/forget-password"
                   className="text-primary"
                 >
                   Mot de passe oublié ?
                 </Link>
-              </FormDescription>
+              </FormDescription> */}
             </FormItem>
           )}
         />

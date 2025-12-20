@@ -33,6 +33,7 @@ export const invoice = pgTable(
     currency: text("currency").default("DZD"),
     destinationCountry: text("destination_country"),
     deliveryLocation: text("delivery_location"),
+    supplierOrderNumber: text("supplier_order_number"),
     subtotal: numeric("subtotal", { precision: 15, scale: 2 })
       .notNull()
       .default("0"),
