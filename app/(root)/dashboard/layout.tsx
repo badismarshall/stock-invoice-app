@@ -12,20 +12,19 @@ async function SidebarWrapper({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider defaultOpen={defaultOpen}>
       <SideBar />
-      <SidebarInset className="px-2 pt-2">
+      {/* <SidebarInset className="px-2 pt-2">
         <HeaderInsetSidebar />
-        {/* <SidebarTrigger />	 */}
         <div className="@container/main flex flex-1 flex-col gap-2 p-8 md:flex">
           {children}
         </div>
-      </SidebarInset>
+      </SidebarInset> */}
+      {children}
     </SidebarProvider>
   );
 }
 function SidebarWrapperFallback({ children }: { children: React.ReactNode }) {
   return (
-    <SidebarProvider defaultOpen={true}>
-      <SideBar />
+    <Suspense fallback={ <div>Loading...</div> }>
       <SidebarInset className="px-2 pt-2">
         <HeaderInsetSidebar />
         {/* <SidebarTrigger />	 */}
@@ -33,7 +32,7 @@ function SidebarWrapperFallback({ children }: { children: React.ReactNode }) {
           {children}
         </div>
       </SidebarInset>
-    </SidebarProvider>
+    </Suspense>
   );
 }
 
@@ -45,7 +44,9 @@ export default function DashboardLayout({
   return (
     <Suspense fallback={ <div>Loading...</div> }>
       <SidebarWrapper>
-        {children}
+        <SidebarWrapperFallback>
+          {children}
+        </SidebarWrapperFallback>
       </SidebarWrapper>
     </Suspense>
   );

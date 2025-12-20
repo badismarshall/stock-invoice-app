@@ -243,6 +243,12 @@ export const adminSidebarItemsGeneralSetting = [
         icon: Settings,
         isActive: false,
       },
+      {
+        title: 'Changer le mot de passe',
+        url: '/dashboard/settings/change-password',
+        icon: Lock,
+        isActive: false,
+      },
     ],
   }
 ];

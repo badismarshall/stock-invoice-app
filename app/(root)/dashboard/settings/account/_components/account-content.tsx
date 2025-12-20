@@ -3,11 +3,13 @@
 import * as React from "react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { User, Mail, Shield, Calendar, CheckCircle2, XCircle } from "lucide-react";
+import { User, Mail, Shield, Calendar, CheckCircle2, XCircle, Key } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 interface AccountContentProps {
   user: {
@@ -140,6 +142,17 @@ export function AccountContent({ user }: AccountContentProps) {
                   </Badge>
                 )}
               </div>
+            </div>
+
+            <Separator />
+
+            <div className="pt-4">
+              <Button asChild variant="outline" className="w-full">
+                <Link href="/dashboard/settings/change-password">
+                  <Key className="mr-2 h-4 w-4" />
+                  Changer le mot de passe
+                </Link>
+              </Button>
             </div>
           </CardContent>
         </Card>
