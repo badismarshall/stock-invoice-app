@@ -266,6 +266,31 @@ export async function createPartialDeliveryNoteCancellation(input: {
           lineTotal: lineTotal.toString(),
         });
 
+        // Update delivery note item: decrease quantity and lineTotal proportionally
+        const currentItem = await tx
+          .select()
+          .from(deliveryNoteItem)
+          .where(eq(deliveryNoteItem.id, item.deliveryNoteItemId))
+          .limit(1);
+
+        if (currentItem.length > 0) {
+          const currentQuantity = parseFloat(currentItem[0].quantity);
+          const currentLineTotal = parseFloat(currentItem[0].lineTotal);
+          const newQuantity = currentQuantity - item.quantity;
+          
+          // Calculate new lineTotal proportionally
+          const quantityRatio = currentQuantity > 0 ? newQuantity / currentQuantity : 0;
+          const newLineTotal = currentLineTotal * quantityRatio;
+
+          await tx
+            .update(deliveryNoteItem)
+            .set({
+              quantity: newQuantity.toString(),
+              lineTotal: newLineTotal.toFixed(2),
+            })
+            .where(eq(deliveryNoteItem.id, item.deliveryNoteItemId));
+        }
+
         stockUpdateItems.push({
           productId: availableItem.productId,
           quantity: item.quantity,
@@ -488,12 +513,48 @@ export async function updateDeliveryNoteCancellation(input: {
         await tx.delete(stockMovement).where(eq(stockMovement.id, movement.id));
       }
 
-      // 2) Delete existing cancellation items
+      // 2) Restore quantities in delivery_note_item for previously cancelled items
+      const existingCancellationItems = await tx
+        .select()
+        .from(deliveryNoteCancellationItem)
+        .where(eq(deliveryNoteCancellationItem.deliveryNoteCancellationId, input.id));
+
+      for (const cancelledItem of existingCancellationItems) {
+        const deliveryNoteItem = await tx
+          .select()
+          .from(deliveryNoteItem)
+          .where(eq(deliveryNoteItem.id, cancelledItem.deliveryNoteItemId))
+          .limit(1);
+
+        if (deliveryNoteItem.length > 0) {
+          const currentQuantity = parseFloat(deliveryNoteItem[0].quantity);
+          const currentLineTotal = parseFloat(deliveryNoteItem[0].lineTotal);
+          const cancelledQuantity = parseFloat(cancelledItem.quantity);
+          
+          // Restore the previously cancelled quantity
+          const restoredQuantity = currentQuantity + cancelledQuantity;
+          
+          // Restore lineTotal proportionally
+          const totalQuantity = restoredQuantity;
+          const quantityRatio = totalQuantity > 0 ? totalQuantity / (totalQuantity - cancelledQuantity) : 1;
+          const restoredLineTotal = currentLineTotal * quantityRatio;
+
+          await tx
+            .update(deliveryNoteItem)
+            .set({
+              quantity: restoredQuantity.toString(),
+              lineTotal: restoredLineTotal.toFixed(2),
+            })
+            .where(eq(deliveryNoteItem.id, cancelledItem.deliveryNoteItemId));
+        }
+      }
+
+      // 3) Delete existing cancellation items
       await tx
         .delete(deliveryNoteCancellationItem)
         .where(eq(deliveryNoteCancellationItem.deliveryNoteCancellationId, input.id));
 
-      // 3) Update cancellation main fields
+      // 4) Update cancellation main fields
       await tx
         .update(deliveryNoteCancellation)
         .set({
@@ -502,7 +563,7 @@ export async function updateDeliveryNoteCancellation(input: {
         })
         .where(eq(deliveryNoteCancellation.id, input.id));
 
-      // 4) Create new cancellation items and collect stock update data
+      // 5) Create new cancellation items and collect stock update data
       const stockUpdateItems: Array<{
         productId: string;
         quantity: number;
@@ -540,6 +601,31 @@ export async function updateDeliveryNoteCancellation(input: {
           lineTotal: lineTotal.toString(),
         });
 
+        // Update delivery note item: decrease quantity and lineTotal proportionally
+        const currentItem = await tx
+          .select()
+          .from(deliveryNoteItem)
+          .where(eq(deliveryNoteItem.id, item.deliveryNoteItemId))
+          .limit(1);
+
+        if (currentItem.length > 0) {
+          const currentQuantity = parseFloat(currentItem[0].quantity);
+          const currentLineTotal = parseFloat(currentItem[0].lineTotal);
+          const newQuantity = currentQuantity - item.quantity;
+          
+          // Calculate new lineTotal proportionally
+          const quantityRatio = currentQuantity > 0 ? newQuantity / currentQuantity : 0;
+          const newLineTotal = currentLineTotal * quantityRatio;
+
+          await tx
+            .update(deliveryNoteItem)
+            .set({
+              quantity: newQuantity.toString(),
+              lineTotal: newLineTotal.toFixed(2),
+            })
+            .where(eq(deliveryNoteItem.id, item.deliveryNoteItemId));
+        }
+
         stockUpdateItems.push({
           productId: existingItem.productId,
           quantity: item.quantity,
@@ -547,7 +633,7 @@ export async function updateDeliveryNoteCancellation(input: {
         });
       }
 
-      // 5) Re-apply stock movements with new quantities
+      // 6) Re-apply stock movements with new quantities
       await updateStockFromCancellation(
         tx,
         stockUpdateItems,
@@ -690,7 +776,44 @@ export async function deleteCancellationItem(input: {
         await tx.delete(stockMovement).where(eq(stockMovement.id, movementToDelete.id));
       }
 
-      // 2) Delete the cancellation item
+      // 2) Restore quantity in delivery_note_item before deleting cancellation item
+      const cancellationItem = await tx
+        .select()
+        .from(deliveryNoteCancellationItem)
+        .where(eq(deliveryNoteCancellationItem.id, input.itemId))
+        .limit(1);
+
+      if (cancellationItem.length > 0) {
+        const cancelledItem = cancellationItem[0];
+        const deliveryNoteItem = await tx
+          .select()
+          .from(deliveryNoteItem)
+          .where(eq(deliveryNoteItem.id, cancelledItem.deliveryNoteItemId))
+          .limit(1);
+
+        if (deliveryNoteItem.length > 0) {
+          const currentQuantity = parseFloat(deliveryNoteItem[0].quantity);
+          const currentLineTotal = parseFloat(deliveryNoteItem[0].lineTotal);
+          const cancelledQuantity = parseFloat(cancelledItem.quantity);
+          
+          // Restore the cancelled quantity
+          const restoredQuantity = currentQuantity + cancelledQuantity;
+          
+          // Restore lineTotal proportionally based on quantity ratio
+          const quantityRatio = currentQuantity > 0 ? restoredQuantity / currentQuantity : 1;
+          const restoredLineTotal = currentLineTotal * quantityRatio;
+
+          await tx
+            .update(deliveryNoteItem)
+            .set({
+              quantity: restoredQuantity.toString(),
+              lineTotal: restoredLineTotal.toFixed(2),
+            })
+            .where(eq(deliveryNoteItem.id, cancelledItem.deliveryNoteItemId));
+        }
+      }
+
+      // 3) Delete the cancellation item
       await tx
         .delete(deliveryNoteCancellationItem)
         .where(eq(deliveryNoteCancellationItem.id, input.itemId));
@@ -822,12 +945,47 @@ export async function deleteDeliveryNoteCancellation(input: { id: string }) {
         await tx.delete(stockMovement).where(eq(stockMovement.id, movement.id));
       }
 
-      // 2) Delete all cancellation items
+      // 2) Restore quantities in delivery_note_item before deleting cancellation items
+      const cancellationItems = await tx
+        .select()
+        .from(deliveryNoteCancellationItem)
+        .where(eq(deliveryNoteCancellationItem.deliveryNoteCancellationId, input.id));
+
+      for (const cancelledItem of cancellationItems) {
+        const deliveryNoteItem = await tx
+          .select()
+          .from(deliveryNoteItem)
+          .where(eq(deliveryNoteItem.id, cancelledItem.deliveryNoteItemId))
+          .limit(1);
+
+        if (deliveryNoteItem.length > 0) {
+          const currentQuantity = parseFloat(deliveryNoteItem[0].quantity);
+          const currentLineTotal = parseFloat(deliveryNoteItem[0].lineTotal);
+          const cancelledQuantity = parseFloat(cancelledItem.quantity);
+          
+          // Restore the cancelled quantity
+          const restoredQuantity = currentQuantity + cancelledQuantity;
+          
+          // Restore lineTotal proportionally based on quantity ratio
+          const quantityRatio = currentQuantity > 0 ? restoredQuantity / currentQuantity : 1;
+          const restoredLineTotal = currentLineTotal * quantityRatio;
+
+          await tx
+            .update(deliveryNoteItem)
+            .set({
+              quantity: restoredQuantity.toString(),
+              lineTotal: restoredLineTotal.toFixed(2),
+            })
+            .where(eq(deliveryNoteItem.id, cancelledItem.deliveryNoteItemId));
+        }
+      }
+
+      // 3) Delete all cancellation items
       await tx
         .delete(deliveryNoteCancellationItem)
         .where(eq(deliveryNoteCancellationItem.deliveryNoteCancellationId, input.id));
 
-      // 3) Delete the cancellation
+      // 4) Delete the cancellation
       await tx
         .delete(deliveryNoteCancellation)
         .where(eq(deliveryNoteCancellation.id, input.id));
@@ -934,13 +1092,49 @@ export async function deleteDeliveryNoteCancellations(input: { ids: string[] }) 
           await tx.delete(stockMovement).where(eq(stockMovement.id, movement.id));
         }
 
-        // 2) Delete all cancellation items
+        // 2) Restore quantities in delivery_note_item before deleting cancellation items
+        const cancellationItems = await tx
+          .select()
+          .from(deliveryNoteCancellationItem)
+          .where(eq(deliveryNoteCancellationItem.deliveryNoteCancellationId, cancellation.id));
+
+        for (const cancelledItem of cancellationItems) {
+          const deliveryNoteItem = await tx
+            .select()
+            .from(deliveryNoteItem)
+            .where(eq(deliveryNoteItem.id, cancelledItem.deliveryNoteItemId))
+            .limit(1);
+
+          if (deliveryNoteItem.length > 0) {
+            const currentQuantity = parseFloat(deliveryNoteItem[0].quantity);
+            const currentLineTotal = parseFloat(deliveryNoteItem[0].lineTotal);
+            const cancelledQuantity = parseFloat(cancelledItem.quantity);
+            
+            // Restore the cancelled quantity
+            const restoredQuantity = currentQuantity + cancelledQuantity;
+            
+            // Restore lineTotal proportionally
+            const totalQuantity = restoredQuantity;
+            const quantityRatio = totalQuantity > 0 ? totalQuantity / (totalQuantity - cancelledQuantity) : 1;
+            const restoredLineTotal = currentLineTotal * quantityRatio;
+
+            await tx
+              .update(deliveryNoteItem)
+              .set({
+                quantity: restoredQuantity.toString(),
+                lineTotal: restoredLineTotal.toFixed(2),
+              })
+              .where(eq(deliveryNoteItem.id, cancelledItem.deliveryNoteItemId));
+          }
+        }
+
+        // 3) Delete all cancellation items
         await tx
           .delete(deliveryNoteCancellationItem)
           .where(eq(deliveryNoteCancellationItem.deliveryNoteCancellationId, cancellation.id));
       }
 
-      // 3) Delete all cancellations
+      // 4) Delete all cancellations
       await tx
         .delete(deliveryNoteCancellation)
         .where(inArray(deliveryNoteCancellation.id, input.ids));

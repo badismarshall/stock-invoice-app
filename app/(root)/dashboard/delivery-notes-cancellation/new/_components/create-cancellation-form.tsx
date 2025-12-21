@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { ArrowLeft, Save } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -27,6 +27,7 @@ interface SelectedItem {
 
 export function CreateCancellationForm() {
   const router = useRouter();
+  const pathname = usePathname();
   const [loading, setLoading] = useState(false);
   const [clients, setClients] = useState<Array<{ id: string; name: string }>>([]);
   const [clientItems, setClientItems] = useState<ClientDeliveryNoteItemDTO[]>([]);
@@ -38,6 +39,19 @@ export function CreateCancellationForm() {
     cancellationDate: new Date(),
     reason: "",
   });
+
+  // Reset form state when component mounts or when pathname changes (useful when navigating back to this page)
+  useEffect(() => {
+    setFormData({
+      clientId: "",
+      cancellationDate: new Date(),
+      reason: "",
+    });
+    setSelectedItems(new Map());
+    setClientItems([]);
+    setLoading(false);
+    setLoadingItems(false);
+  }, [pathname]);
 
   useEffect(() => {
     const fetchClients = async () => {
@@ -213,15 +227,18 @@ export function CreateCancellationForm() {
 
       if (result.error) {
         toast.error(result.error);
-        setLoading(false);
         return;
       }
 
       toast.success("Annulation créée avec succès");
+      
+      // Navigate and refresh
       router.push("/dashboard/delivery-notes-cancellation");
+      router.refresh();
     } catch (error) {
       console.error("Error creating cancellation", error);
       toast.error("Erreur lors de la création de l'annulation");
+    } finally {
       setLoading(false);
     }
   };

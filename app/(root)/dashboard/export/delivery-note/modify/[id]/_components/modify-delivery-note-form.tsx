@@ -82,7 +82,7 @@ export function ModifyDeliveryNoteForm({ deliveryNote }: ModifyDeliveryNoteFormP
       name: string;
       code: string;
       purchasePrice: number;
-      salePriceLocal: number | null;
+      salePriceExport: number | null;
       taxRate: number;
       unitOfMeasure: string;
     }>
@@ -92,7 +92,9 @@ export function ModifyDeliveryNoteForm({ deliveryNote }: ModifyDeliveryNoteFormP
     noteNumber: deliveryNote.noteNumber,
     clientId: deliveryNote.clientId || "",
     noteDate: deliveryNote.noteDate,
+    destinationCountry: deliveryNote.destinationCountry || "",
     deliveryLocation: deliveryNote.deliveryLocation || "",
+    currency: deliveryNote.currency || "USD",
     notes: deliveryNote.notes || "",
     items: [] as DeliveryNoteItem[],
   });
@@ -139,7 +141,7 @@ export function ModifyDeliveryNoteForm({ deliveryNote }: ModifyDeliveryNoteFormP
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const actionsModule = await import("../../../_lib/actions");
+        const actionsModule = await import("../../../../_lib/actions");
         const [clientsResult, productsResult] = await Promise.all([
           actionsModule.getAllClients(),
           actionsModule.getAllActiveProducts(),
@@ -216,7 +218,7 @@ export function ModifyDeliveryNoteForm({ deliveryNote }: ModifyDeliveryNoteFormP
         if (product) {
           item.productName = product.name;
           item.purchasePrice = product.purchasePrice || 0;
-          item.unitPrice = product.salePriceLocal || 0;
+          item.unitPrice = product.salePriceExport || 0;
           item.taxRate = product.taxRate || 0;
           // Calculate initial margin
           item.margin = item.unitPrice - item.purchasePrice;
@@ -274,17 +276,28 @@ export function ModifyDeliveryNoteForm({ deliveryNote }: ModifyDeliveryNoteFormP
         return;
       }
 
-      // Allow submission even with no items - stock will be adjusted accordingly
+      if (!formData.destinationCountry) {
+        toast.error("Veuillez saisir le pays de destination");
+        setLoading(false);
+        return;
+      }
 
-      const { updateDeliveryNote } = await import("../../../_lib/actions");
+      if (formData.items.length === 0) {
+        toast.error("Veuillez ajouter au moins un produit");
+        setLoading(false);
+        return;
+      }
+
+      const { updateDeliveryNote } = await import("../../../../_lib/actions");
       const result = await updateDeliveryNote({
         id: deliveryNote.id,
         noteNumber: formData.noteNumber,
-        noteType: (deliveryNote.noteType as "local" | "export") || "local",
+        noteType: (deliveryNote.noteType as "local" | "export") || "export",
         clientId: formData.clientId,
         noteDate: formData.noteDate,
         status: deliveryNote.status || "active",
-        currency: deliveryNote.currency || "DZD",
+        currency: formData.currency || "USD",
+        destinationCountry: formData.destinationCountry || undefined,
         deliveryLocation: formData.deliveryLocation || undefined,
         notes: formData.notes || undefined,
         items: formData.items.map((item) => ({
@@ -301,12 +314,12 @@ export function ModifyDeliveryNoteForm({ deliveryNote }: ModifyDeliveryNoteFormP
         throw new Error(result.error);
       }
 
-      toast.success("Bon de livraison modifié avec succès", {
+      toast.success("Bon de livraison export modifié avec succès", {
         position: "bottom-center",
         duration: 3000,
       });
 
-      router.push("/dashboard/sales");
+      router.push("/dashboard/export");
       router.refresh();
     } catch (error) {
       toast.error(
@@ -330,17 +343,17 @@ export function ModifyDeliveryNoteForm({ deliveryNote }: ModifyDeliveryNoteFormP
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => router.push("/dashboard/sales")}
+            onClick={() => router.push("/dashboard/export")}
             className="hover:bg-muted"
           >
             <ArrowLeft size={24} />
           </Button>
           <div>
             <h1 className="text-2xl font-bold text-foreground">
-              Modifier Bon de Livraison
+              Modifier Bon de Livraison Export
             </h1>
             <p className="text-muted-foreground">
-              Modification d'un bon de livraison pour vente locale
+              Modification d'un bon de livraison pour export
             </p>
           </div>
         </div>
@@ -354,7 +367,7 @@ export function ModifyDeliveryNoteForm({ deliveryNote }: ModifyDeliveryNoteFormP
               N° Bon de Livraison *
             </label>
             <Input
-              placeholder="Ex: BL-2023-001"
+              placeholder="Ex: BL-EXP-2023-001"
               value={formData.noteNumber}
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, noteNumber: e.target.value }))
@@ -420,6 +433,40 @@ export function ModifyDeliveryNoteForm({ deliveryNote }: ModifyDeliveryNoteFormP
                 />
               </PopoverContent>
             </Popover>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">
+              Pays de destination *
+            </label>
+            <Input
+              placeholder="Ex: France, Espagne..."
+              value={formData.destinationCountry}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, destinationCountry: e.target.value }))
+              }
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Devise</label>
+            <Select
+              value={formData.currency}
+              onValueChange={(value) =>
+                setFormData((prev) => ({ ...prev, currency: value }))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="USD">USD</SelectItem>
+                <SelectItem value="EUR">EUR</SelectItem>
+                <SelectItem value="GBP">GBP</SelectItem>
+                <SelectItem value="DZD">DZD</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2 md:col-span-3">
@@ -610,13 +657,13 @@ export function ModifyDeliveryNoteForm({ deliveryNote }: ModifyDeliveryNoteFormP
                         />
                       </td>
                       <td className="px-4 py-2 text-sm text-right min-w-[110px]">
-                        {item.lineSubtotal.toFixed(2)} DZD
+                        {item.lineSubtotal.toFixed(2)} {formData.currency}
                       </td>
                       <td className="px-4 py-2 text-sm text-right min-w-[100px]">
-                        {item.lineTax.toFixed(2)} DZD
+                        {item.lineTax.toFixed(2)} {formData.currency}
                       </td>
                       <td className="px-4 py-2 text-sm text-right min-w-[120px]">
-                        {item.lineTotal.toFixed(2)} DZD
+                        {item.lineTotal.toFixed(2)} {formData.currency}
                       </td>
                       <td className="px-4 py-2 text-center min-w-[80px]">
                         <Button
@@ -655,7 +702,7 @@ export function ModifyDeliveryNoteForm({ deliveryNote }: ModifyDeliveryNoteFormP
                   Total HT
                 </span>
                 <span className="font-semibold">
-                  {totalHT.toFixed(2)} DZD
+                  {totalHT.toFixed(2)} {formData.currency}
                 </span>
               </div>
               <div className="flex justify-between gap-4">
@@ -663,7 +710,7 @@ export function ModifyDeliveryNoteForm({ deliveryNote }: ModifyDeliveryNoteFormP
                   Total TVA
                 </span>
                 <span className="font-semibold">
-                  {totalTax.toFixed(2)} DZD
+                  {totalTax.toFixed(2)} {formData.currency}
                 </span>
               </div>
               <div className="flex justify-between gap-4">
@@ -671,7 +718,7 @@ export function ModifyDeliveryNoteForm({ deliveryNote }: ModifyDeliveryNoteFormP
                   Total TTC
                 </span>
                 <span className="font-semibold">
-                  {totalTTC.toFixed(2)} DZD
+                  {totalTTC.toFixed(2)} {formData.currency}
                 </span>
               </div>
             </div>
@@ -683,7 +730,7 @@ export function ModifyDeliveryNoteForm({ deliveryNote }: ModifyDeliveryNoteFormP
           <Button
             type="button"
             variant="outline"
-            onClick={() => router.push("/dashboard/sales")}
+            onClick={() => router.push("/dashboard/export")}
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Annuler

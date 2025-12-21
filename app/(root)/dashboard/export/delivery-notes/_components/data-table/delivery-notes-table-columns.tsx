@@ -7,6 +7,9 @@ import {
   Ellipsis,
   Hash,
   Badge as BadgeIcon,
+  CheckCircle2,
+  XCircle,
+  FileText,
 } from "lucide-react";
 import * as React from "react";
 import { DataTableColumnHeader } from "@/components/shared/data-table/data-table-column-header";
@@ -16,10 +19,18 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/handle-error";
+import { updateDeliveryNoteStatus, getInvoicesByDeliveryNoteId, createInvoiceFromDeliveryNote } from "../../../_lib/actions";
 import { formatDate } from "@/lib/data-table/format";
 import type { DataTableRowAction } from "@/types/data-table";
 import type { DeliveryNoteDTOItem } from "@/data/delivery-note/delivery-note.dto";
@@ -45,6 +56,8 @@ const translations = {
   selectRow: "Sélectionner la ligne",
   active: "Actif",
   cancelled: "Annulé",
+  updating: "Mise à jour...",
+  statusUpdated: "Statut mis à jour",
 };
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -217,6 +230,117 @@ export function getDeliveryNotesTableColumns({
       cell: function Cell({ row }) {
         const router = useRouter();
         const deliveryNote = row.original;
+        const [isUpdatePending, startUpdateTransition] = React.useTransition();
+        const [isLoadingInvoices, setIsLoadingInvoices] = React.useState(true);
+        const [invoices, setInvoices] = React.useState<Array<{ id: string; invoiceNumber: string; invoiceType: string }>>([]);
+
+        // Load invoices when component mounts
+        React.useEffect(() => {
+          const loadInvoices = async () => {
+            setIsLoadingInvoices(true);
+            try {
+              const result = await getInvoicesByDeliveryNoteId({ deliveryNoteId: deliveryNote.id });
+              if (result.data) {
+                setInvoices(result.data);
+              }
+            } catch (error) {
+              console.error("Error loading invoices", error);
+            } finally {
+              setIsLoadingInvoices(false);
+            }
+          };
+          loadInvoices();
+        }, [deliveryNote.id]);
+
+        const deliveryNoteInvoice = invoices.find(inv => inv.invoiceType === "delivery_note_invoice");
+        const exportInvoice = invoices.find(inv => inv.invoiceType === "sale_export");
+
+        const [isCreatingDeliveryNoteInvoice, setIsCreatingDeliveryNoteInvoice] = React.useState(false);
+        const [isCreatingExportInvoice, setIsCreatingExportInvoice] = React.useState(false);
+
+        const handleCreateDeliveryNoteInvoice = async () => {
+          // If invoice already exists, just print it
+          if (deliveryNoteInvoice) {
+            router.push(`/dashboard/invoices/print/${deliveryNoteInvoice.id}`);
+            return;
+          }
+
+          setIsCreatingDeliveryNoteInvoice(true);
+          try {
+            const result = await createInvoiceFromDeliveryNote({
+              deliveryNoteId: deliveryNote.id,
+              invoiceType: "delivery_note_invoice",
+            });
+
+            if (result.error) {
+              toast.error(result.error);
+              return;
+            }
+
+            if (result.alreadyExists && result.data) {
+              toast.info("Bon de livraison déjà créé", {
+                description: `Facture: ${result.data.invoiceNumber}`,
+              });
+              router.push(`/dashboard/invoices/print/${result.data.invoiceId}`);
+            } else if (result.data) {
+              toast.success("Bon de livraison créé", {
+                description: `Facture: ${result.data.invoiceNumber}`,
+              });
+              router.push(`/dashboard/invoices/print/${result.data.invoiceId}`);
+            }
+          } catch (error) {
+            toast.error(getErrorMessage(error));
+          } finally {
+            setIsCreatingDeliveryNoteInvoice(false);
+            // Reload invoices
+            const result = await getInvoicesByDeliveryNoteId({ deliveryNoteId: deliveryNote.id });
+            if (result.data) {
+              setInvoices(result.data);
+            }
+          }
+        };
+
+        const handleCreateExportInvoice = async () => {
+          // If invoice already exists, just print it
+          if (exportInvoice) {
+            router.push(`/dashboard/invoices/print/${exportInvoice.id}`);
+            return;
+          }
+
+          setIsCreatingExportInvoice(true);
+          try {
+            const result = await createInvoiceFromDeliveryNote({
+              deliveryNoteId: deliveryNote.id,
+              invoiceType: "sale_export",
+            });
+
+            if (result.error) {
+              toast.error(result.error);
+              return;
+            }
+
+            if (result.alreadyExists && result.data) {
+              toast.info("Facture export déjà créée", {
+                description: `Facture: ${result.data.invoiceNumber}`,
+              });
+              router.push(`/dashboard/invoices/print/${result.data.invoiceId}`);
+            } else if (result.data) {
+              toast.success("Facture export créée", {
+                description: `Facture: ${result.data.invoiceNumber}`,
+              });
+              router.push(`/dashboard/invoices/print/${result.data.invoiceId}`);
+            }
+          } catch (error) {
+            toast.error(getErrorMessage(error));
+          } finally {
+            setIsCreatingExportInvoice(false);
+            // Reload invoices
+            const result = await getInvoicesByDeliveryNoteId({ deliveryNoteId: deliveryNote.id });
+            if (result.data) {
+              setInvoices(result.data);
+            }
+          }
+        };
 
         return (
           <DropdownMenu>
@@ -235,6 +359,64 @@ export function getDeliveryNotesTableColumns({
               >
                 {translations.edit}
               </DropdownMenuItem>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>{translations.status}</DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuRadioGroup
+                    value={deliveryNote.status || "active"}
+                    onValueChange={(value) => {
+                      startUpdateTransition(() => {
+                        toast.promise(
+                          updateDeliveryNoteStatus({
+                            id: deliveryNote.id,
+                            status: value as "active" | "cancelled",
+                          }),
+                          {
+                            loading: translations.updating,
+                            success: translations.statusUpdated,
+                            error: (err) => getErrorMessage(err),
+                          }
+                        );
+                      });
+                    }}
+                  >
+                    <DropdownMenuRadioItem
+                      value="active"
+                      disabled={isUpdatePending}
+                    >
+                      {translations.active}
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem
+                      value="cancelled"
+                      disabled={isUpdatePending}
+                    >
+                      {translations.cancelled}
+                    </DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onSelect={handleCreateDeliveryNoteInvoice}
+                disabled={isCreatingDeliveryNoteInvoice || isCreatingExportInvoice}
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                {isCreatingDeliveryNoteInvoice ? "Création..." : deliveryNoteInvoice ? "Imprimer Bon de Livraison" : "Créer Bon de Livraison"}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={handleCreateExportInvoice}
+                disabled={isCreatingExportInvoice || isCreatingDeliveryNoteInvoice}
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                {isCreatingExportInvoice ? "Création..." : exportInvoice ? "Imprimer Facture Export" : "Créer Facture Export"}
+              </DropdownMenuItem>
+              {exportInvoice && (
+                <DropdownMenuItem
+                  onSelect={() => router.push(`/dashboard/payments?invoiceId=${exportInvoice.id}`)}
+                >
+                  Créer un paiement
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onSelect={() => setRowAction({ row, variant: "delete" })}

@@ -4,7 +4,7 @@ import { updateTag } from "next/cache";
 import { getErrorMessage } from "@/lib/handle-error";
 import { generateId } from "@/lib/data-table/id";
 import db from "@/db";
-import { purchaseOrder, purchaseOrderItem, partner, product, stockCurrent, stockMovement, invoice, invoiceItem } from "@/db/schema";
+import { purchaseOrder, purchaseOrderItem, partner, product, stockCurrent, stockMovement, invoice, invoiceItem, payment } from "@/db/schema";
 import { eq, inArray, and, asc, not, or } from "drizzle-orm";
 import { getCurrentUser } from "@/data/user/user-auth";
 import { getPurchaseOrderById } from "@/data/purchase-order/purchase-order.dal";
@@ -257,6 +257,14 @@ export async function addPurchaseOrder(input: {
 
 export async function deletePurchaseOrder(input: { id: string }) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return {
+        data: null,
+        error: "Utilisateur non authentifié",
+      };
+    }
+
     // Check if purchase order has items
     const items = await db
       .select({ id: purchaseOrderItem.id })
@@ -271,9 +279,96 @@ export async function deletePurchaseOrder(input: { id: string }) {
       };
     }
 
-    await db.delete(purchaseOrder).where(eq(purchaseOrder.id, input.id));
+    // Get purchase order with items (for stock adjustment if needed)
+    const purchaseOrderData = await getPurchaseOrderById(input.id);
+    if (!purchaseOrderData) {
+      return {
+        data: null,
+        error: "Bon de commande non trouvé",
+      };
+    }
+
+    const orderData = purchaseOrderData;
+
+    await db.transaction(async (tx) => {
+      // Get all invoices linked to this purchase order
+      const linkedInvoices = await tx
+        .select({ id: invoice.id })
+        .from(invoice)
+        .where(eq(invoice.purchaseOrderId, input.id));
+
+      // For each invoice, get all payments and delete them
+      for (const inv of linkedInvoices) {
+        const invoicePayments = await tx
+          .select({ id: payment.id })
+          .from(payment)
+          .where(eq(payment.invoiceId, inv.id));
+
+        // Delete all payments for this invoice
+        if (invoicePayments.length > 0) {
+          await tx
+            .delete(payment)
+            .where(eq(payment.invoiceId, inv.id));
+        }
+
+        // Delete invoice items
+        await tx
+          .delete(invoiceItem)
+          .where(eq(invoiceItem.invoiceId, inv.id));
+      }
+
+      // Delete all invoices linked to this purchase order
+      if (linkedInvoices.length > 0) {
+        await tx
+          .delete(invoice)
+          .where(eq(invoice.purchaseOrderId, input.id));
+      }
+
+      // Adjust stock: reverse the stock movements (remove the stock that was added)
+      if (orderData.items && orderData.items.length > 0) {
+        const formatDateLocal = (date: Date | string): string => {
+          const d = date instanceof Date ? date : new Date(date);
+          const year = d.getFullYear();
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
+        };
+
+        // Use receptionDate if available, otherwise use orderDate
+        const movementDate = orderData.receptionDate 
+          ? formatDateLocal(orderData.receptionDate)
+          : formatDateLocal(orderData.orderDate);
+
+        await updateStockFromPurchaseOrder(
+          tx,
+          orderData.items.map((item: { productId: string; quantity: number | string; unitCost: number | string }) => ({
+            productId: item.productId,
+            quantity: typeof item.quantity === 'string' ? parseFloat(item.quantity) : item.quantity,
+            unitCost: typeof item.unitCost === 'string' ? parseFloat(item.unitCost) : item.unitCost,
+          })),
+          movementDate,
+          input.id,
+          user.id,
+          true // isReversal = true to remove stock
+        );
+      }
+
+      // Delete purchase order items
+      await tx
+        .delete(purchaseOrderItem)
+        .where(eq(purchaseOrderItem.purchaseOrderId, input.id));
+
+      // Delete purchase order
+      await tx
+        .delete(purchaseOrder)
+        .where(eq(purchaseOrder.id, input.id));
+    });
 
     updateTag("purchaseOrders");
+    updateTag("invoices");
+    updateTag("payments");
+    updateTag("stock");
+    updateTag("stockMovements");
 
     return {
       data: null,
@@ -297,6 +392,14 @@ export async function deletePurchaseOrders(input: { ids: string[] }) {
       };
     }
 
+    const user = await getCurrentUser();
+    if (!user) {
+      return {
+        data: null,
+        error: "Utilisateur non authentifié",
+      };
+    }
+
     // Check if any purchase order has items
     const items = await db
       .select({ 
@@ -315,9 +418,93 @@ export async function deletePurchaseOrders(input: { ids: string[] }) {
       };
     }
 
-    await db.delete(purchaseOrder).where(inArray(purchaseOrder.id, input.ids));
+    // Get all purchase orders with their items for stock adjustment BEFORE transaction
+    const purchaseOrdersData = await Promise.all(
+      input.ids.map(id => getPurchaseOrderById(id))
+    );
+
+    await db.transaction(async (tx) => {
+      // Get all invoices linked to these purchase orders
+      const linkedInvoices = await tx
+        .select({ id: invoice.id })
+        .from(invoice)
+        .where(inArray(invoice.purchaseOrderId, input.ids));
+
+      // For each invoice, get all payments and delete them
+      for (const inv of linkedInvoices) {
+        const invoicePayments = await tx
+          .select({ id: payment.id })
+          .from(payment)
+          .where(eq(payment.invoiceId, inv.id));
+
+        // Delete all payments for this invoice
+        if (invoicePayments.length > 0) {
+          await tx
+            .delete(payment)
+            .where(eq(payment.invoiceId, inv.id));
+        }
+
+        // Delete invoice items
+        await tx
+          .delete(invoiceItem)
+          .where(eq(invoiceItem.invoiceId, inv.id));
+      }
+
+      // Delete all invoices linked to these purchase orders
+      if (linkedInvoices.length > 0) {
+        await tx
+          .delete(invoice)
+          .where(inArray(invoice.purchaseOrderId, input.ids));
+      }
+
+      // Adjust stock for each purchase order
+      for (const orderResult of purchaseOrdersData) {
+        if (orderResult && orderResult.items && orderResult.items.length > 0) {
+          const orderData = orderResult;
+          const formatDateLocal = (date: Date | string): string => {
+            const d = date instanceof Date ? date : new Date(date);
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+          };
+
+          // Use receptionDate if available, otherwise use orderDate
+          const movementDate = orderData.receptionDate 
+            ? formatDateLocal(orderData.receptionDate)
+            : formatDateLocal(orderData.orderDate);
+
+          await updateStockFromPurchaseOrder(
+            tx,
+            orderData.items.map((item: { productId: string; quantity: number | string; unitCost: number | string }) => ({
+              productId: item.productId,
+              quantity: typeof item.quantity === 'string' ? parseFloat(item.quantity) : item.quantity,
+              unitCost: typeof item.unitCost === 'string' ? parseFloat(item.unitCost) : item.unitCost,
+            })),
+            movementDate,
+            orderData.id,
+            user.id,
+            true // isReversal = true to remove stock
+          );
+        }
+      }
+
+      // Delete purchase order items
+      await tx
+        .delete(purchaseOrderItem)
+        .where(inArray(purchaseOrderItem.purchaseOrderId, input.ids));
+
+      // Delete purchase orders
+      await tx
+        .delete(purchaseOrder)
+        .where(inArray(purchaseOrder.id, input.ids));
+    });
 
     updateTag("purchaseOrders");
+    updateTag("invoices");
+    updateTag("payments");
+    updateTag("stock");
+    updateTag("stockMovements");
 
     return {
       data: null,

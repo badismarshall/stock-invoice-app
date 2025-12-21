@@ -15,6 +15,7 @@ import {
   deliveryNoteCancellationItem,
   invoice,
   invoiceItem,
+  payment,
 } from "@/db/schema";
 import { eq, and, inArray, or } from "drizzle-orm";
 import { getCurrentUser } from "@/data/user/user-auth";
@@ -270,12 +271,6 @@ export async function updateDeliveryNote(input: {
       };
     }
 
-    if (!input.items || input.items.length === 0) {
-      return {
-        data: null,
-        error: "Veuillez ajouter au moins un produit",
-      };
-    }
 
     // Helper to format date as YYYY-MM-DD for PostgreSQL date type
     const formatDateLocal = (date: Date): string => {
@@ -378,29 +373,43 @@ export async function updateDeliveryNote(input: {
         })
         .where(eq(deliveryNote.id, input.id));
 
-      // 4) Process items: update existing, insert new, delete unused (if not protected)
-      const inputItemIds = new Set(input.items.map((item) => item.id));
-      const existingItemIds = new Set(existingItems.map((item) => item.id));
+      // 4) Process items: Delete all existing items (except protected ones), then insert all input items
+      // This is simpler and more reliable than trying to update/insert/delete selectively
+      // Similar to how updatePurchaseOrder works
+      
+      // Delete all non-protected items
+      const itemsToDelete = existingItems.filter(
+        (item) => !protectedItemIds.has(item.id)
+      );
 
-      // Update existing items
-      for (const inputItem of input.items) {
-        if (existingItemIds.has(inputItem.id)) {
-          await tx
-            .update(deliveryNoteItem)
-            .set({
-              productId: inputItem.productId,
-              quantity: inputItem.quantity.toString(),
-              unitPrice: inputItem.unitPrice.toString(),
-              discountPercent: (inputItem.discountPercent || 0).toString(),
-              lineTotal: inputItem.lineTotal.toString(),
-            })
-            .where(eq(deliveryNoteItem.id, inputItem.id));
-        }
+      if (itemsToDelete.length > 0) {
+        const idsToDelete = itemsToDelete.map((item) => item.id);
+        await tx
+          .delete(deliveryNoteItem)
+          .where(inArray(deliveryNoteItem.id, idsToDelete));
       }
 
-      // Insert new items (those with IDs not in existing items)
+      // Update protected items that are still in the input
+      const protectedItemsInInput = input.items.filter((item) => 
+        existingItems.some((ei) => ei.id === item.id && protectedItemIds.has(ei.id))
+      );
+
+      for (const inputItem of protectedItemsInInput) {
+        await tx
+          .update(deliveryNoteItem)
+          .set({
+            productId: inputItem.productId,
+            quantity: inputItem.quantity.toString(),
+            unitPrice: inputItem.unitPrice.toString(),
+            discountPercent: (inputItem.discountPercent || 0).toString(),
+            lineTotal: inputItem.lineTotal.toString(),
+          })
+          .where(eq(deliveryNoteItem.id, inputItem.id));
+      }
+
+      // Insert all non-protected items from input
       const itemsToInsert = input.items
-        .filter((item) => !existingItemIds.has(item.id))
+        .filter((item) => !protectedItemIds.has(item.id))
         .map((item) => ({
           id: item.id || generateId(),
           deliveryNoteId: input.id,
@@ -415,31 +424,23 @@ export async function updateDeliveryNote(input: {
         await tx.insert(deliveryNoteItem).values(itemsToInsert);
       }
 
-      // Delete items that are no longer in the input (only if not protected by cancellations)
-      const itemsToDelete = existingItems.filter(
-        (item) => !inputItemIds.has(item.id) && !protectedItemIds.has(item.id)
-      );
-
-      if (itemsToDelete.length > 0) {
-        const idsToDelete = itemsToDelete.map((item) => item.id);
-        await tx
-          .delete(deliveryNoteItem)
-          .where(inArray(deliveryNoteItem.id, idsToDelete));
+      // 5) Re-apply stock movements for ALL items in the input (out movement)
+      // This includes both existing (updated) and new items
+      // The stock movements were already reversed at step 1, so we need to re-apply them
+      if (input.items.length > 0) {
+        await updateStockFromDeliveryNote(
+          tx,
+          input.items.map((item) => ({
+            productId: item.productId,
+            quantity: item.quantity,
+          })),
+          noteDateValue,
+          input.id,
+          user.id,
+          input.noteType,
+          false
+        );
       }
-
-      // 5) Re-apply stock movements for new items (out movement)
-      await updateStockFromDeliveryNote(
-        tx,
-        input.items.map((item) => ({
-          productId: item.productId,
-          quantity: item.quantity,
-        })),
-        noteDateValue,
-        input.id,
-        user.id,
-        input.noteType,
-        false
-      );
     });
 
     updateTag("deliveryNotes");
@@ -546,6 +547,7 @@ export async function updateDeliveryNoteStatus(input: {
         }
 
         // Create delivery note cancellation record (if not already exists)
+        let cancellationId: string;
         const existingCancellation = await tx
           .select()
           .from(deliveryNoteCancellation)
@@ -553,7 +555,7 @@ export async function updateDeliveryNoteStatus(input: {
           .limit(1);
 
         if (existingCancellation.length === 0) {
-          const cancellationId = generateId();
+          cancellationId = generateId();
           const { generateCancellationNumber } = await import("@/lib/utils/invoice-number-generator");
           const cancellationNumber = generateCancellationNumber("delivery_note_cancellation", cancellationId.slice(-6));
 
@@ -561,10 +563,46 @@ export async function updateDeliveryNoteStatus(input: {
             id: cancellationId,
             cancellationNumber,
             originalDeliveryNoteId: input.id,
+            clientId: noteData.clientId,
             cancellationDate: movementDate,
             reason: null,
             createdBy: user.id,
           });
+        } else {
+          cancellationId = existingCancellation[0].id;
+        }
+
+        // Copy delivery note items to cancellation items (if not already copied)
+        const existingCancellationItems = await tx
+          .select({ deliveryNoteItemId: deliveryNoteCancellationItem.deliveryNoteItemId })
+          .from(deliveryNoteCancellationItem)
+          .where(eq(deliveryNoteCancellationItem.deliveryNoteCancellationId, cancellationId));
+
+        const existingCancellationItemIds = new Set(
+          existingCancellationItems.map((item) => item.deliveryNoteItemId)
+        );
+
+        // Get all delivery note items
+        const deliveryNoteItems = await tx
+          .select()
+          .from(deliveryNoteItem)
+          .where(eq(deliveryNoteItem.deliveryNoteId, input.id));
+
+        // Insert cancellation items for items that don't already exist
+        const itemsToInsert = deliveryNoteItems
+          .filter((item) => !existingCancellationItemIds.has(item.id))
+          .map((item) => ({
+            id: generateId(),
+            deliveryNoteCancellationId: cancellationId,
+            deliveryNoteItemId: item.id,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            discountPercent: item.discountPercent || "0",
+            lineTotal: item.lineTotal,
+          }));
+
+        if (itemsToInsert.length > 0) {
+          await tx.insert(deliveryNoteCancellationItem).values(itemsToInsert);
         }
 
         // Update delivery note status
@@ -593,6 +631,20 @@ export async function updateDeliveryNoteStatus(input: {
           );
         }
 
+        // Get cancellation record(s) to delete their items first
+        const cancellationsToDelete = await tx
+          .select({ id: deliveryNoteCancellation.id })
+          .from(deliveryNoteCancellation)
+          .where(eq(deliveryNoteCancellation.originalDeliveryNoteId, input.id));
+
+        // Delete cancellation items first (cascade will handle this, but we do it explicitly for clarity)
+        if (cancellationsToDelete.length > 0) {
+          const cancellationIds = cancellationsToDelete.map((c) => c.id);
+          await tx
+            .delete(deliveryNoteCancellationItem)
+            .where(inArray(deliveryNoteCancellationItem.deliveryNoteCancellationId, cancellationIds));
+        }
+
         // Remove cancellation record(s)
         await tx
           .delete(deliveryNoteCancellation)
@@ -607,6 +659,7 @@ export async function updateDeliveryNoteStatus(input: {
     });
 
     updateTag("deliveryNotes");
+    updateTag("deliveryNoteCancellations");
     updateTag("stock");
     updateTag("stockMovements");
 
@@ -928,6 +981,14 @@ export async function getDeliveryNoteByIdAction(input: { id: string }) {
 
 export async function deleteDeliveryNote(input: { id: string }) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return {
+        data: null,
+        error: "Utilisateur non authentifié",
+      };
+    }
+
     // Check if delivery note has items
     const items = await db
       .select({ id: deliveryNoteItem.id })
@@ -942,9 +1003,89 @@ export async function deleteDeliveryNote(input: { id: string }) {
       };
     }
 
-    await db.delete(deliveryNote).where(eq(deliveryNote.id, input.id));
+    // Get delivery note with items (for stock adjustment if needed)
+    const deliveryNoteData = await getDeliveryNoteById(input.id);
+    if (!deliveryNoteData) {
+      return {
+        data: null,
+        error: "Bon de livraison non trouvé",
+      };
+    }
+
+    const noteData = deliveryNoteData;
+
+    await db.transaction(async (tx) => {
+      // Get all invoices linked to this delivery note
+      const linkedInvoices = await tx
+        .select({ id: invoice.id })
+        .from(invoice)
+        .where(eq(invoice.deliveryNoteId, input.id));
+
+      // For each invoice, get all payments and delete them
+      for (const inv of linkedInvoices) {
+        const invoicePayments = await tx
+          .select({ id: payment.id })
+          .from(payment)
+          .where(eq(payment.invoiceId, inv.id));
+
+        // Delete all payments for this invoice
+        if (invoicePayments.length > 0) {
+          await tx
+            .delete(payment)
+            .where(eq(payment.invoiceId, inv.id));
+        }
+
+        // Delete invoice items
+        await tx
+          .delete(invoiceItem)
+          .where(eq(invoiceItem.invoiceId, inv.id));
+      }
+
+      // Delete all invoices linked to this delivery note
+      if (linkedInvoices.length > 0) {
+        await tx
+          .delete(invoice)
+          .where(eq(invoice.deliveryNoteId, input.id));
+      }
+
+      // Adjust stock: reverse the stock movements (add back the stock that was removed)
+      if (noteData.items && noteData.items.length > 0) {
+        const formatDateLocal = (date: Date | string): string => {
+          const d = date instanceof Date ? date : new Date(date);
+          const year = d.getFullYear();
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
+        };
+
+        await updateStockFromDeliveryNote(
+          tx,
+          noteData.items.map((item: { productId: string; quantity: number | string }) => ({
+            productId: item.productId,
+            quantity: typeof item.quantity === 'string' ? parseFloat(item.quantity) : item.quantity,
+          })),
+          formatDateLocal(noteData.noteDate),
+          input.id,
+          user.id,
+          (noteData.noteType as "local" | "export") || "local",
+          true // isReversal = true to add stock back
+        );
+      }
+
+      // Delete delivery note items
+      await tx
+        .delete(deliveryNoteItem)
+        .where(eq(deliveryNoteItem.deliveryNoteId, input.id));
+
+      // Delete delivery note
+      await tx
+        .delete(deliveryNote)
+        .where(eq(deliveryNote.id, input.id));
+    });
 
     updateTag("deliveryNotes");
+    updateTag("invoices");
+    updateTag("payments");
     updateTag("stock");
     updateTag("stockMovements");
 
@@ -970,6 +1111,14 @@ export async function deleteDeliveryNotes(input: { ids: string[] }) {
       };
     }
 
+    const user = await getCurrentUser();
+    if (!user) {
+      return {
+        data: null,
+        error: "Utilisateur non authentifié",
+      };
+    }
+
     // Check if any delivery note has items
     const items = await db
       .select({ 
@@ -988,11 +1137,86 @@ export async function deleteDeliveryNotes(input: { ids: string[] }) {
       };
     }
 
-    await db.delete(deliveryNote).where(
-      inArray(deliveryNote.id, input.ids)
+    // Get all delivery notes with their items for stock adjustment BEFORE transaction
+    const deliveryNotesData = await Promise.all(
+      input.ids.map(id => getDeliveryNoteById(id))
     );
 
+    await db.transaction(async (tx) => {
+      // Get all invoices linked to these delivery notes
+      const linkedInvoices = await tx
+        .select({ id: invoice.id })
+        .from(invoice)
+        .where(inArray(invoice.deliveryNoteId, input.ids));
+
+      // For each invoice, get all payments and delete them
+      for (const inv of linkedInvoices) {
+        const invoicePayments = await tx
+          .select({ id: payment.id })
+          .from(payment)
+          .where(eq(payment.invoiceId, inv.id));
+
+        // Delete all payments for this invoice
+        if (invoicePayments.length > 0) {
+          await tx
+            .delete(payment)
+            .where(eq(payment.invoiceId, inv.id));
+        }
+
+        // Delete invoice items
+        await tx
+          .delete(invoiceItem)
+          .where(eq(invoiceItem.invoiceId, inv.id));
+      }
+
+      // Delete all invoices linked to these delivery notes
+      if (linkedInvoices.length > 0) {
+        await tx
+          .delete(invoice)
+          .where(inArray(invoice.deliveryNoteId, input.ids));
+      }
+
+      // Adjust stock for each delivery note
+      for (const noteResult of deliveryNotesData) {
+        if (noteResult && noteResult.items && noteResult.items.length > 0) {
+          const noteData = noteResult;
+          const formatDateLocal = (date: Date | string): string => {
+            const d = date instanceof Date ? date : new Date(date);
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+          };
+
+          await updateStockFromDeliveryNote(
+            tx,
+            noteData.items.map((item: { productId: string; quantity: number | string }) => ({
+              productId: item.productId,
+              quantity: typeof item.quantity === 'string' ? parseFloat(item.quantity) : item.quantity,
+            })),
+            formatDateLocal(noteData.noteDate),
+            noteData.id,
+            user.id,
+            (noteData.noteType as "local" | "export") || "local",
+            true // isReversal = true to add stock back
+          );
+        }
+      }
+
+      // Delete delivery note items
+      await tx
+        .delete(deliveryNoteItem)
+        .where(inArray(deliveryNoteItem.deliveryNoteId, input.ids));
+
+      // Delete delivery notes
+      await tx
+        .delete(deliveryNote)
+        .where(inArray(deliveryNote.id, input.ids));
+    });
+
     updateTag("deliveryNotes");
+    updateTag("invoices");
+    updateTag("payments");
     updateTag("stock");
     updateTag("stockMovements");
 

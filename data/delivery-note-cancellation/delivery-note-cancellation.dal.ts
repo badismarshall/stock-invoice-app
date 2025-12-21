@@ -556,9 +556,39 @@ export const getClientDeliveryNoteItems = async (
 
     // Map to DTO format
     return items.map((item) => {
-      const originalQuantity = parseFloat(item.deliveryNoteItem.quantity);
+      // Current quantity in delivery_note_item (already decremented by previous cancellations)
+      const currentQuantity = parseFloat(item.deliveryNoteItem.quantity);
+      // Sum of all cancelled quantities from all cancellations
       const cancelledQuantity = cancelledMap.get(item.deliveryNoteItem.id) || 0;
-      const availableQuantity = originalQuantity - cancelledQuantity;
+      // Original quantity = current quantity + all cancelled quantities
+      const originalQuantity = currentQuantity + cancelledQuantity;
+      // Available quantity = current quantity (what's left in the DB)
+      const availableQuantity = currentQuantity;
+      
+      // Current lineTotal in delivery_note_item (already adjusted proportionally)
+      const currentLineTotal = parseFloat(item.deliveryNoteItem.lineTotal);
+      // Calculate original lineTotal
+      let originalLineTotal: number;
+      if (currentQuantity > 0 && originalQuantity > 0) {
+        // Calculate proportionally: originalLineTotal = currentLineTotal * (originalQuantity / currentQuantity)
+        originalLineTotal = currentLineTotal * (originalQuantity / currentQuantity);
+      } else if (cancelledQuantity > 0) {
+        // If all quantity was cancelled, recalculate from unitPrice and discountPercent
+        const unitPrice = parseFloat(item.deliveryNoteItem.unitPrice);
+        const discountPercent = parseFloat(item.deliveryNoteItem.discountPercent || "0");
+        const subtotal = originalQuantity * unitPrice;
+        const discountAmount = subtotal * (discountPercent / 100);
+        const lineSubtotal = subtotal - discountAmount;
+        // Estimate tax (assuming ~19% VAT, or calculate from currentLineTotal if available)
+        const estimatedTaxRate = currentLineTotal > 0 && lineSubtotal > 0 
+          ? (currentLineTotal - lineSubtotal) / lineSubtotal 
+          : 0.19;
+        const lineTax = lineSubtotal * estimatedTaxRate;
+        originalLineTotal = lineSubtotal + lineTax;
+      } else {
+        // No cancellation, use current lineTotal
+        originalLineTotal = currentLineTotal;
+      }
 
       return {
         deliveryNoteItemId: item.deliveryNoteItem.id,
@@ -576,7 +606,7 @@ export const getClientDeliveryNoteItems = async (
         availableQuantity,
         unitPrice: parseFloat(item.deliveryNoteItem.unitPrice),
         discountPercent: parseFloat(item.deliveryNoteItem.discountPercent || "0"),
-        lineTotal: parseFloat(item.deliveryNoteItem.lineTotal),
+        lineTotal: originalLineTotal, // Show original lineTotal for display
       };
     });
   } catch (error) {
