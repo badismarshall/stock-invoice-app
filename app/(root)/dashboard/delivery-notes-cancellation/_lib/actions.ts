@@ -520,15 +520,15 @@ export async function updateDeliveryNoteCancellation(input: {
         .where(eq(deliveryNoteCancellationItem.deliveryNoteCancellationId, input.id));
 
       for (const cancelledItem of existingCancellationItems) {
-        const deliveryNoteItem = await tx
+        const deliveryNoteItemResult = await tx
           .select()
           .from(deliveryNoteItem)
           .where(eq(deliveryNoteItem.id, cancelledItem.deliveryNoteItemId))
           .limit(1);
 
-        if (deliveryNoteItem.length > 0) {
-          const currentQuantity = parseFloat(deliveryNoteItem[0].quantity);
-          const currentLineTotal = parseFloat(deliveryNoteItem[0].lineTotal);
+        if (deliveryNoteItemResult.length > 0) {
+          const currentQuantity = parseFloat(deliveryNoteItemResult[0].quantity);
+          const currentLineTotal = parseFloat(deliveryNoteItemResult[0].lineTotal);
           const cancelledQuantity = parseFloat(cancelledItem.quantity);
           
           // Restore the previously cancelled quantity
@@ -785,15 +785,15 @@ export async function deleteCancellationItem(input: {
 
       if (cancellationItem.length > 0) {
         const cancelledItem = cancellationItem[0];
-        const deliveryNoteItem = await tx
+        const deliveryNoteItemResult = await tx
           .select()
           .from(deliveryNoteItem)
           .where(eq(deliveryNoteItem.id, cancelledItem.deliveryNoteItemId))
           .limit(1);
 
-        if (deliveryNoteItem.length > 0) {
-          const currentQuantity = parseFloat(deliveryNoteItem[0].quantity);
-          const currentLineTotal = parseFloat(deliveryNoteItem[0].lineTotal);
+        if (deliveryNoteItemResult.length > 0) {
+          const currentQuantity = parseFloat(deliveryNoteItemResult[0].quantity);
+          const currentLineTotal = parseFloat(deliveryNoteItemResult[0].lineTotal);
           const cancelledQuantity = parseFloat(cancelledItem.quantity);
           
           // Restore the cancelled quantity
@@ -952,15 +952,15 @@ export async function deleteDeliveryNoteCancellation(input: { id: string }) {
         .where(eq(deliveryNoteCancellationItem.deliveryNoteCancellationId, input.id));
 
       for (const cancelledItem of cancellationItems) {
-        const deliveryNoteItem = await tx
+        const deliveryNoteItemResult = await tx
           .select()
           .from(deliveryNoteItem)
           .where(eq(deliveryNoteItem.id, cancelledItem.deliveryNoteItemId))
           .limit(1);
 
-        if (deliveryNoteItem.length > 0) {
-          const currentQuantity = parseFloat(deliveryNoteItem[0].quantity);
-          const currentLineTotal = parseFloat(deliveryNoteItem[0].lineTotal);
+        if (deliveryNoteItemResult.length > 0) {
+          const currentQuantity = parseFloat(deliveryNoteItemResult[0].quantity);
+          const currentLineTotal = parseFloat(deliveryNoteItemResult[0].lineTotal);
           const cancelledQuantity = parseFloat(cancelledItem.quantity);
           
           // Restore the cancelled quantity
@@ -1099,15 +1099,15 @@ export async function deleteDeliveryNoteCancellations(input: { ids: string[] }) 
           .where(eq(deliveryNoteCancellationItem.deliveryNoteCancellationId, cancellation.id));
 
         for (const cancelledItem of cancellationItems) {
-          const deliveryNoteItem = await tx
+          const deliveryNoteItemResult = await tx
             .select()
             .from(deliveryNoteItem)
             .where(eq(deliveryNoteItem.id, cancelledItem.deliveryNoteItemId))
             .limit(1);
 
-          if (deliveryNoteItem.length > 0) {
-            const currentQuantity = parseFloat(deliveryNoteItem[0].quantity);
-            const currentLineTotal = parseFloat(deliveryNoteItem[0].lineTotal);
+          if (deliveryNoteItemResult.length > 0) {
+            const currentQuantity = parseFloat(deliveryNoteItemResult[0].quantity);
+            const currentLineTotal = parseFloat(deliveryNoteItemResult[0].lineTotal);
             const cancelledQuantity = parseFloat(cancelledItem.quantity);
             
             // Restore the cancelled quantity
