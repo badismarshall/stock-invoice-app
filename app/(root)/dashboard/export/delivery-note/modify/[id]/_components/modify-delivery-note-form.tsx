@@ -319,7 +319,7 @@ export function ModifyDeliveryNoteForm({ deliveryNote }: ModifyDeliveryNoteFormP
         duration: 3000,
       });
 
-      router.push("/dashboard/export");
+      router.push("/dashboard/export/delivery-notes");
       router.refresh();
     } catch (error) {
       toast.error(
@@ -343,7 +343,7 @@ export function ModifyDeliveryNoteForm({ deliveryNote }: ModifyDeliveryNoteFormP
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => router.push("/dashboard/export")}
+            onClick={() => router.push("/dashboard/export/delivery-notes")}
             className="hover:bg-muted"
           >
             <ArrowLeft size={24} />
@@ -730,7 +730,7 @@ export function ModifyDeliveryNoteForm({ deliveryNote }: ModifyDeliveryNoteFormP
           <Button
             type="button"
             variant="outline"
-            onClick={() => router.push("/dashboard/export")}
+            onClick={() => router.push("/dashboard/export/delivery-notes")}
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Annuler

@@ -30,19 +30,33 @@ async function DeliveryNotesPageContent(props: DeliveryNotesPageProps) {
 
     return (
       <div className="h-full flex-1 flex-col space-y-8">
-        <div className="flex items-center justify-between space-y-2">
+<div className="flex items-center justify-between space-y-2">
           <div>
-            <h2 className="text-2xl font-bold tracking-tight">Bons de Livraison Export</h2>
+            <h2 className="text-2xl font-bold tracking-tight">Ventes Export</h2>
             <p className="text-muted-foreground">
-              Gérez tous vos bons de livraison pour les ventes export
+              Gérez vos factures proforma, bons de livraison et factures pour les ventes export
             </p>
           </div>
-          <Link href="/dashboard/export/delivery-note/new">
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Nouveau Bon de Livraison
-            </Button>
-          </Link>
+          <div className="flex gap-2">
+            <Link href="/dashboard/export/proforma/new">
+              <Button variant="outline">
+                <Plus className="mr-2 h-4 w-4" />
+                Facture Proforma
+              </Button>
+            </Link>
+            <Link href="/dashboard/export/delivery-note/new">
+              <Button variant="outline">
+                <Plus className="mr-2 h-4 w-4" />
+                Bon de Livraison
+              </Button>
+            </Link>
+            <Link href="/dashboard/export/invoice/new">
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Facture Export
+              </Button>
+            </Link>
+          </div>
         </div>
         <Suspense 
             fallback={    

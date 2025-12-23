@@ -2,27 +2,24 @@ import { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { getCurrentUser } from "@/data/user/user-auth"
 import { Suspense } from "react"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Plus, FileDown } from "lucide-react"
-import { FeatureFlagsProvider } from "../_components/feature-flags-provider"
+import { FeatureFlagsProvider } from "@/app/(root)/dashboard/_components/feature-flags-provider"
 import { SearchParams } from "@/types"
 import { searchParamsCache } from "./_lib/validation"
 import { getValidFilters } from "@/lib/data-table/data-table"
-import { getDeliveryNotes } from "./_lib/queries"
-import { DeliveryNotesTableWrapper } from "./_components/data-table/delivery-notes-table-wrapper"
+import { getProformaInvoices } from "./_lib/queries"
+import { ProformaInvoicesTableWrapper } from "./_components/data-table/proforma-invoices-table-wrapper"
 import { DataTableSkeleton } from "@/components/shared/data-table/data-table-skeleton"
 
 export const metadata: Metadata = {
-    title: "Ventes Locales",
-    description: "Gestion des bons de livraison et factures pour les ventes locales",
+    title: "Factures Proforma",
+    description: "Gestion des factures proforma",
 }
 
-interface SalesPageProps {
+interface ProformaInvoicesPageProps {
   searchParams: Promise<SearchParams>;
 }
 
-async function SalesPageContent(props: SalesPageProps) {
+async function ProformaInvoicesPageContent(props: ProformaInvoicesPageProps) {
     const user = await getCurrentUser();
     if (!user) {
       redirect(`/sign-in`);
@@ -32,40 +29,22 @@ async function SalesPageContent(props: SalesPageProps) {
       <div className="h-full flex-1 flex-col space-y-8">
         <div className="flex items-center justify-between space-y-2">
           <div>
-            <h2 className="text-2xl font-bold tracking-tight">Ventes Locales</h2>
+            <h2 className="text-2xl font-bold tracking-tight">Factures Proforma</h2>
             <p className="text-muted-foreground">
-              Gérez vos bons de livraison et factures pour les ventes locales
+              Gérez toutes vos factures proforma ici!
             </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link href="/dashboard/sales/export/pdf">
-              <Button variant="outline">
-                <FileDown className="mr-2 h-4 w-4" />
-                Exporter en PDF
-              </Button>
-            </Link>
-            <Link href="/dashboard/sales/export/xlsx">
-              <Button variant="outline">
-                <FileDown className="mr-2 h-4 w-4" />
-                Exporter en XLSX
-              </Button>
-            </Link>
-            <Link href="/dashboard/sales/new">
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Nouveau Bon de Livraison
-              </Button>
-            </Link>
           </div>
         </div>
         <Suspense 
             fallback={    
               <DataTableSkeleton
-              columnCount={8}
+              columnCount={10}
               filterCount={2}
               cellWidths={[
                 "10rem",
                 "15rem",
+                "12rem",
+                "12rem",
                 "12rem",
                 "12rem",
                 "12rem",
@@ -77,30 +56,32 @@ async function SalesPageContent(props: SalesPageProps) {
             />
             }>
               <FeatureFlagsProvider>
-                <DeliveryNotesTableWrapper {...props} />
+                <ProformaInvoicesTableWrapper {...props} />
               </FeatureFlagsProvider>
         </Suspense>
       </div>
     )
 }
 
-function SalesPageLoading() {
+function ProformaInvoicesPageLoading() {
   return (
     <div className="h-full flex-1 flex-col space-y-8">
       <div className="flex items-center justify-between space-y-2">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Ventes Locales</h2>
+          <h2 className="text-2xl font-bold tracking-tight">Factures Proforma</h2>
           <p className="text-muted-foreground">
-            Gérez vos bons de livraison et factures pour les ventes locales
+            Gérez toutes vos factures proforma ici!
           </p>
         </div>
       </div>
       <DataTableSkeleton
-        columnCount={8}
+        columnCount={10}
         filterCount={2}
         cellWidths={[
           "10rem",
           "15rem",
+          "12rem",
+          "12rem",
           "12rem",
           "12rem",
           "12rem",
@@ -114,12 +95,11 @@ function SalesPageLoading() {
   );
 }
 
-export default function SalesPage(props: SalesPageProps) {
+export default function ProformaInvoicesPage(props: ProformaInvoicesPageProps) {
   return (
-    <Suspense fallback={<SalesPageLoading />}>
-      <SalesPageContent {...props} />
+    <Suspense fallback={<ProformaInvoicesPageLoading />}>
+      <ProformaInvoicesPageContent {...props} />
     </Suspense>
   );
 }
-
 

@@ -194,7 +194,7 @@ export function NewProformaInvoiceForm() {
         duration: 3000,
       });
 
-      router.push("/dashboard/export");
+      router.push("/dashboard/export/proforma");
       router.refresh();
     } catch (error) {
       toast.error(
@@ -216,7 +216,7 @@ export function NewProformaInvoiceForm() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => router.push("/dashboard/export")}
+            onClick={() => router.push("/dashboard/export/proforma")}
             className="hover:bg-muted"
           >
             <ArrowLeft size={24} />
@@ -571,7 +571,7 @@ export function NewProformaInvoiceForm() {
           <Button
             type="button"
             variant="outline"
-            onClick={() => router.push("/dashboard/export")}
+            onClick={() => router.push("/dashboard/export/proforma")}
             disabled={loading}
           >
             Annuler

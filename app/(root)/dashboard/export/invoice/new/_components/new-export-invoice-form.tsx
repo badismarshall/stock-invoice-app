@@ -217,7 +217,7 @@ export function NewExportInvoiceForm() {
         duration: 3000,
       });
 
-      router.push("/dashboard/export");
+      router.push("/dashboard/export/invoices");
       router.refresh();
     } catch (error) {
       toast.error(
@@ -239,7 +239,7 @@ export function NewExportInvoiceForm() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => router.push("/dashboard/export")}
+            onClick={() => router.push("/dashboard/export/delivery-notes")}
             className="hover:bg-muted"
           >
             <ArrowLeft size={24} />
@@ -616,7 +616,7 @@ export function NewExportInvoiceForm() {
           <Button
             type="button"
             variant="outline"
-            onClick={() => router.push("/dashboard/export")}
+            onClick={() => router.push("/dashboard/export/delivery-notes")}
             disabled={loading}
           >
             Annuler

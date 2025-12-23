@@ -17,17 +17,54 @@ import { toast } from "sonner"
 import { useState, useEffect } from "react"
 import { Icons } from "@/components/ui/icons"
 
-interface DeliveryNoteItem {
-  id: string;
+interface InvoiceItem {
+  id?: string;
   productId: string;
-  productName?: string;
+  productName?: string | null;
   quantity: number;
   unitPrice: number;
   discountPercent: number;
+  taxRate: number;
+  lineSubtotal: number;
+  lineTax: number;
   lineTotal: number;
 }
 
-export function NewDeliveryNoteForm() {
+interface ProformaInvoiceData {
+  id: string;
+  invoiceNumber: string;
+  invoiceType: string;
+  clientId?: string | null;
+  client: {
+    id: string;
+    name: string;
+  } | null;
+  invoiceDate: Date;
+  dueDate: Date | null;
+  currency: string | null;
+  destinationCountry: string | null;
+  deliveryLocation: string | null;
+  notes: string | null;
+  items: Array<{
+    id: string;
+    productId: string;
+    productName: string | null;
+    productCode: string | null;
+    quantity: number;
+    unitPrice: number;
+    discountPercent: number;
+    taxRate: number;
+    lineSubtotal: number;
+    lineTax: number;
+    lineTotal: number;
+  }>;
+}
+
+interface ModifyProformaInvoiceFormProps {
+  invoice: ProformaInvoiceData;
+}
+
+export function ModifyProformaInvoiceForm({ invoice }: ModifyProformaInvoiceFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [clients, setClients] = useState<Array<{ id: string; name: string }>>([]);
@@ -36,24 +73,49 @@ export function NewDeliveryNoteForm() {
     name: string; 
     code: string;
     salePriceExport: number | null;
+    taxRate: number;
     unitOfMeasure: string;
   }>>([]);
 
   const [formData, setFormData] = useState({
-    noteNumber: "",
-    clientId: "",
-    noteDate: new Date(),
-    destinationCountry: "",
-    deliveryLocation: "",
-    currency: "USD",
-    notes: "",
-    items: [] as DeliveryNoteItem[],
+    invoiceNumber: invoice.invoiceNumber,
+    clientId: invoice.client?.id || invoice.clientId || "",
+    invoiceDate: invoice.invoiceDate,
+    dueDate: invoice.dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    destinationCountry: invoice.destinationCountry || "",
+    deliveryLocation: invoice.deliveryLocation || "",
+    currency: invoice.currency || "USD",
+    notes: invoice.notes || "",
+    items: [] as InvoiceItem[],
   });
 
+  // Initialize items from invoice data
+  useEffect(() => {
+    const initialItems: InvoiceItem[] = invoice.items.map((item) => ({
+      id: item.id,
+      productId: item.productId,
+      productName: item.productName,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      discountPercent: item.discountPercent || 0,
+      taxRate: item.taxRate || 0,
+      lineSubtotal: item.lineSubtotal,
+      lineTax: item.lineTax,
+      lineTotal: item.lineTotal,
+    }));
+
+    setFormData((prev) => ({
+      ...prev,
+      items: initialItems,
+    }));
+  }, [invoice]);
+
+  // Fetch clients and products
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const { getAllClients, getAllActiveProducts } = await import("../../../_lib/actions");
+        const { getAllClients } = await import("../../../_lib/actions");
+        const { getAllActiveProducts } = await import("@/app/(root)/dashboard/invoices/_lib/actions");
 
         const [clientsResult, productsResult] = await Promise.all([
           getAllClients(),
@@ -85,13 +147,16 @@ export function NewDeliveryNoteForm() {
           quantity: 1,
           unitPrice: 0,
           discountPercent: 0,
+          taxRate: 0,
+          lineSubtotal: 0,
+          lineTax: 0,
           lineTotal: 0,
         },
       ],
     }));
   };
 
-  const updateItem = (index: number, field: keyof DeliveryNoteItem, value: any) => {
+  const updateItem = (index: number, field: keyof InvoiceItem, value: any) => {
     setFormData((prev) => {
       const newItems = [...prev.items];
       const item = { ...newItems[index], [field]: value };
@@ -102,13 +167,16 @@ export function NewDeliveryNoteForm() {
         if (product) {
           item.productName = product.name;
           item.unitPrice = product.salePriceExport || 0;
+          item.taxRate = product.taxRate || 0;
         }
       }
 
-      // Recalculate line total: (quantity * unitPrice) * (1 - discountPercent/100)
+      // Recalculate line totals
       const subtotal = item.quantity * item.unitPrice;
       const discountAmount = subtotal * (item.discountPercent / 100);
-      item.lineTotal = subtotal - discountAmount;
+      item.lineSubtotal = subtotal - discountAmount;
+      item.lineTax = item.lineSubtotal * (item.taxRate / 100);
+      item.lineTotal = item.lineSubtotal + item.lineTax;
 
       newItems[index] = item;
       return { ...prev, items: newItems };
@@ -123,7 +191,9 @@ export function NewDeliveryNoteForm() {
   };
 
   // Calculate totals
-  const totalAmount = formData.items.reduce((acc, item) => acc + item.lineTotal, 0);
+  const totalHT = formData.items.reduce((acc, item) => acc + item.lineSubtotal, 0);
+  const totalTax = formData.items.reduce((acc, item) => acc + item.lineTax, 0);
+  const totalTTC = formData.items.reduce((acc, item) => acc + item.lineTotal, 0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -142,27 +212,26 @@ export function NewDeliveryNoteForm() {
         return;
       }
 
-      if (formData.items.length === 0) {
-        toast.error("Veuillez ajouter au moins un produit");
-        setLoading(false);
-        return;
-      }
-
-      const { addDeliveryNote } = await import("../../../_lib/actions");
-      const result = await addDeliveryNote({
-        noteType: "export",
+      const { updateProformaInvoice } = await import("../../../_lib/actions");
+      const result = await updateProformaInvoice({
+        id: invoice.id,
+        invoiceNumber: formData.invoiceNumber,
         clientId: formData.clientId,
-        noteDate: formData.noteDate,
-        status: "active",
-        currency: formData.currency,
+        invoiceDate: formData.invoiceDate,
+        dueDate: formData.dueDate,
         destinationCountry: formData.destinationCountry,
         deliveryLocation: formData.deliveryLocation || undefined,
+        currency: formData.currency,
         notes: formData.notes || undefined,
         items: formData.items.map((item) => ({
+          id: item.id,
           productId: item.productId,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
           discountPercent: item.discountPercent,
+          taxRate: item.taxRate,
+          lineSubtotal: item.lineSubtotal,
+          lineTax: item.lineTax,
           lineTotal: item.lineTotal,
         })),
       });
@@ -171,16 +240,16 @@ export function NewDeliveryNoteForm() {
         throw new Error(result.error);
       }
 
-      toast.success("Bon de livraison export créé avec succès", {
+      toast.success("Facture proforma modifiée avec succès", {
         position: "bottom-center",
         duration: 3000,
       });
 
-      router.push("/dashboard/export/delivery-notes");
+      router.push("/dashboard/export/proforma");
       router.refresh();
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Échec de la création du bon de livraison",
+        error instanceof Error ? error.message : "Échec de la modification de la facture proforma",
         {
           position: "bottom-center",
           duration: 3000,
@@ -198,29 +267,32 @@ export function NewDeliveryNoteForm() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => router.push("/dashboard/export/delivery-notes")}
+            onClick={() => router.push("/dashboard/export/proforma")}
             className="hover:bg-muted"
           >
             <ArrowLeft size={24} />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Nouveau Bon de Livraison Export</h1>
-            <p className="text-muted-foreground">Création d'un bon de livraison pour vente export</p>
+            <h1 className="text-2xl font-bold text-foreground">Modifier Facture Proforma</h1>
+            <p className="text-muted-foreground">Modification de la facture proforma {invoice.invoiceNumber}</p>
           </div>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Delivery Note Details Section */}
+        {/* Invoice Details Section */}
         <div className="bg-card rounded-xl shadow-sm border border-border p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">
-              N° Bon de Livraison (Généré automatiquement)
+              N° Facture Proforma
             </label>
             <Input
-              value={formData.noteNumber || "Génération automatique..."}
-              disabled
-              className="bg-muted"
+              value={formData.invoiceNumber}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, invoiceNumber: e.target.value }))
+              }
+              required
+              disabled={loading}
             />
           </div>
 
@@ -254,12 +326,12 @@ export function NewDeliveryNoteForm() {
                   variant="outline"
                   className={cn(
                     "w-full pl-3 text-left font-normal",
-                    !formData.noteDate && "text-muted-foreground"
+                    !formData.invoiceDate && "text-muted-foreground"
                   )}
                   disabled={loading}
                 >
-                  {formData.noteDate ? (
-                    format(formData.noteDate, "PPP", { locale: fr })
+                  {formData.invoiceDate ? (
+                    format(formData.invoiceDate, "PPP", { locale: fr })
                   ) : (
                     <span>Sélectionner une date</span>
                   )}
@@ -269,10 +341,47 @@ export function NewDeliveryNoteForm() {
               <PopoverContent className="w-auto p-0" align="start">
                 <Calendar
                   mode="single"
-                  selected={formData.noteDate}
+                  selected={formData.invoiceDate}
                   onSelect={(date) => {
                     if (date) {
-                      setFormData((prev) => ({ ...prev, noteDate: date }));
+                      setFormData((prev) => ({ ...prev, invoiceDate: date }));
+                    }
+                  }}
+                  disabled={loading}
+                  initialFocus
+                  captionLayout="dropdown"
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Date d'échéance</label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full pl-3 text-left font-normal",
+                    !formData.dueDate && "text-muted-foreground"
+                  )}
+                  disabled={loading}
+                >
+                  {formData.dueDate ? (
+                    format(formData.dueDate, "PPP", { locale: fr })
+                  ) : (
+                    <span>Sélectionner une date</span>
+                  )}
+                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={formData.dueDate}
+                  onSelect={(date) => {
+                    if (date) {
+                      setFormData((prev) => ({ ...prev, dueDate: date }));
                     }
                   }}
                   disabled={loading}
@@ -354,13 +463,14 @@ export function NewDeliveryNoteForm() {
                   <th className="px-4 py-3 w-24 text-right">Qté</th>
                   <th className="px-4 py-3 w-32 text-right">Prix Unitaire</th>
                   <th className="px-4 py-3 w-24 text-right">Remise %</th>
+                  <th className="px-4 py-3 w-24 text-right">TVA %</th>
                   <th className="px-4 py-3 w-32 text-right">Total</th>
                   <th className="px-4 py-3 w-16"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {formData.items.map((item, index) => (
-                  <tr key={item.id} className="text-card-foreground">
+                  <tr key={item.id || index} className="text-card-foreground">
                     <td className="px-4 py-2">
                       <Select
                         value={item.productId}
@@ -419,6 +529,19 @@ export function NewDeliveryNoteForm() {
                         disabled={loading}
                       />
                     </td>
+                    <td className="px-4 py-2">
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={item.taxRate}
+                        onChange={(e) =>
+                          updateItem(index, "taxRate", parseFloat(e.target.value) || 0)
+                        }
+                        className="w-full text-right"
+                        disabled={loading}
+                      />
+                    </td>
                     <td className="px-4 py-2 text-right font-medium text-card-foreground">
                       {item.lineTotal.toLocaleString("fr-FR", {
                         minimumFractionDigits: 2,
@@ -442,12 +565,36 @@ export function NewDeliveryNoteForm() {
               </tbody>
               {formData.items.length > 0 && (
                 <tfoot className="bg-muted font-medium">
+                  <tr>
+                    <td colSpan={5} className="px-4 py-3 text-right text-card-foreground">
+                      Total HT
+                    </td>
+                    <td className="px-4 py-3 text-right text-card-foreground">
+                      {totalHT.toLocaleString("fr-FR", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </td>
+                    <td></td>
+                  </tr>
+                  <tr>
+                    <td colSpan={5} className="px-4 py-3 text-right text-card-foreground">
+                      Total TVA
+                    </td>
+                    <td className="px-4 py-3 text-right text-card-foreground">
+                      {totalTax.toLocaleString("fr-FR", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </td>
+                    <td></td>
+                  </tr>
                   <tr className="text-lg font-bold text-card-foreground">
-                    <td colSpan={4} className="px-4 py-3 text-right">
-                      Total
+                    <td colSpan={5} className="px-4 py-3 text-right">
+                      Total TTC
                     </td>
                     <td className="px-4 py-3 text-right">
-                      {totalAmount.toLocaleString("fr-FR", {
+                      {totalTTC.toLocaleString("fr-FR", {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2,
                       })}{" "}
@@ -478,7 +625,7 @@ export function NewDeliveryNoteForm() {
           <Button
             type="button"
             variant="outline"
-            onClick={() => router.push("/dashboard/export/delivery-notes")}
+            onClick={() => router.push("/dashboard/export/proforma")}
             disabled={loading}
           >
             Annuler
@@ -489,12 +636,11 @@ export function NewDeliveryNoteForm() {
             ) : (
               <Save className="mr-2 h-4 w-4" />
             )}
-            Enregistrer le bon de livraison
+            Enregistrer les modifications
           </Button>
         </div>
       </form>
     </div>
   );
 }
-
 

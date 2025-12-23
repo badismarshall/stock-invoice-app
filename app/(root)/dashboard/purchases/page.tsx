@@ -4,7 +4,7 @@ import { getCurrentUser } from "@/data/user/user-auth"
 import { Suspense } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Plus } from "lucide-react"
+import { Plus, FileDown } from "lucide-react"
 import { FeatureFlagsProvider } from "../_components/feature-flags-provider"
 import { SearchParams } from "@/types"
 import { searchParamsCache } from "./_lib/validation"
@@ -37,12 +37,26 @@ async function PurchasesPageContent(props: IndexPageProps) {
               Gérez tous vos bons de commande ici!
             </p>
           </div>
-          <Link href="/dashboard/purchases/new">
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Nouvel Achat
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/dashboard/purchases/export/pdf">
+              <Button variant="outline">
+                <FileDown className="mr-2 h-4 w-4" />
+                Exporter en PDF
+              </Button>
+            </Link>
+            <Link href="/dashboard/purchases/export/xlsx">
+              <Button variant="outline">
+                <FileDown className="mr-2 h-4 w-4" />
+                Exporter en XLSX
+              </Button>
+            </Link>
+            <Link href="/dashboard/purchases/new">
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Nouvel Achat
+              </Button>
+            </Link>
+          </div>
         </div>
         <Suspense 
             fallback={    

@@ -37,7 +37,7 @@ import { getErrorMessage } from "@/lib/handle-error";
 import { toast } from "sonner";
 import type { DataTableRowAction } from "@/types/data-table";
 import type { PurchaseOrderDTOItem } from "@/data/purchase-order/purchase-order.dto";
-import { updatePurchaseOrderStatus, createInvoiceFromPurchaseOrder } from "../../_lib/actions";
+import { updatePurchaseOrderStatus, createInvoiceFromPurchaseOrder } from "@/app/(root)/dashboard/purchases/_lib/actions";
 import { FileText } from "lucide-react";
 
 interface GetPurchaseOrdersTableColumnsProps {

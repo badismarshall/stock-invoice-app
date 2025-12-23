@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { ArrowLeft, Save, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -29,6 +29,7 @@ interface PurchaseOrderItem {
 
 export function NewPurchaseForm() {
   const router = useRouter();
+  const pathname = usePathname();
   const [loading, setLoading] = useState(false);
   const [suppliers, setSuppliers] = useState<Array<{ id: string; name: string }>>([]);
   const [products, setProducts] = useState<Array<{ 
@@ -44,12 +45,27 @@ export function NewPurchaseForm() {
     orderNumber: "",
     supplierId: "",
     orderDate: new Date(),
-    receptionDate: new Date ,
+    receptionDate: new Date(),
     status: "pending" as "pending" | "received" | "cancelled",
     supplierOrderNumber: "",
     notes: "",
     items: [] as PurchaseOrderItem[],
   });
+
+  // Reset form state when component mounts or when pathname changes (useful when navigating back to this page)
+  useEffect(() => {
+    setFormData({
+      orderNumber: "",
+      supplierId: "",
+      orderDate: new Date(),
+      receptionDate: new Date(),
+      status: "pending",
+      supplierOrderNumber: "",
+      notes: "",
+      items: [],
+    });
+    setLoading(false);
+  }, [pathname]);
 
   useEffect(() => {
     const fetchData = async () => {

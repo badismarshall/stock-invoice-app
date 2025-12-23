@@ -17,9 +17,10 @@ import {
   invoiceItem,
   payment,
 } from "@/db/schema";
-import { eq, and, inArray, or } from "drizzle-orm";
+import { eq, and, inArray, or, gte, lte, desc, asc } from "drizzle-orm";
 import { getCurrentUser } from "@/data/user/user-auth";
 import { getDeliveryNoteById } from "@/data/delivery-note/delivery-note.dal";
+import { user } from "@/db/schema";
 
 /**
  * Helper function to update stock when delivery note items are added
@@ -1233,4 +1234,120 @@ export async function deleteDeliveryNotes(input: { ids: string[] }) {
   }
 }
 
+/**
+ * Get all delivery notes with their items for PDF/XLSX export
+ */
+export async function getAllDeliveryNotesForExport(input?: {
+  startDate?: Date;
+  endDate?: Date;
+}) {
+  try {
+    // Helper to format date as YYYY-MM-DD for PostgreSQL date type
+    const formatDateLocal = (date: Date): string => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+
+    // Build where conditions for date filtering
+    const dateConditions = [];
+    if (input?.startDate) {
+      dateConditions.push(gte(deliveryNote.noteDate, formatDateLocal(input.startDate)));
+    }
+    if (input?.endDate) {
+      // Add one day to endDate to include the entire end date
+      const endDatePlusOne = new Date(input.endDate);
+      endDatePlusOne.setDate(endDatePlusOne.getDate() + 1);
+      dateConditions.push(lte(deliveryNote.noteDate, formatDateLocal(endDatePlusOne)));
+    }
+
+    const whereCondition = dateConditions.length > 0 ? and(...dateConditions) : undefined;
+
+    const notes = await db
+      .select({
+        deliveryNote: deliveryNote,
+        client: {
+          id: partner.id,
+          name: partner.name,
+          address: partner.address,
+          phone: partner.phone,
+          email: partner.email,
+        },
+        creator: {
+          id: user.id,
+          name: user.name,
+        },
+      })
+      .from(deliveryNote)
+      .leftJoin(partner, eq(deliveryNote.clientId, partner.id))
+      .leftJoin(user, eq(deliveryNote.createdBy, user.id))
+      .where(whereCondition)
+      .orderBy(desc(deliveryNote.noteDate), desc(deliveryNote.createdAt));
+
+    // Get items for each delivery note
+    const notesWithItems = await Promise.all(
+      notes.map(async (note) => {
+        const items = await db
+          .select({
+            item: deliveryNoteItem,
+            product: {
+              id: product.id,
+              name: product.name,
+              code: product.code,
+            },
+          })
+          .from(deliveryNoteItem)
+          .leftJoin(product, eq(deliveryNoteItem.productId, product.id))
+          .where(eq(deliveryNoteItem.deliveryNoteId, note.deliveryNote.id))
+          .orderBy(asc(deliveryNoteItem.id));
+
+        const noteDate = typeof note.deliveryNote.noteDate === 'string'
+          ? new Date(note.deliveryNote.noteDate + 'T00:00:00')
+          : new Date(note.deliveryNote.noteDate);
+
+        return {
+          id: note.deliveryNote.id,
+          noteNumber: note.deliveryNote.noteNumber,
+          noteType: note.deliveryNote.noteType || "local",
+          clientId: note.deliveryNote.clientId,
+          clientName: note.client?.name || null,
+          clientAddress: note.client?.address || null,
+          clientPhone: note.client?.phone || null,
+          clientEmail: note.client?.email || null,
+          noteDate,
+          status: note.deliveryNote.status || "active",
+          currency: note.deliveryNote.currency || null,
+          destinationCountry: note.deliveryNote.destinationCountry || null,
+          deliveryLocation: note.deliveryNote.deliveryLocation || null,
+          notes: note.deliveryNote.notes,
+          createdBy: note.deliveryNote.createdBy,
+          createdByName: note.creator?.name || null,
+          createdAt: note.deliveryNote.createdAt,
+          items: items.map((i) => ({
+            id: i.item.id,
+            productId: i.item.productId,
+            productName: i.product?.name || null,
+            productCode: i.product?.code || null,
+            quantity: parseFloat(i.item.quantity),
+            unitPrice: parseFloat(i.item.unitPrice),
+            discountPercent: parseFloat(i.item.discountPercent || "0"),
+            lineTotal: parseFloat(i.item.lineTotal),
+          })),
+        };
+      })
+    );
+
+    return {
+      data: notesWithItems,
+      error: null,
+    };
+  } catch (err) {
+    console.error("Error getting all delivery notes for export", err);
+    return {
+      data: [],
+      error: getErrorMessage(err),
+    };
+  }
+}
 

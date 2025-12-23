@@ -4,10 +4,106 @@ import { updateTag } from "next/cache";
 import { getErrorMessage } from "@/lib/handle-error";
 import { generateId } from "@/lib/data-table/id";
 import db from "@/db";
-import { purchaseOrder, purchaseOrderItem, partner, product, stockCurrent, stockMovement, invoice, invoiceItem, payment } from "@/db/schema";
-import { eq, inArray, and, asc, not, or } from "drizzle-orm";
+import { purchaseOrder, purchaseOrderItem, partner, product, stockCurrent, stockMovement, invoice, invoiceItem, payment, user } from "@/db/schema";
+import { eq, inArray, and, asc, desc, not, or, gte, lte } from "drizzle-orm";
 import { getCurrentUser } from "@/data/user/user-auth";
 import { getPurchaseOrderById } from "@/data/purchase-order/purchase-order.dal";
+
+/**
+ * Get all suppliers
+ */
+export async function getAllSuppliers() {
+  try {
+    const suppliers = await db
+      .select({
+        id: partner.id,
+        name: partner.name,
+      })
+      .from(partner)
+      .where(eq(partner.type, "fournisseur"))
+      .orderBy(asc(partner.name));
+
+    return {
+      data: suppliers,
+      error: null,
+    };
+  } catch (err) {
+    console.error("Error getting all suppliers", err);
+    return {
+      data: [],
+      error: getErrorMessage(err),
+    };
+  }
+}
+
+/**
+ * Get purchase order by ID
+ */
+export async function getPurchaseOrderByIdAction(input: { id: string }) {
+  try {
+    const result = await getPurchaseOrderById(input.id);
+    
+    if (!result) {
+      return {
+        data: null,
+        error: "Commande d'achat non trouvée",
+      };
+    }
+
+    return {
+      data: result,
+      error: null,
+    };
+  } catch (err) {
+    console.error("Error getting purchase order by ID", err);
+    return {
+      data: null,
+      error: getErrorMessage(err),
+    };
+  }
+}
+
+/**
+ * Get all active products
+ */
+export async function getAllActiveProducts() {
+  try {
+    const products = await db
+      .select({
+        id: product.id,
+        name: product.name,
+        code: product.code,
+        purchasePrice: product.purchasePrice,
+        salePriceLocal: product.salePriceLocal,
+        salePriceExport: product.salePriceExport,
+        taxRate: product.taxRate,
+        unitOfMeasure: product.unitOfMeasure,
+      })
+      .from(product)
+      .where(eq(product.isActive, true))
+      .orderBy(asc(product.name));
+
+    return {
+      data: products.map((p) => ({
+        id: p.id,
+        name: p.name,
+        code: p.code,
+        purchasePrice: p.purchasePrice,
+        salePriceLocal: p.salePriceLocal,
+        salePriceExport: p.salePriceExport,
+        taxRate: p.taxRate,
+        unitOfMeasure: p.unitOfMeasure || "unité",
+      })),
+      error: null,
+    };
+  } catch (err) {
+    console.error("Error getting all active products", err);
+    return {
+      data: [],
+      error: getErrorMessage(err),
+    };
+  }
+}
 
 /**
  * Helper function to update stock when purchase order items are added/received
@@ -99,7 +195,7 @@ async function updateStockFromPurchaseOrder(
         })
         .where(eq(stockCurrent.productId, item.productId));
     } else {
-      // Create new stock_current entry (only for incoming stock)
+      // Create new stock_current entry
       if (!isReversal && item.quantity > 0) {
         const stockId = generateId();
         await tx.insert(stockCurrent).values({
@@ -108,21 +204,21 @@ async function updateStockFromPurchaseOrder(
           quantityAvailable: item.quantity.toString(),
           averageCost: item.unitCost.toFixed(2),
           lastMovementDate: movementDate,
+          lastUpdated: new Date(),
         });
-      } else if (isReversal) {
-        throw new Error(
-          `Impossible de retirer du stock pour le produit ${item.productId} car il n'existe pas en stock`
-        );
       }
     }
   }
 }
 
+/**
+ * Add a new purchase order
+ */
 export async function addPurchaseOrder(input: {
   supplierId: string;
   orderDate: Date;
-  receptionDate?: Date;
-  status?: string;
+  receptionDate?: Date | null;
+  status?: "pending" | "received" | "cancelled";
   supplierOrderNumber?: string;
   totalAmount?: string;
   notes?: string;
@@ -142,52 +238,39 @@ export async function addPurchaseOrder(input: {
       };
     }
 
-    // Generate purchase order number automatically
+    // Generate order number
     const { generatePurchaseOrderNumber } = await import("@/lib/utils/invoice-number-generator");
-    let orderNumber = generatePurchaseOrderNumber();
-    
-    // Check if order number already exists and regenerate if needed
-    let attempts = 0;
-    while (attempts < 10) {
-      const existingOrder = await db
-        .select({ id: purchaseOrder.id })
-        .from(purchaseOrder)
-        .where(eq(purchaseOrder.orderNumber, orderNumber))
-        .limit(1)
-        .execute();
+    const orderNumber = generatePurchaseOrderNumber();
 
-      if (existingOrder.length === 0) {
-        break; // Number is unique
-      }
-      
-      // Regenerate if exists
-      orderNumber = generatePurchaseOrderNumber();
-      attempts++;
-    }
+    // Check if order number already exists
+    const existingOrder = await db
+      .select({ id: purchaseOrder.id })
+      .from(purchaseOrder)
+      .where(eq(purchaseOrder.orderNumber, orderNumber))
+      .limit(1);
 
-    if (attempts >= 10) {
+    if (existingOrder.length > 0) {
       return {
         data: null,
-        error: "Impossible de générer un numéro unique. Veuillez réessayer.",
+        error: `Le numéro de commande "${orderNumber}" existe déjà. Veuillez réessayer.`,
       };
     }
 
     const id = generateId();
 
-    await db.transaction(async (tx) => {
-      // Insert purchase order
-      // Convert Date to string format YYYY-MM-DD for PostgreSQL date type
-      // Use local time components to avoid timezone issues
-      const formatDateLocal = (date: Date): string => {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-      };
+    // Helper to format date as YYYY-MM-DD for PostgreSQL date type
+    const formatDateLocal = (date: Date): string => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
 
+    await db.transaction(async (tx) => {
       const orderDateValue = input.orderDate instanceof Date 
         ? formatDateLocal(input.orderDate)
         : formatDateLocal(new Date(input.orderDate));
+      
       const receptionDateValue = input.receptionDate 
         ? (input.receptionDate instanceof Date 
             ? formatDateLocal(input.receptionDate)
@@ -200,22 +283,22 @@ export async function addPurchaseOrder(input: {
         supplierId: input.supplierId,
         orderDate: orderDateValue,
         receptionDate: receptionDateValue,
-        status: (input.status as "pending" | "received" | "cancelled") || "pending",
+        status: input.status || "pending",
         supplierOrderNumber: input.supplierOrderNumber || null,
         totalAmount: input.totalAmount || null,
         notes: input.notes || null,
-        createdBy: user.id,
+        createdBy: user.id
       });
 
       // Insert purchase order items if provided
       if (input.items && input.items.length > 0) {
-        const itemsToInsert = input.items.map((item) => ({
+        const itemsToInsert = input.items.map(item => ({
           id: generateId(),
           purchaseOrderId: id,
           productId: item.productId,
           quantity: item.quantity.toString(),
           unitCost: item.unitCost.toString(),
-          lineTotal: item.lineTotal.toString(),
+          lineTotal: item.lineTotal.toString()
         }));
 
         if (itemsToInsert.length > 0) {
@@ -223,14 +306,193 @@ export async function addPurchaseOrder(input: {
         }
 
         // If status is "received", update stock
-        const status = (input.status as "pending" | "received" | "cancelled") || "pending";
+        const status = input.status || "pending";
         if (status === "received") {
+          const movementDate = receptionDateValue || orderDateValue;
+          await updateStockFromPurchaseOrder(tx, input.items, movementDate, id, user.id, false);
+        }
+      }
+    });
+
+    updateTag("purchaseOrders");
+    updateTag("stock");
+
+    return {
+      data: { id, orderNumber },
+      error: null,
+    };
+  } catch (err) {
+    console.error("Error adding purchase order", err);
+    return {
+      data: null,
+      error: getErrorMessage(err),
+    };
+  }
+}
+
+/**
+ * Update purchase order
+ */
+export async function updatePurchaseOrder(input: {
+  id: string;
+  orderNumber: string;
+  supplierId: string;
+  orderDate: Date;
+  receptionDate?: Date | null;
+  status?: "pending" | "received" | "cancelled";
+  totalAmount?: string;
+  notes?: string;
+  items?: Array<{
+    id?: string;
+    productId: string;
+    quantity: number;
+    unitCost: number;
+    lineTotal: number;
+  }>;
+}) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return {
+        data: null,
+        error: "Utilisateur non authentifié",
+      };
+    }
+
+    // Get existing purchase order
+    const existingOrder = await getPurchaseOrderById(input.id);
+    if (!existingOrder) {
+      return {
+        data: null,
+        error: "Commande d'achat non trouvée",
+      };
+    }
+
+    // Helper to format date as YYYY-MM-DD for PostgreSQL date type
+    const formatDateLocal = (date: Date): string => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+
+    await db.transaction(async (tx) => {
+      const orderDateValue = input.orderDate instanceof Date 
+        ? formatDateLocal(input.orderDate)
+        : formatDateLocal(new Date(input.orderDate));
+      
+      const receptionDateValue = input.receptionDate 
+        ? (input.receptionDate instanceof Date 
+            ? formatDateLocal(input.receptionDate)
+            : formatDateLocal(new Date(input.receptionDate)))
+        : null;
+
+      const newStatus = input.status || existingOrder.status || "pending";
+      const oldStatus = existingOrder.status || "pending";
+
+      // 1) If old status was "received", reverse existing stock movements
+      if (oldStatus === "received") {
+        const movements = await tx
+          .select()
+          .from(stockMovement)
+          .where(
+            and(
+              eq(stockMovement.referenceType, "purchase_order"),
+              eq(stockMovement.referenceId, input.id)
+            )
+          );
+
+        for (const movement of movements) {
+          const existingStock = await tx
+            .select()
+            .from(stockCurrent)
+            .where(eq(stockCurrent.productId, movement.productId))
+            .limit(1);
+
+          if (existingStock.length > 0) {
+            const currentStock = existingStock[0];
+            const currentQuantity = parseFloat(currentStock.quantityAvailable || "0");
+            const currentAverageCost = parseFloat(currentStock.averageCost || "0");
+            const movementQuantity = parseFloat(movement.quantity || "0");
+            const movementUnitCost = parseFloat(movement.unitCost || "0");
+            const newQuantity = currentQuantity - movementQuantity; // reverse 'in'
+
+            if (newQuantity < 0) {
+              throw new Error(
+                `Quantité insuffisante en stock pour le produit ${movement.productId}. Stock actuel: ${currentQuantity}, Tentative de retrait: ${movementQuantity}`
+              );
+            }
+
+            // Recalculate average cost when reversing
+            let newAverageCost = currentAverageCost;
+            if (newQuantity > 0 && currentQuantity > 0) {
+              // Calculate what the average cost was before this movement
+              const totalCostBefore = currentQuantity * currentAverageCost;
+              const movementCost = movementQuantity * movementUnitCost;
+              const costBefore = totalCostBefore - movementCost;
+              newAverageCost = costBefore / newQuantity;
+            }
+
+            await tx
+              .update(stockCurrent)
+              .set({
+                quantityAvailable: newQuantity.toString(),
+                averageCost: newAverageCost.toFixed(2),
+                lastMovementDate: orderDateValue,
+                lastUpdated: new Date(),
+              })
+              .where(eq(stockCurrent.productId, movement.productId));
+          }
+
+          await tx.delete(stockMovement).where(eq(stockMovement.id, movement.id));
+        }
+      }
+
+      // 2) Update purchase order main fields
+      await tx
+        .update(purchaseOrder)
+        .set({
+          orderNumber: input.orderNumber,
+          supplierId: input.supplierId,
+          orderDate: orderDateValue,
+          receptionDate: receptionDateValue,
+          status: newStatus,
+          totalAmount: input.totalAmount || null,
+          notes: input.notes || null,
+          updatedAt: new Date(),
+        })
+        .where(eq(purchaseOrder.id, input.id));
+
+      // 3) Delete all existing items
+      await tx
+        .delete(purchaseOrderItem)
+        .where(eq(purchaseOrderItem.purchaseOrderId, input.id));
+
+      // 4) Insert new items
+      if (input.items && input.items.length > 0) {
+        const itemsToInsert = input.items.map((item) => ({
+          id: item.id || generateId(),
+          purchaseOrderId: input.id,
+          productId: item.productId,
+          quantity: item.quantity.toString(),
+          unitCost: item.unitCost.toString(),
+          lineTotal: item.lineTotal.toString(),
+        }));
+
+        await tx.insert(purchaseOrderItem).values(itemsToInsert);
+
+        // 5) If new status is "received", apply stock movements
+        if (newStatus === "received") {
           const movementDate = receptionDateValue || orderDateValue;
           await updateStockFromPurchaseOrder(
             tx,
-            input.items,
+            input.items.map((item) => ({
+              productId: item.productId,
+              quantity: item.quantity,
+              unitCost: item.unitCost,
+            })),
             movementDate,
-            id,
+            input.id,
             user.id,
             false
           );
@@ -243,11 +505,11 @@ export async function addPurchaseOrder(input: {
     updateTag("stockMovements");
 
     return {
-      data: { id },
+      data: { id: input.id },
       error: null,
     };
   } catch (err) {
-    console.error("Error adding purchase order", err);
+    console.error("Error updating purchase order", err);
     return {
       data: null,
       error: getErrorMessage(err),
@@ -255,7 +517,13 @@ export async function addPurchaseOrder(input: {
   }
 }
 
-export async function deletePurchaseOrder(input: { id: string }) {
+/**
+ * Update purchase order status
+ */
+export async function updatePurchaseOrderStatus(input: {
+  id: string;
+  status: "pending" | "received" | "cancelled";
+}) {
   try {
     const user = await getCurrentUser();
     if (!user) {
@@ -265,117 +533,32 @@ export async function deletePurchaseOrder(input: { id: string }) {
       };
     }
 
-    // Check if purchase order has items
-    const items = await db
-      .select({ id: purchaseOrderItem.id })
-      .from(purchaseOrderItem)
-      .where(eq(purchaseOrderItem.purchaseOrderId, input.id))
-      .limit(1);
-
-    if (items.length > 0) {
-      return {
-        data: null,
-        error: "Impossible de supprimer ce bon de commande car il contient des produits. Veuillez d'abord supprimer tous les produits.",
-      };
-    }
-
-    // Get purchase order with items (for stock adjustment if needed)
+    // Get purchase order
     const purchaseOrderData = await getPurchaseOrderById(input.id);
     if (!purchaseOrderData) {
       return {
         data: null,
-        error: "Bon de commande non trouvé",
+        error: "Commande d'achat non trouvée",
       };
     }
 
-    const orderData = purchaseOrderData;
-
-    await db.transaction(async (tx) => {
-      // Get all invoices linked to this purchase order
-      const linkedInvoices = await tx
-        .select({ id: invoice.id })
-        .from(invoice)
-        .where(eq(invoice.purchaseOrderId, input.id));
-
-      // For each invoice, get all payments and delete them
-      for (const inv of linkedInvoices) {
-        const invoicePayments = await tx
-          .select({ id: payment.id })
-          .from(payment)
-          .where(eq(payment.invoiceId, inv.id));
-
-        // Delete all payments for this invoice
-        if (invoicePayments.length > 0) {
-          await tx
-            .delete(payment)
-            .where(eq(payment.invoiceId, inv.id));
-        }
-
-        // Delete invoice items
-        await tx
-          .delete(invoiceItem)
-          .where(eq(invoiceItem.invoiceId, inv.id));
-      }
-
-      // Delete all invoices linked to this purchase order
-      if (linkedInvoices.length > 0) {
-        await tx
-          .delete(invoice)
-          .where(eq(invoice.purchaseOrderId, input.id));
-      }
-
-      // Adjust stock: reverse the stock movements (remove the stock that was added)
-      if (orderData.items && orderData.items.length > 0) {
-        const formatDateLocal = (date: Date | string): string => {
-          const d = date instanceof Date ? date : new Date(date);
-          const year = d.getFullYear();
-          const month = String(d.getMonth() + 1).padStart(2, '0');
-          const day = String(d.getDate()).padStart(2, '0');
-          return `${year}-${month}-${day}`;
-        };
-
-        // Use receptionDate if available, otherwise use orderDate
-        const movementDate = orderData.receptionDate 
-          ? formatDateLocal(orderData.receptionDate)
-          : formatDateLocal(orderData.orderDate);
-
-        await updateStockFromPurchaseOrder(
-          tx,
-          orderData.items.map((item: { productId: string; quantity: number | string; unitCost: number | string }) => ({
-            productId: item.productId,
-            quantity: typeof item.quantity === 'string' ? parseFloat(item.quantity) : item.quantity,
-            unitCost: typeof item.unitCost === 'string' ? parseFloat(item.unitCost) : item.unitCost,
-          })),
-          movementDate,
-          input.id,
-          user.id,
-          true // isReversal = true to remove stock
-        );
-      }
-
-      // Delete purchase order items
-      await tx
-        .delete(purchaseOrderItem)
-        .where(eq(purchaseOrderItem.purchaseOrderId, input.id));
-
-      // Delete purchase order
-      await tx
-        .delete(purchaseOrder)
-        .where(eq(purchaseOrder.id, input.id));
-    });
+    // Update status
+    await db
+      .update(purchaseOrder)
+      .set({
+        status: input.status,
+        updatedAt: new Date(),
+      })
+      .where(eq(purchaseOrder.id, input.id));
 
     updateTag("purchaseOrders");
-    updateTag("invoices");
-    updateTag("payments");
-    updateTag("stock");
-    updateTag("stockMovements");
 
     return {
-      data: null,
+      data: { id: input.id, status: input.status },
       error: null,
     };
   } catch (err) {
-    console.error("Error deleting purchase order", err);
+    console.error("Error updating purchase order status", err);
     return {
       data: null,
       error: getErrorMessage(err),
@@ -383,221 +566,13 @@ export async function deletePurchaseOrder(input: { id: string }) {
   }
 }
 
-export async function deletePurchaseOrders(input: { ids: string[] }) {
-  try {
-    if (input.ids.length === 0) {
-      return {
-        data: null,
-        error: "Aucun bon de commande sélectionné",
-      };
-    }
-
-    const user = await getCurrentUser();
-    if (!user) {
-      return {
-        data: null,
-        error: "Utilisateur non authentifié",
-      };
-    }
-
-    // Check if any purchase order has items
-    const items = await db
-      .select({ 
-        purchaseOrderId: purchaseOrderItem.purchaseOrderId,
-        orderNumber: purchaseOrder.orderNumber,
-      })
-      .from(purchaseOrderItem)
-      .innerJoin(purchaseOrder, eq(purchaseOrderItem.purchaseOrderId, purchaseOrder.id))
-      .where(inArray(purchaseOrderItem.purchaseOrderId, input.ids));
-
-    if (items.length > 0) {
-      const orderNumbers = Array.from(new Set(items.map(item => item.orderNumber)));
-      return {
-        data: null,
-        error: `Impossible de supprimer ${items.length > 1 ? 'ces bons de commande' : 'ce bon de commande'} car ${items.length > 1 ? 'ils contiennent' : 'il contient'} des produits. Veuillez d'abord supprimer tous les produits.`,
-      };
-    }
-
-    // Get all purchase orders with their items for stock adjustment BEFORE transaction
-    const purchaseOrdersData = await Promise.all(
-      input.ids.map(id => getPurchaseOrderById(id))
-    );
-
-    await db.transaction(async (tx) => {
-      // Get all invoices linked to these purchase orders
-      const linkedInvoices = await tx
-        .select({ id: invoice.id })
-        .from(invoice)
-        .where(inArray(invoice.purchaseOrderId, input.ids));
-
-      // For each invoice, get all payments and delete them
-      for (const inv of linkedInvoices) {
-        const invoicePayments = await tx
-          .select({ id: payment.id })
-          .from(payment)
-          .where(eq(payment.invoiceId, inv.id));
-
-        // Delete all payments for this invoice
-        if (invoicePayments.length > 0) {
-          await tx
-            .delete(payment)
-            .where(eq(payment.invoiceId, inv.id));
-        }
-
-        // Delete invoice items
-        await tx
-          .delete(invoiceItem)
-          .where(eq(invoiceItem.invoiceId, inv.id));
-      }
-
-      // Delete all invoices linked to these purchase orders
-      if (linkedInvoices.length > 0) {
-        await tx
-          .delete(invoice)
-          .where(inArray(invoice.purchaseOrderId, input.ids));
-      }
-
-      // Adjust stock for each purchase order
-      for (const orderResult of purchaseOrdersData) {
-        if (orderResult && orderResult.items && orderResult.items.length > 0) {
-          const orderData = orderResult;
-          const formatDateLocal = (date: Date | string): string => {
-            const d = date instanceof Date ? date : new Date(date);
-            const year = d.getFullYear();
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-          };
-
-          // Use receptionDate if available, otherwise use orderDate
-          const movementDate = orderData.receptionDate 
-            ? formatDateLocal(orderData.receptionDate)
-            : formatDateLocal(orderData.orderDate);
-
-          await updateStockFromPurchaseOrder(
-            tx,
-            orderData.items.map((item: { productId: string; quantity: number | string; unitCost: number | string }) => ({
-              productId: item.productId,
-              quantity: typeof item.quantity === 'string' ? parseFloat(item.quantity) : item.quantity,
-              unitCost: typeof item.unitCost === 'string' ? parseFloat(item.unitCost) : item.unitCost,
-            })),
-            movementDate,
-            orderData.id,
-            user.id,
-            true // isReversal = true to remove stock
-          );
-        }
-      }
-
-      // Delete purchase order items
-      await tx
-        .delete(purchaseOrderItem)
-        .where(inArray(purchaseOrderItem.purchaseOrderId, input.ids));
-
-      // Delete purchase orders
-      await tx
-        .delete(purchaseOrder)
-        .where(inArray(purchaseOrder.id, input.ids));
-    });
-
-    updateTag("purchaseOrders");
-    updateTag("invoices");
-    updateTag("payments");
-    updateTag("stock");
-    updateTag("stockMovements");
-
-    return {
-      data: null,
-      error: null,
-    };
-  } catch (err) {
-    console.error("Error deleting purchase orders", err);
-    return {
-      data: null,
-      error: getErrorMessage(err),
-    };
-  }
-}
-
-// Helper function to get all suppliers (partners with type='fournisseur')
-export async function getAllSuppliers() {
-  try {
-    const suppliers = await db
-      .select({
-        id: partner.id,
-        name: partner.name,
-      })
-      .from(partner)
-      .where(eq(partner.type, "fournisseur"))
-      .orderBy(partner.name);
-
-    return {
-      data: suppliers,
-      error: null,
-    };
-  } catch (err) {
-    console.error("Error getting suppliers", err);
-    return {
-      data: [],
-      error: getErrorMessage(err),
-    };
-  }
-}
-
-// Helper function to get all active products for dropdowns
-export async function getAllActiveProducts() {
-  try {
-    const products = await db
-      .select({
-        id: product.id,
-        name: product.name,
-        code: product.code,
-        purchasePrice: product.purchasePrice,
-        taxRate: product.taxRate,
-        unitOfMeasure: product.unitOfMeasure,
-      })
-      .from(product)
-      .where(eq(product.isActive, true))
-      .orderBy(asc(product.name));
-
-    return {
-      data: products,
-      error: null,
-    };
-  } catch (err) {
-    console.error("Error getting active products", err);
-    return {
-      data: [],
-      error: getErrorMessage(err),
-    };
-  }
-}
-
-export async function getPurchaseOrderByIdAction(input: { id: string }) {
-  try {
-    const purchaseOrderData = await getPurchaseOrderById(input.id);
-    
-    if (!purchaseOrderData) {
-      return {
-        data: null,
-        error: "Bon de commande non trouvé",
-      };
-    }
-
-    return {
-      data: purchaseOrderData,
-      error: null,
-    };
-  } catch (err) {
-    console.error("Error getting purchase order by ID", err);
-    return {
-      data: null,
-      error: getErrorMessage(err),
-    };
-  }
-}
-
-export async function createInvoiceFromPurchaseOrder(input: { purchaseOrderId: string; invoiceNumber?: string }) {
+/**
+ * Create invoice from purchase order
+ */
+export async function createInvoiceFromPurchaseOrder(input: {
+  purchaseOrderId: string;
+  invoiceNumber?: string;
+}) {
   try {
     const user = await getCurrentUser();
     if (!user) {
@@ -613,14 +588,14 @@ export async function createInvoiceFromPurchaseOrder(input: { purchaseOrderId: s
     if (!purchaseOrderData) {
       return {
         data: null,
-        error: "Bon de commande non trouvé",
+        error: "Commande d'achat non trouvée",
       };
     }
 
     if (!purchaseOrderData.items || purchaseOrderData.items.length === 0) {
       return {
         data: null,
-        error: "Le bon de commande ne contient aucun produit",
+        error: "La commande d'achat ne contient aucun produit",
       };
     }
 
@@ -628,7 +603,13 @@ export async function createInvoiceFromPurchaseOrder(input: { purchaseOrderId: s
     const existingInvoice = await db
       .select({ id: invoice.id, invoiceNumber: invoice.invoiceNumber })
       .from(invoice)
-      .where(eq(invoice.purchaseOrderId, input.purchaseOrderId))
+      .where(
+        and(
+          eq(invoice.purchaseOrderId, input.purchaseOrderId),
+          eq(invoice.invoiceType, "purchase"),
+          eq(invoice.status, "active")
+        )
+      )
       .limit(1)
       .execute();
 
@@ -725,7 +706,6 @@ export async function createInvoiceFromPurchaseOrder(input: { purchaseOrderId: s
         invoiceType: "purchase",
         supplierId: purchaseOrderData.supplierId,
         purchaseOrderId: input.purchaseOrderId,
-        supplierOrderNumber: purchaseOrderData.supplierOrderNumber || null,
         invoiceDate: invoiceDateValue,
         dueDate: dueDateValue,
         status: "active",
@@ -735,11 +715,11 @@ export async function createInvoiceFromPurchaseOrder(input: { purchaseOrderId: s
         taxAmount: taxAmount.toString(),
         totalAmount: totalAmount.toString(),
         notes: purchaseOrderData.notes || null,
-        createdBy: user.id,
+        createdBy: user.id
       });
 
       // Insert invoice items
-      const itemsToInsert = invoiceItems.map((item) => ({
+      const itemsToInsert = invoiceItems.map(item => ({
         id: generateId(),
         invoiceId: invoiceId,
         productId: item.productId,
@@ -752,7 +732,9 @@ export async function createInvoiceFromPurchaseOrder(input: { purchaseOrderId: s
         lineTotal: item.lineTotal.toString(),
       }));
 
-      await tx.insert(invoiceItem).values(itemsToInsert);
+      if (itemsToInsert.length > 0) {
+        await tx.insert(invoiceItem).values(itemsToInsert);
+      }
     });
 
     updateTag("invoices");
@@ -772,10 +754,10 @@ export async function createInvoiceFromPurchaseOrder(input: { purchaseOrderId: s
   }
 }
 
-export async function updatePurchaseOrderStatus(input: {
-  id: string;
-  status: "pending" | "received" | "cancelled";
-}) {
+/**
+ * Delete a purchase order with cascade deletion
+ */
+export async function deletePurchaseOrder(input: { id: string }) {
   try {
     const user = await getCurrentUser();
     if (!user) {
@@ -785,486 +767,78 @@ export async function updatePurchaseOrderStatus(input: {
       };
     }
 
-    // Helper function to format date
-    const formatDateLocal = (date: Date): string => {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
-
-    // Get the current purchase order data
-    const oldPurchaseOrder = await getPurchaseOrderById(input.id);
-    if (!oldPurchaseOrder) {
+    // Get purchase order with items
+    const purchaseOrderData = await getPurchaseOrderById(input.id);
+    if (!purchaseOrderData) {
       return {
         data: null,
-        error: "Bon de commande non trouvé",
+        error: "Commande d'achat non trouvée",
       };
     }
 
-    const oldStatus = oldPurchaseOrder.status;
-    const newStatus = input.status;
-
-    // If status hasn't changed, no need to update
-    if (oldStatus === newStatus) {
+    // Check if purchase order has items
+    if (purchaseOrderData.items && purchaseOrderData.items.length > 0) {
       return {
         data: null,
-        error: null,
+        error: "Impossible de supprimer une commande d'achat qui contient des produits. Veuillez d'abord supprimer tous les produits de la commande.",
       };
     }
-
-    const movementDate = oldPurchaseOrder.receptionDate 
-      ? (oldPurchaseOrder.receptionDate instanceof Date 
-          ? formatDateLocal(oldPurchaseOrder.receptionDate)
-          : formatDateLocal(new Date(oldPurchaseOrder.receptionDate)))
-      : (oldPurchaseOrder.orderDate instanceof Date 
-          ? formatDateLocal(oldPurchaseOrder.orderDate)
-          : formatDateLocal(new Date(oldPurchaseOrder.orderDate)));
 
     await db.transaction(async (tx) => {
-      // Handle stock updates based on status changes
-      const oldItems = oldPurchaseOrder.items || [];
+      // Get all invoices linked to this purchase order
+      const linkedInvoices = await tx
+        .select({ id: invoice.id })
+        .from(invoice)
+        .where(eq(invoice.purchaseOrderId, input.id));
 
-      // Case 1: Status changed from "received" to "pending" or "cancelled" - reverse stock
-      if (oldStatus === "received" && (newStatus === "pending" || newStatus === "cancelled")) {
-        // Get all stock movements for this purchase order
-        const movements = await tx
-          .select()
-          .from(stockMovement)
-          .where(
-            and(
-              eq(stockMovement.referenceType, "purchase_order"),
-              eq(stockMovement.referenceId, input.id)
-            )
-          );
+      // For each invoice, get all payments and delete them
+      for (const inv of linkedInvoices) {
+        const invoicePayments = await tx
+          .select({ id: payment.id })
+          .from(payment)
+          .where(eq(payment.invoiceId, inv.id));
 
-        // Reverse stock for each movement
-        for (const movement of movements) {
-          const existingStock = await tx
-            .select()
-            .from(stockCurrent)
-            .where(eq(stockCurrent.productId, movement.productId))
-            .limit(1);
-
-          if (existingStock.length > 0) {
-            const currentStock = existingStock[0];
-            const currentQuantity = parseFloat(currentStock.quantityAvailable || "0");
-            const movementQuantity = parseFloat(movement.quantity || "0");
-            const newQuantity = currentQuantity - movementQuantity;
-
-            if (newQuantity < 0) {
-              throw new Error(
-                `Quantité insuffisante en stock pour le produit ${movement.productId}. Stock actuel: ${currentQuantity}, Tentative de retrait: ${movementQuantity}`
-              );
-            }
-
-            await tx
-              .update(stockCurrent)
-              .set({
-                quantityAvailable: newQuantity.toString(),
-                lastMovementDate: movementDate,
-                lastUpdated: new Date(),
-              })
-              .where(eq(stockCurrent.productId, movement.productId));
-          }
-
-          // Delete the movement
+        // Delete all payments for this invoice
+        if (invoicePayments.length > 0) {
           await tx
-            .delete(stockMovement)
-            .where(eq(stockMovement.id, movement.id));
+            .delete(payment)
+            .where(eq(payment.invoiceId, inv.id));
         }
-      }
-      // Case 2: Status changed from "pending" or "cancelled" to "received" - add items to stock
-      else if ((oldStatus === "pending" || oldStatus === "cancelled") && newStatus === "received") {
-        if (oldItems.length > 0) {
-          await updateStockFromPurchaseOrder(
-            tx,
-            oldItems.map(item => ({
-              productId: item.productId,
-              quantity: item.quantity,
-              unitCost: item.unitCost,
-            })),
-            movementDate,
-            input.id,
-            user.id,
-            false
-          );
-        }
+
+        // Delete invoice items
+        await tx
+          .delete(invoiceItem)
+          .where(eq(invoiceItem.invoiceId, inv.id));
       }
 
-      // Update purchase order status
-      await tx
-        .update(purchaseOrder)
-        .set({
-          status: newStatus,
-        })
-        .where(eq(purchaseOrder.id, input.id));
-    });
-
-    updateTag("purchaseOrders");
-    updateTag("stock");
-    updateTag("stockMovements");
-
-    return {
-      data: null,
-      error: null,
-    };
-  } catch (err) {
-    console.error("Error updating purchase order status", err);
-    return {
-      data: null,
-      error: getErrorMessage(err),
-    };
-  }
-}
-
-export async function updatePurchaseOrder(input: {
-  id: string;
-  orderNumber: string;
-  supplierId: string;
-  orderDate: Date;
-  receptionDate?: Date;
-  status?: string;
-  totalAmount?: string;
-  notes?: string;
-  items?: Array<{
-    id?: string;
-    productId: string;
-    quantity: number;
-    unitCost: number;
-    lineTotal: number;
-  }>;
-}) {
-  try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return {
-        data: null,
-        error: "Utilisateur non authentifié",
-      };
-    }
-
-    // Check if order number already exists (excluding current purchase order)
-    const existingOrder = await db
-      .select({ id: purchaseOrder.id })
-      .from(purchaseOrder)
-      .where(and(
-        eq(purchaseOrder.orderNumber, input.orderNumber),
-        not(eq(purchaseOrder.id, input.id))
-      ))
-      .limit(1)
-      .execute();
-
-    if (existingOrder.length > 0) {
-      return {
-        data: null,
-        error: `Le numéro de commande "${input.orderNumber}" existe déjà. Veuillez utiliser un numéro différent.`,
-      };
-    }
-
-    // Get the old purchase order data to compare
-    const oldPurchaseOrder = await getPurchaseOrderById(input.id);
-    if (!oldPurchaseOrder) {
-      return {
-        data: null,
-        error: "Bon de commande non trouvé",
-      };
-    }
-
-    const oldStatus = oldPurchaseOrder.status;
-    const newStatus = (input.status as "pending" | "received" | "cancelled") || "pending";
-
-    // Convert Date to string format YYYY-MM-DD for PostgreSQL date type
-    const formatDateLocal = (date: Date): string => {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
-
-    const orderDateValue = input.orderDate instanceof Date 
-      ? formatDateLocal(input.orderDate)
-      : formatDateLocal(new Date(input.orderDate));
-    const receptionDateValue = input.receptionDate 
-      ? (input.receptionDate instanceof Date 
-          ? formatDateLocal(input.receptionDate)
-          : formatDateLocal(new Date(input.receptionDate)))
-      : null;
-
-    await db.transaction(async (tx) => {
-      // Handle stock updates based on status changes
-      const oldItems = oldPurchaseOrder.items || [];
-      const newItems = input.items || [];
-      const movementDate = receptionDateValue || orderDateValue;
-
-      // Case 1: Status changed from "received" to "pending" or "cancelled" - delete stock movements
-      if (oldStatus === "received" && (newStatus === "pending" || newStatus === "cancelled")) {
-        // Get all stock movements for this purchase order
-        const movements = await tx
-          .select()
-          .from(stockMovement)
-          .where(
-            and(
-              eq(stockMovement.referenceType, "purchase_order"),
-              eq(stockMovement.referenceId, input.id)
-            )
-          );
-
-        // Reverse stock for each movement
-        for (const movement of movements) {
-          const existingStock = await tx
-            .select()
-            .from(stockCurrent)
-            .where(eq(stockCurrent.productId, movement.productId))
-            .limit(1);
-
-          if (existingStock.length > 0) {
-            const currentStock = existingStock[0];
-            const currentQuantity = parseFloat(currentStock.quantityAvailable || "0");
-            const movementQuantity = parseFloat(movement.quantity || "0");
-            const newQuantity = currentQuantity - movementQuantity;
-
-            if (newQuantity < 0) {
-              throw new Error(
-                `Quantité insuffisante en stock pour le produit ${movement.productId}. Stock actuel: ${currentQuantity}, Tentative de retrait: ${movementQuantity}`
-              );
-            }
-
-            await tx
-              .update(stockCurrent)
-              .set({
-                quantityAvailable: newQuantity.toString(),
-                lastMovementDate: movementDate,
-                lastUpdated: new Date(),
-              })
-              .where(eq(stockCurrent.productId, movement.productId));
-          }
-
-          // Delete the movement
-          await tx
-            .delete(stockMovement)
-            .where(eq(stockMovement.id, movement.id));
-        }
-      }
-      // Case 2: Status changed from "pending" to "received" - add all new items to stock
-      else if (oldStatus === "pending" && newStatus === "received") {
-        if (newItems.length > 0) {
-          await updateStockFromPurchaseOrder(
-            tx,
-            newItems,
-            movementDate,
-            input.id,
-            user.id,
-            false
-          );
-        }
-      }
-      // Case 3: Status remains "received" - modify existing movements instead of creating new ones
-      else if (oldStatus === "received" && newStatus === "received") {
-        // Get existing stock movements for this purchase order
-        const existingMovements = await tx
-          .select()
-          .from(stockMovement)
-          .where(
-            and(
-              eq(stockMovement.referenceType, "purchase_order"),
-              eq(stockMovement.referenceId, input.id)
-            )
-          );
-
-        // Create maps for easy comparison
-        const oldItemsMap = new Map(
-          oldItems.map(item => [item.productId, { quantity: item.quantity, unitCost: item.unitCost }])
-        );
-        const newItemsMap = new Map(
-          newItems.map(item => [item.productId, { quantity: item.quantity, unitCost: item.unitCost }])
-        );
-        const existingMovementsMap = new Map(
-          existingMovements.map(mov => [mov.productId, mov])
-        );
-
-        // Process each product
-        const allProductIds = new Set([...oldItemsMap.keys(), ...newItemsMap.keys()]);
-
-        for (const productId of allProductIds) {
-          const oldItem = oldItemsMap.get(productId);
-          const newItem = newItemsMap.get(productId);
-          const existingMovement = existingMovementsMap.get(productId);
-
-          // Get current stock
-          const existingStock = await tx
-            .select()
-            .from(stockCurrent)
-            .where(eq(stockCurrent.productId, productId))
-            .limit(1);
-
-          if (!oldItem && newItem) {
-            // New item added - create new movement
-            await updateStockFromPurchaseOrder(
-              tx,
-              [{ productId, quantity: newItem.quantity, unitCost: newItem.unitCost }],
-              movementDate,
-              input.id,
-              user.id,
-              false
-            );
-          } else if (oldItem && !newItem) {
-            // Item removed - delete movement and reverse stock
-            if (existingMovement) {
-              const movementQuantity = parseFloat(existingMovement.quantity || "0");
-              
-              if (existingStock.length > 0) {
-                const currentStock = existingStock[0];
-                const currentQuantity = parseFloat(currentStock.quantityAvailable || "0");
-                const newQuantity = currentQuantity - movementQuantity;
-
-                if (newQuantity < 0) {
-                  throw new Error(
-                    `Quantité insuffisante en stock pour le produit ${productId}. Stock actuel: ${currentQuantity}, Tentative de retrait: ${movementQuantity}`
-                  );
-                }
-
-                await tx
-                  .update(stockCurrent)
-                  .set({
-                    quantityAvailable: newQuantity.toString(),
-                    lastMovementDate: movementDate,
-                    lastUpdated: new Date(),
-                  })
-                  .where(eq(stockCurrent.productId, productId));
-              }
-
-              // Delete the movement
-              await tx
-                .delete(stockMovement)
-                .where(eq(stockMovement.id, existingMovement.id));
-            }
-          } else if (oldItem && newItem) {
-            // Item modified - update existing movement
-            if (existingMovement) {
-              const oldQuantity = parseFloat(existingMovement.quantity || "0");
-              const oldUnitCost = parseFloat(existingMovement.unitCost || "0");
-              const quantityDiff = newItem.quantity - oldQuantity;
-              const costDiff = newItem.unitCost - oldUnitCost;
-
-              // Update the movement
-              await tx
-                .update(stockMovement)
-                .set({
-                  quantity: newItem.quantity.toString(),
-                  unitCost: newItem.unitCost.toString(),
-                  movementDate: movementDate,
-                })
-                .where(eq(stockMovement.id, existingMovement.id));
-
-              // Update stock_current
-              if (existingStock.length > 0 && quantityDiff !== 0) {
-                const currentStock = existingStock[0];
-                const currentQuantity = parseFloat(currentStock.quantityAvailable || "0");
-                const currentAverageCost = parseFloat(currentStock.averageCost || "0");
-                const newQuantity = currentQuantity + quantityDiff;
-
-                if (newQuantity < 0) {
-                  throw new Error(
-                    `Quantité insuffisante en stock pour le produit ${productId}. Stock actuel: ${currentQuantity}, Tentative de retrait: ${Math.abs(quantityDiff)}`
-                  );
-                }
-
-                let newAverageCost = currentAverageCost;
-                
-                if (quantityDiff > 0) {
-                  // Quantity increased - recalculate average cost
-                  const currentTotalCost = currentQuantity * currentAverageCost;
-                  const addedTotalCost = quantityDiff * newItem.unitCost;
-                  newAverageCost = newQuantity > 0 
-                    ? (currentTotalCost + addedTotalCost) / newQuantity 
-                    : newItem.unitCost;
-                } else if (quantityDiff < 0) {
-                  // Quantity decreased - keep same average cost
-                  newAverageCost = currentAverageCost;
-                } else if (costDiff !== 0) {
-                  // Only cost changed - need to recalculate
-                  // Reverse old cost impact and apply new cost
-                  const currentTotalCost = currentQuantity * currentAverageCost;
-                  const oldItemTotalCost = oldQuantity * oldUnitCost;
-                  const newItemTotalCost = newItem.quantity * newItem.unitCost;
-                  const adjustedTotalCost = currentTotalCost - oldItemTotalCost + newItemTotalCost;
-                  newAverageCost = newQuantity > 0 
-                    ? adjustedTotalCost / newQuantity 
-                    : newItem.unitCost;
-                }
-
-                await tx
-                  .update(stockCurrent)
-                  .set({
-                    quantityAvailable: newQuantity.toString(),
-                    averageCost: newAverageCost.toFixed(2),
-                    lastMovementDate: movementDate,
-                    lastUpdated: new Date(),
-                  })
-                  .where(eq(stockCurrent.productId, productId));
-              }
-            } else {
-              // Movement doesn't exist but item exists - create new movement
-              await updateStockFromPurchaseOrder(
-                tx,
-                [{ productId, quantity: newItem.quantity, unitCost: newItem.unitCost }],
-                movementDate,
-                input.id,
-                user.id,
-                false
-              );
-            }
-          }
-        }
+      // Delete all invoices linked to this purchase order
+      if (linkedInvoices.length > 0) {
+        await tx
+          .delete(invoice)
+          .where(eq(invoice.purchaseOrderId, input.id));
       }
 
-      // Update purchase order
-      await tx
-        .update(purchaseOrder)
-        .set({
-          orderNumber: input.orderNumber,
-          supplierId: input.supplierId,
-          orderDate: orderDateValue,
-          receptionDate: receptionDateValue,
-          status: newStatus,
-          totalAmount: input.totalAmount || null,
-          notes: input.notes || null,
-        })
-        .where(eq(purchaseOrder.id, input.id));
-
-      // Delete existing items
+      // Delete purchase order items (should be empty, but just in case)
       await tx
         .delete(purchaseOrderItem)
         .where(eq(purchaseOrderItem.purchaseOrderId, input.id));
 
-      // Insert new items if provided
-      if (input.items && input.items.length > 0) {
-        const itemsToInsert = input.items.map((item) => ({
-          id: item.id || generateId(),
-          purchaseOrderId: input.id,
-          productId: item.productId,
-          quantity: item.quantity.toString(),
-          unitCost: item.unitCost.toString(),
-          lineTotal: item.lineTotal.toString(),
-        }));
-
-        if (itemsToInsert.length > 0) {
-          await tx.insert(purchaseOrderItem).values(itemsToInsert);
-        }
-      }
+      // Delete the purchase order
+      await tx
+        .delete(purchaseOrder)
+        .where(eq(purchaseOrder.id, input.id));
     });
 
     updateTag("purchaseOrders");
-    updateTag("stock");
-    updateTag("stockMovements");
+    updateTag("invoices");
+    updateTag("payments");
 
     return {
       data: { id: input.id },
       error: null,
     };
   } catch (err) {
-    console.error("Error updating purchase order", err);
+    console.error("Error deleting purchase order", err);
     return {
       data: null,
       error: getErrorMessage(err),
@@ -1272,3 +846,222 @@ export async function updatePurchaseOrder(input: {
   }
 }
 
+/**
+ * Delete multiple purchase orders with cascade deletion
+ */
+export async function deletePurchaseOrders(input: { ids: string[] }) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return {
+        data: null,
+        error: "Utilisateur non authentifié",
+      };
+    }
+
+    if (input.ids.length === 0) {
+      return {
+        data: null,
+        error: "Aucun bon de commande sélectionné",
+      };
+    }
+
+    // Check if any purchase order has items
+    const items = await db
+      .select({
+        purchaseOrderId: purchaseOrderItem.purchaseOrderId,
+        orderNumber: purchaseOrder.orderNumber,
+      })
+      .from(purchaseOrderItem)
+      .innerJoin(purchaseOrder, eq(purchaseOrderItem.purchaseOrderId, purchaseOrder.id))
+      .where(inArray(purchaseOrderItem.purchaseOrderId, input.ids));
+
+    if (items.length > 0) {
+      const orderNumbers = Array.from(new Set(items.map(item => item.orderNumber)));
+      return {
+        data: null,
+        error: `Impossible de supprimer les commandes d'achat suivantes car elles contiennent des produits: ${orderNumbers.join(", ")}. Veuillez d'abord supprimer tous les produits de ces commandes.`,
+      };
+    }
+
+    await db.transaction(async (tx) => {
+      // Get all invoices linked to these purchase orders
+      const linkedInvoices = await tx
+        .select({ id: invoice.id })
+        .from(invoice)
+        .where(inArray(invoice.purchaseOrderId, input.ids));
+
+      // For each invoice, get all payments and delete them
+      for (const inv of linkedInvoices) {
+        const invoicePayments = await tx
+          .select({ id: payment.id })
+          .from(payment)
+          .where(eq(payment.invoiceId, inv.id));
+
+        // Delete all payments for this invoice
+        if (invoicePayments.length > 0) {
+          await tx
+            .delete(payment)
+            .where(eq(payment.invoiceId, inv.id));
+        }
+
+        // Delete invoice items
+        await tx
+          .delete(invoiceItem)
+          .where(eq(invoiceItem.invoiceId, inv.id));
+      }
+
+      // Delete all invoices linked to these purchase orders
+      if (linkedInvoices.length > 0) {
+        await tx
+          .delete(invoice)
+          .where(inArray(invoice.purchaseOrderId, input.ids));
+      }
+
+      // Delete purchase order items (should be empty, but just in case)
+      await tx
+        .delete(purchaseOrderItem)
+        .where(inArray(purchaseOrderItem.purchaseOrderId, input.ids));
+
+      // Delete the purchase orders
+      await tx
+        .delete(purchaseOrder)
+        .where(inArray(purchaseOrder.id, input.ids));
+    });
+
+    updateTag("purchaseOrders");
+    updateTag("invoices");
+    updateTag("payments");
+
+    return {
+      data: { ids: input.ids },
+      error: null,
+    };
+  } catch (err) {
+    console.error("Error deleting purchase orders", err);
+    return {
+      data: null,
+      error: getErrorMessage(err),
+    };
+  }
+}
+
+/**
+ * Get all purchase orders with their items for PDF export
+ */
+export async function getAllPurchaseOrdersForExport(input?: {
+  startDate?: Date;
+  endDate?: Date;
+}) {
+  try {
+    // Helper to format date as YYYY-MM-DD for PostgreSQL date type
+    const formatDateLocal = (date: Date): string => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+
+    // Build where conditions for date filtering
+    const dateConditions = [];
+    if (input?.startDate) {
+      dateConditions.push(gte(purchaseOrder.orderDate, formatDateLocal(input.startDate)));
+    }
+    if (input?.endDate) {
+      // Add one day to endDate to include the entire end date
+      const endDatePlusOne = new Date(input.endDate);
+      endDatePlusOne.setDate(endDatePlusOne.getDate() + 1);
+      dateConditions.push(lte(purchaseOrder.orderDate, formatDateLocal(endDatePlusOne)));
+    }
+
+    const whereCondition = dateConditions.length > 0 ? and(...dateConditions) : undefined;
+
+    const orders = await db
+      .select({
+        purchaseOrder: purchaseOrder,
+        supplier: {
+          id: partner.id,
+          name: partner.name,
+          address: partner.address,
+          phone: partner.phone,
+          email: partner.email,
+        },
+        creator: {
+          id: user.id,
+          name: user.name,
+        },
+      })
+      .from(purchaseOrder)
+      .leftJoin(partner, eq(purchaseOrder.supplierId, partner.id))
+      .leftJoin(user, eq(purchaseOrder.createdBy, user.id))
+      .where(whereCondition)
+      .orderBy(desc(purchaseOrder.orderDate), desc(purchaseOrder.createdAt));
+
+    // Get items for each purchase order
+    const ordersWithItems = await Promise.all(
+      orders.map(async (order) => {
+        const items = await db
+          .select({
+            item: purchaseOrderItem,
+            product: {
+              id: product.id,
+              name: product.name,
+              code: product.code,
+            },
+          })
+          .from(purchaseOrderItem)
+          .leftJoin(product, eq(purchaseOrderItem.productId, product.id))
+          .where(eq(purchaseOrderItem.purchaseOrderId, order.purchaseOrder.id))
+          .orderBy(asc(purchaseOrderItem.id));
+
+        const orderDate = typeof order.purchaseOrder.orderDate === 'string'
+          ? new Date(order.purchaseOrder.orderDate + 'T00:00:00')
+          : order.purchaseOrder.orderDate;
+        const receptionDate = order.purchaseOrder.receptionDate
+          ? (typeof order.purchaseOrder.receptionDate === 'string'
+              ? new Date(order.purchaseOrder.receptionDate + 'T00:00:00')
+              : order.purchaseOrder.receptionDate)
+          : null;
+
+        return {
+          id: order.purchaseOrder.id,
+          orderNumber: order.purchaseOrder.orderNumber,
+          supplierId: order.purchaseOrder.supplierId,
+          supplierName: order.supplier?.name || null,
+          supplierAddress: order.supplier?.address || null,
+          supplierPhone: order.supplier?.phone || null,
+          supplierEmail: order.supplier?.email || null,
+          orderDate,
+          receptionDate,
+          status: order.purchaseOrder.status || "pending",
+          supplierOrderNumber: order.purchaseOrder.supplierOrderNumber || null,
+          totalAmount: order.purchaseOrder.totalAmount ? parseFloat(order.purchaseOrder.totalAmount) : 0,
+          notes: order.purchaseOrder.notes,
+          createdBy: order.purchaseOrder.createdBy,
+          createdByName: order.creator?.name || null,
+          createdAt: order.purchaseOrder.createdAt,
+          items: items.map((i) => ({
+            id: i.item.id,
+            productId: i.item.productId,
+            productName: i.product?.name || null,
+            productCode: i.product?.code || null,
+            quantity: parseFloat(i.item.quantity),
+            unitCost: parseFloat(i.item.unitCost),
+            lineTotal: parseFloat(i.item.lineTotal),
+          })),
+        };
+      })
+    );
+
+    return {
+      data: ordersWithItems,
+      error: null,
+    };
+  } catch (err) {
+    console.error("Error getting all purchase orders for export", err);
+    return {
+      data: [],
+      error: getErrorMessage(err),
+    };
+  }
+}
