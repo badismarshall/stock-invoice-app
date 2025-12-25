@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/providers/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeModeToggle } from "@/components/shared/theme-mode-toggle";
+import { SpeedInsights } from "@vercel/speed-insights/next"
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -46,6 +47,7 @@ export default function RootLayout({
               <ThemeModeToggle />
             </div>
             {children}
+            <SpeedInsights />
           <Toaster />
           </TooltipProvider>
         </ThemeProvider>
