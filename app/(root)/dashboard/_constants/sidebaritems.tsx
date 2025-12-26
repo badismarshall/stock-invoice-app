@@ -1,4 +1,4 @@
-import { Home, Settings, Package, Boxes, ShoppingCart, FileBarChart, Users, HandCoins, Truck, List, Plus, AlertTriangle, Wallet, Lock } from "lucide-react"
+import { Home, Settings, Package, Boxes, ShoppingCart, FileBarChart, Users, HandCoins, Truck, List, Plus, AlertTriangle, Wallet, Lock, Database } from "lucide-react"
 
 export const adminSidebarItemsGeneralSetting = [
   {
@@ -247,6 +247,12 @@ export const adminSidebarItemsGeneralSetting = [
         title: 'Changer le mot de passe',
         url: '/dashboard/settings/change-password',
         icon: Lock,
+        isActive: false,
+      },
+      {
+        title: 'Backup',
+        url: '/dashboard/settings/backup',
+        icon: Database,
         isActive: false,
       },
     ],

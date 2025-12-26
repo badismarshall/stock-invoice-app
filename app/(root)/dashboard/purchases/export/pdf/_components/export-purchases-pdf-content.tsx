@@ -48,8 +48,10 @@ interface CompanyInfo {
   address: string | null;
   phone: string | null;
   email: string | null;
-  nif: string | null;
-  rc: string | null;
+  nafApe: string | null;
+  rcsRm: string | null;
+  eori: string | null;
+  tvaNumber: string | null;
   logo: string | null;
 }
 
@@ -498,8 +500,10 @@ export function ExportPurchasesPDFContent({
               {companyInfo?.phone && <p className="text-sm text-muted-foreground">Tél: {companyInfo.phone}</p>}
               {companyInfo?.email && <p className="text-sm text-muted-foreground">Email: {companyInfo.email}</p>}
               <div className="flex gap-4 mt-2">
-                {companyInfo?.nif && <p className="text-sm text-muted-foreground">NIF: {companyInfo.nif}</p>}
-                {companyInfo?.rc && <p className="text-sm text-muted-foreground">RC: {companyInfo.rc}</p>}
+                {companyInfo?.nafApe && <p className="text-sm text-muted-foreground">NAF-APE: {companyInfo.nafApe}</p>}
+                {companyInfo?.rcsRm && <p className="text-sm text-muted-foreground">RCS/RM: {companyInfo.rcsRm}</p>}
+                {companyInfo?.eori && <p className="text-sm text-muted-foreground">EORI: {companyInfo.eori}</p>}
+                {companyInfo?.tvaNumber && <p className="text-sm text-muted-foreground">Numéro TVA: {companyInfo.tvaNumber}</p>}
               </div>
             </div>
           </div>
