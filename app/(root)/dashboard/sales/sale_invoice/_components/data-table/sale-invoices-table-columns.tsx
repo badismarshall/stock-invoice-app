@@ -30,6 +30,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/data-table/format";
 import type { DataTableRowAction } from "@/types/data-table";
 import type { InvoiceDTOItem } from "@/data/invoice/invoice.dto";
+import { PermissionGuard } from "@/components/shared/permission-guard";
 
 interface GetSaleInvoicesTableColumnsProps {
   setRowAction: React.Dispatch<
@@ -288,33 +289,47 @@ export function getSaleInvoicesTableColumns({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem
-                onSelect={() => router.push(`/dashboard/payments/add?invoiceId=${invoice.id}`)}
-              >
-                <Wallet className="mr-2 h-4 w-4" />
-                {translations.addPayment}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onSelect={() => router.push(`/dashboard/payments?invoiceId=${invoice.id}`)}
-              >
-                <Wallet className="mr-2 h-4 w-4" />
-                {translations.managePayments}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onSelect={() => router.push(`/dashboard/invoices/print/${invoice.id}`)}
-              >
-                <FileText className="mr-2 h-4 w-4" />
-                {translations.print}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onSelect={() => setRowAction({ row, variant: "delete" })}
-                className="text-destructive"
-              >
-                {translations.delete}
-              </DropdownMenuItem>
+              <PermissionGuard permission="payments.create">
+                <DropdownMenuItem
+                  onSelect={() => router.push(`/dashboard/payments/add?invoiceId=${invoice.id}`)}
+                >
+                  <Wallet className="mr-2 h-4 w-4" />
+                  {translations.addPayment}
+                </DropdownMenuItem>
+              </PermissionGuard>
+              <PermissionGuard permission="payments.read">
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onSelect={() => router.push(`/dashboard/payments?invoiceId=${invoice.id}`)}
+                  >
+                    <Wallet className="mr-2 h-4 w-4" />
+                    {translations.managePayments}
+                  </DropdownMenuItem>
+                </>
+              </PermissionGuard>
+              <PermissionGuard permission="invoices.print">
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onSelect={() => router.push(`/dashboard/invoices/print/${invoice.id}`)}
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    {translations.print}
+                  </DropdownMenuItem>
+                </>
+              </PermissionGuard>
+              <PermissionGuard permission="invoices.delete">
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onSelect={() => setRowAction({ row, variant: "delete" })}
+                    className="text-destructive"
+                  >
+                    {translations.delete}
+                  </DropdownMenuItem>
+                </>
+              </PermissionGuard>
             </DropdownMenuContent>
           </DropdownMenu>
         );

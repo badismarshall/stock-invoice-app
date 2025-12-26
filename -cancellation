@@ -1,0 +1,137 @@
+[33mcommit 4ed557235348e7b8a1e84a7faa5f1489eb7671ab[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfeature/backup-system-french-company-settings[m[33m, [m[1;31morigin/feature/backup-system-french-company-settings[m[33m, [m[1;32mmain[m[33m)[m
+Author: Marshall <me_badis@yahoo.fr>
+Date:   Fri Dec 26 18:49:21 2025 +0100
+
+    feat: Add backup system and update company settings for French regulations
+    
+    - Add complete backup system with database backup generation
+      - New backup table schema
+      - Backup generation utility (SQL export)
+      - Backup management UI (create, list, download, delete)
+      - Integration in settings sidebar
+    
+    - Update company settings for French regulations
+      - Replace NIF/RC with NAF-APE, RCS/RM, EORI, TVA Number
+      - Update all export files (PDF/XLSX) to use new fields
+      - Update print templates for invoices and cancellations
+      - Update company settings form with French fields
+
+[33mcommit ebe51a467e33ddbacce557770cc946d5aac5a1cc[m[33m ([m[1;31morigin/main[m[33m)[m
+Author: Marshall <me_badis@yahoo.fr>
+Date:   Thu Dec 25 20:36:24 2025 +0100
+
+    add Vercel SpeedInsights
+
+[33mcommit b1118ff41328423a40a3acf1e88fc4ef59abc7e5[m
+Author: Marshall <me_badis@yahoo.fr>
+Date:   Tue Dec 23 01:11:38 2025 +0100
+
+    add PDF,XSLX export
+
+[33mcommit 81745bad8f50b5d3b12f236f6bc7e94ec1ad9f01[m
+Author: Marshall <me_badis@yahoo.fr>
+Date:   Mon Dec 22 00:44:09 2025 +0100
+
+    fixing issue in DN & purchase +
+
+[33mcommit 370e9a7544685b8c32ad7d5768dd9c78eacedceb[m
+Author: Marshall <me_badis@yahoo.fr>
+Date:   Mon Dec 22 00:34:32 2025 +0100
+
+    fixing issue in DN & purchase
+
+[33mcommit 278458fd49d2e3d8b567e72e1eea8de4f2a85418[m
+Author: Marshall <me_badis@yahoo.fr>
+Date:   Sun Dec 21 00:47:24 2025 +0100
+
+    Change password added/sidebar fix
+
+[33mcommit 024c153716ddb46d05b137a2b1efc4aaa24a2fab[m
+Author: Marshall <me_badis@yahoo.fr>
+Date:   Sat Dec 20 03:44:11 2025 +0100
+
+    adding DNN
+
+[33mcommit 93d328e3db8a39aa1f126d341639a2533c4450a1[m
+Author: Marshall <me_badis@yahoo.fr>
+Date:   Sat Dec 20 00:19:42 2025 +0100
+
+    better-auth baseurl fix
+
+[33mcommit 27bbd7928a3014e0d9a788c4583ed283d46f4d59[m
+Author: Marshall <me_badis@yahoo.fr>
+Date:   Thu Dec 18 03:39:52 2025 +0100
+
+    (invoices with payment)/ first host (navuser fixed)
+
+[33mcommit 3b3aa52d70fe94638a48bdcfeb7ba7c3a6b389a7[m
+Author: Marshall <me_badis@yahoo.fr>
+Date:   Thu Dec 18 03:02:45 2025 +0100
+
+    (invoices with payment)/ first host (betterauth_changes)
+
+[33mcommit 77c22b81ad7bc9e550c496be4e27272ce40a3857[m
+Author: Marshall <me_badis@yahoo.fr>
+Date:   Thu Dec 18 02:47:10 2025 +0100
+
+    (invoices with payment)/ first host
+
+[33mcommit 735b4d526f0c6f60dc4dca09aad1b51cafd8509e[m
+Author: Marshall <me_badis@yahoo.fr>
+Date:   Thu Dec 18 00:02:58 2025 +0100
+
+    (invoices without payment)
+
+[33mcommit e31e4ab9f6166a900c5caf95e1dbc1c15b33166b[m
+Author: Marshall <me_badis@yahoo.fr>
+Date:   Wed Dec 17 00:34:05 2025 +0100
+
+    first build  (purchase withoout invoices)
+
+[33mcommit e6b3d28fb2c35d276edbabb3e283fe7a9d110456[m
+Author: Marshall <me_badis@yahoo.fr>
+Date:   Tue Dec 16 01:50:55 2025 +0100
+
+    Working on sales cancelation (purchase withoout invoices)
+
+[33mcommit 563b33542389bb98cb0718ee23aa2496c1dd9264[m
+Author: Marshall <me_badis@yahoo.fr>
+Date:   Mon Dec 15 23:40:17 2025 +0100
+
+    Working on sales (purchase withoout invoices)
+
+[33mcommit 1f10308dd990c8a8b076aef3fce0eb0e48b4d5c9[m
+Author: Marshall <me_badis@yahoo.fr>
+Date:   Mon Dec 15 03:17:24 2025 +0100
+
+    Woring on sales (purchase 1/2 done)
+
+[33mcommit bd4dbfeaa2e70cf14a44bc3a8f96d87f2dd6ea7a[m
+Author: Marshall <me_badis@yahoo.fr>
+Date:   Sun Dec 14 02:59:44 2025 +0100
+
+    without sales
+
+[33mcommit 68b89f7df4bc9d1d8645ed385e8140d1e90af14a[m
+Author: Marshall <me_badis@yahoo.fr>
+Date:   Sun Dec 14 01:03:49 2025 +0100
+
+    + Stock - invoice
+
+[33mcommit 7a3133effb41653736f4c7344b217d96ae0b1a0a[m
+Author: Marshall <me_badis@yahoo.fr>
+Date:   Sat Dec 13 18:25:24 2025 +0100
+
+    + Products and purchases
+
+[33mcommit 63a4cc96f93bb201c01bb44e897cf934af671ec8[m
+Author: Marshall <me_badis@yahoo.fr>
+Date:   Sat Dec 13 03:21:08 2025 +0100
+
+    schema SI added
+
+[33mcommit ca13e909d428c4603eb7142e1b1db80b7dcd0cb7[m
+Author: Marshall <me_badis@yahoo.fr>
+Date:   Thu Dec 11 17:39:01 2025 +0100
+
+    Initial commit from Create Next App

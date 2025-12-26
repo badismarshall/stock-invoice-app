@@ -27,6 +27,10 @@ export { default as purchaseOrder } from "./purchase-order";
 export { default as purchaseOrderItem } from "./purchase-order-item";
 export { default as companySettings } from "./company-settings";
 export { default as backup } from "./backup";
+export { default as role } from "./role";
+export { default as permissionDefinition } from "./permission-definition";
+export { default as rolePermission } from "./role-permission";
+export { default as userRole } from "./user-role";
 
 // Enums
 export * from "./enums";
@@ -78,3 +82,7 @@ export type {
   NewCompanySettings,
 } from "./company-settings";
 export type { Backup, NewBackup } from "./backup";
+export type { Role, NewRole } from "./role";
+export type { PermissionDefinition, NewPermissionDefinition } from "./permission-definition";
+export type { RolePermission, NewRolePermission } from "./role-permission";
+export type { UserRole, NewUserRole } from "./user-role";

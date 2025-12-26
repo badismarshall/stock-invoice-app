@@ -8,6 +8,7 @@ import { purchaseOrder, purchaseOrderItem, partner, product, stockCurrent, stock
 import { eq, inArray, and, asc, desc, not, or, gte, lte } from "drizzle-orm";
 import { getCurrentUser } from "@/data/user/user-auth";
 import { getPurchaseOrderById } from "@/data/purchase-order/purchase-order.dal";
+import { requirePermission } from "@/lib/authz";
 
 /**
  * Get all suppliers
@@ -230,6 +231,7 @@ export async function addPurchaseOrder(input: {
   }>;
 }) {
   try {
+    await requirePermission("purchases.create");
     const user = await getCurrentUser();
     if (!user) {
       return {
@@ -759,6 +761,7 @@ export async function createInvoiceFromPurchaseOrder(input: {
  */
 export async function deletePurchaseOrder(input: { id: string }) {
   try {
+    await requirePermission("purchases.delete");
     const user = await getCurrentUser();
     if (!user) {
       return {
@@ -851,6 +854,7 @@ export async function deletePurchaseOrder(input: { id: string }) {
  */
 export async function deletePurchaseOrders(input: { ids: string[] }) {
   try {
+    await requirePermission("purchases.delete");
     const user = await getCurrentUser();
     if (!user) {
       return {

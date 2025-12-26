@@ -35,12 +35,13 @@ import { getErrorMessage } from "@/lib/handle-error";
 import type { DataTableRowAction } from "@/types/data-table";
 import type { UserDTOItem } from "@/data/user/user.dto";
 
-import { updateUser } from "../../_lib/actions";
 import {
   getBannedStatusIcon,
   getEmailVerifiedIcon,
   getRoleIcon,
 } from "../../_lib/utils";
+import { assignRolesToUser } from "../../_lib/actions";
+import { useRouter } from "next/navigation";
 
 interface GetUsersTableColumnsProps {
   roleCounts: Record<string, number>;
@@ -49,6 +50,22 @@ interface GetUsersTableColumnsProps {
   setRowAction: React.Dispatch<
     React.SetStateAction<DataTableRowAction<UserDTOItem> | null>
   >;
+  roles: Array<{
+    id: string;
+    name: string;
+    label: string;
+    description: string | null;
+    createdAt: Date;
+    userCount: number;
+  }>;
+  usersRoles: Record<string, Array<{
+    id: string;
+    name: string;
+    label: string;
+    description: string | null;
+    createdAt: Date;
+    updatedAt: Date | null;
+  }>>;
 }
 
 // French translations (feel free to adjust wording as needed)
@@ -74,18 +91,13 @@ const translations = {
   selectRow: "Sélectionner la ligne",
 };
 
-const userRoles = ["admin", "user", "moderator"] as const;
-const userRoleLabels: Record<string, string> = {
-  admin: "Administrateur",
-  user: "Utilisateur",
-  moderator: "Modérateur",
-};
-
 export function getUsersTableColumns({
   roleCounts,
   bannedCounts,
   emailVerifiedCounts,
   setRowAction,
+  roles,
+  usersRoles,
 }: GetUsersTableColumnsProps): ColumnDef<UserDTOItem>[] {
   return [
     {
@@ -195,14 +207,15 @@ export function getUsersTableColumns({
     },
     {
       id: "role",
-      accessorKey: "role",
+      accessorFn: () => "", // We don't use the accessor, we use usersRoles prop
       header: ({ column }) => (
         <DataTableColumnHeader column={column} label={translations.role} title={translations.role} />
       ),
-      cell: ({ cell }) => {
-        const role = cell.getValue<string>();
+      cell: function Cell({ row }) {
+        // Get user roles from the pre-loaded usersRoles map
+        const userRoles = usersRoles[row.original.id] || [];
 
-        if (!role || role === "") {
+        if (userRoles.length === 0) {
           return (
             <Badge variant="outline" className="py-1">
               <CircleIcon className="size-3.5" />
@@ -211,13 +224,21 @@ export function getUsersTableColumns({
           );
         }
 
-        const Icon = getRoleIcon(role);
-        const label = userRoleLabels[role] || role.charAt(0).toUpperCase() + role.slice(1);
+        // Get the first role (for now, we show only one role)
+        const roleData = userRoles[0];
+        if (!roleData) {
+          return (
+            <Badge variant="outline" className="py-1">
+              <CircleIcon className="size-3.5" />
+              <span>{translations.none}</span>
+            </Badge>
+          );
+        }
 
         return (
           <Badge variant="outline" className="py-1 [&>svg]:size-3.5">
-            <Icon />
-            <span className="capitalize">{label}</span>
+            <Shield className="size-3.5" />
+            <span>{roleData.label}</span>
           </Badge>
         );
       },
@@ -231,11 +252,11 @@ export function getUsersTableColumns({
             count: 0,
             icon: CircleIcon,
           },
-          ...userRoles.map((role) => ({
-            label: userRoleLabels[role] || role.charAt(0).toUpperCase() + role.slice(1),
-            value: role,
-            count: roleCounts[role] || 0,
-            icon: getRoleIcon(role),
+          ...roles.map((role: { id: string; label: string; userCount: number }) => ({
+            label: role.label,
+            value: role.id,
+            count: role.userCount || 0,
+            icon: Shield,
           })),
         ],
         icon: Shield,
@@ -297,7 +318,36 @@ export function getUsersTableColumns({
     {
       id: "actions",
       cell: function Cell({ row }) {
-        const [isUpdatePending, startUpdateTransition] = React.useTransition();
+        const router = useRouter();
+        const [isUpdatePending, setIsUpdatePending] = React.useState(false);
+        
+        // Get user roles from the pre-loaded usersRoles map
+        const userRoles = usersRoles[row.original.id] || [];
+        const userRoleIds = userRoles.map((r) => r.id);
+
+        const handleRoleChange = async (roleId: string) => {
+          setIsUpdatePending(true);
+          try {
+            const roleIds = roleId ? [roleId] : [];
+            await toast.promise(
+              assignRolesToUser({
+                userId: row.original.id,
+                roleIds,
+              }),
+              {
+                loading: translations.updating,
+                success: translations.roleUpdated,
+                error: (err) => getErrorMessage(err),
+              },
+            );
+            // Refresh the page to update the table
+            router.refresh();
+          } catch (error) {
+            console.error("Error updating user roles", error);
+          } finally {
+            setIsUpdatePending(false);
+          }
+        };
 
         return (
           <DropdownMenu>
@@ -320,22 +370,8 @@ export function getUsersTableColumns({
                 <DropdownMenuSubTrigger>{translations.role}</DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>
                   <DropdownMenuRadioGroup
-                    value={row.original.role || ""}
-                    onValueChange={(value) => {
-                      startUpdateTransition(() => {
-                        toast.promise(
-                          updateUser({
-                            id: row.original.id,
-                            role: value || undefined,
-                          }),
-                          {
-                            loading: translations.updating,
-                            success: translations.roleUpdated,
-                            error: (err) => getErrorMessage(err),
-                          },
-                        );
-                      });
-                    }}
+                    value={userRoleIds[0] || ""}
+                    onValueChange={handleRoleChange}
                   >
                     <DropdownMenuRadioItem
                       value=""
@@ -344,14 +380,14 @@ export function getUsersTableColumns({
                     >
                       {translations.none}
                     </DropdownMenuRadioItem>
-                    {userRoles.map((role) => (
+                    {roles.map((role: { id: string; label: string }) => (
                       <DropdownMenuRadioItem
-                        key={role}
-                        value={role}
+                        key={role.id}
+                        value={role.id}
                         className="capitalize"
                         disabled={isUpdatePending}
                       >
-                        {userRoleLabels[role] || role.charAt(0).toUpperCase() + role.slice(1)}
+                        {role.label}
                       </DropdownMenuRadioItem>
                     ))}
                   </DropdownMenuRadioGroup>

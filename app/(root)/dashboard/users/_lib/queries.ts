@@ -4,6 +4,7 @@ import "server-only";
 
 import { cacheLife, cacheTag } from "next/cache";
 import { getUsers as getUsersDAL, getUserRoleCounts as getUserRoleCountsDAL, getUserBannedCounts as getUserBannedCountsDAL, getUserEmailVerifiedCounts as getUserEmailVerifiedCountsDAL } from "@/data/user/user.dal";
+import { getUsersRoles } from "@/data/auth/roles.dal";
 import type { GetUsersSchema } from "./validation";
 
 export async function getUsers(input: GetUsersSchema) {
@@ -14,13 +15,19 @@ export async function getUsers(input: GetUsersSchema) {
     const result = await getUsersDAL(input);
     const pageCount = Math.ceil(result.options.totalCount / input.perPage);
     
+    // Batch load all user roles
+    const userIds = result.users.map((u) => u.id);
+    const usersRolesResult = await getUsersRoles(userIds);
+    const usersRoles = usersRolesResult.data || {};
+    
     return { 
       data: result.users, 
-      pageCount 
+      pageCount,
+      usersRoles, // Add user roles to the response
     };
   } catch (error) {
     console.error("Error in getUsers service", error);
-    return { data: [], pageCount: 0 };
+    return { data: [], pageCount: 0, usersRoles: {} };
   }
 }
 

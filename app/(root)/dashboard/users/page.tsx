@@ -8,6 +8,7 @@ import { SearchParams } from "@/types"
 import { searchParamsCache } from "./_lib/validation"
 import { getValidFilters } from "@/lib/data-table/data-table"
 import { getUserBannedCounts, getUserEmailVerifiedCounts, getUserRoleCounts, getUsers } from "./_lib/queries"
+import { getRoles } from "@/app/(root)/dashboard/roles/_lib/actions"
 import { UsersTable } from "./_components/data-table/users-table"
 import { DataTableSkeleton } from "@/components/shared/data-table/data-table-skeleton"
 import { HasPermissionUser } from "@/data/user/user-permision"
@@ -119,6 +120,7 @@ async function UsersTableWrapper(props: IndexPageProps ) {
       getUserRoleCounts(),
       getUserBannedCounts(),
       getUserEmailVerifiedCounts(),
+      getRoles(),
     ]);
 
     return <UsersTable promises={promises}/>

@@ -39,6 +39,8 @@ import type { DataTableRowAction } from "@/types/data-table";
 import type { PurchaseOrderDTOItem } from "@/data/purchase-order/purchase-order.dto";
 import { updatePurchaseOrderStatus, createInvoiceFromPurchaseOrder } from "@/app/(root)/dashboard/purchases/_lib/actions";
 import { FileText } from "lucide-react";
+import { usePermissions } from "@/hooks/use-permissions";
+import { PermissionGuard } from "@/components/shared/permission-guard";
 
 interface GetPurchaseOrdersTableColumnsProps {
   setRowAction: React.Dispatch<
@@ -271,6 +273,7 @@ export function getPurchaseOrdersTableColumns({
       id: "actions",
       cell: function Cell({ row }) {
         const router = useRouter();
+        const { can } = usePermissions();
         const [isUpdatePending, startUpdateTransition] = React.useTransition();
         const [isCreatingInvoice, setIsCreatingInvoice] = React.useState(false);
 
@@ -316,90 +319,110 @@ export function getPurchaseOrdersTableColumns({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem
-                onSelect={() => router.push(`/dashboard/purchases/modify/${row.original.id}`)}
-              >
-                {translations.edit}
-              </DropdownMenuItem>
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger>{translations.status}</DropdownMenuSubTrigger>
-                <DropdownMenuSubContent>
-                  <DropdownMenuRadioGroup
-                    value={row.original.status || "pending"}
-                    onValueChange={(value) => {
-                      startUpdateTransition(() => {
-                        toast.promise(
-                          updatePurchaseOrderStatus({
-                            id: row.original.id,
-                            status: value as "pending" | "received" | "cancelled",
-                          }),
-                          {
-                            loading: translations.updating,
-                            success: translations.statusUpdated,
-                            error: (err) => getErrorMessage(err),
-                          },
-                        );
-                      });
-                    }}
-                  >
-                    <DropdownMenuRadioItem
-                      value="pending"
-                      disabled={isUpdatePending}
+              <PermissionGuard permission="purchases.update">
+                <DropdownMenuItem
+                  onSelect={() => router.push(`/dashboard/purchases/modify/${row.original.id}`)}
+                >
+                  {translations.edit}
+                </DropdownMenuItem>
+              </PermissionGuard>
+              <PermissionGuard permission="purchases.update">
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>{translations.status}</DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    <DropdownMenuRadioGroup
+                      value={row.original.status || "pending"}
+                      onValueChange={(value) => {
+                        startUpdateTransition(() => {
+                          toast.promise(
+                            updatePurchaseOrderStatus({
+                              id: row.original.id,
+                              status: value as "pending" | "received" | "cancelled",
+                            }),
+                            {
+                              loading: translations.updating,
+                              success: translations.statusUpdated,
+                              error: (err) => getErrorMessage(err),
+                            },
+                          );
+                        });
+                      }}
                     >
-                      {translations.pending}
-                    </DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem
-                      value="received"
-                      disabled={isUpdatePending}
-                    >
-                      {translations.received}
-                    </DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem
-                      value="cancelled"
-                      disabled={isUpdatePending}
-                    >
-                      {translations.cancelled}
-                    </DropdownMenuRadioItem>
-                  </DropdownMenuRadioGroup>
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onSelect={handleCreateInvoice}
-                disabled={isCreatingInvoice}
-              >
-                <FileText className="mr-2 h-4 w-4" />
-                {isCreatingInvoice ? translations.creatingInvoice : translations.createInvoice}
-              </DropdownMenuItem>
-              {row.original.invoiceId && (
+                      <DropdownMenuRadioItem
+                        value="pending"
+                        disabled={isUpdatePending}
+                      >
+                        {translations.pending}
+                      </DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem
+                        value="received"
+                        disabled={isUpdatePending}
+                      >
+                        {translations.received}
+                      </DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem
+                        value="cancelled"
+                        disabled={isUpdatePending}
+                      >
+                        {translations.cancelled}
+                      </DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              </PermissionGuard>
+              <PermissionGuard permission="invoices.create">
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
-                    onSelect={() => router.push(`/dashboard/payments/add?invoiceId=${row.original.invoiceId}`)}
-                  >
-                    <Wallet className="mr-2 h-4 w-4" />
-                    {translations.addPayment}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onSelect={() => router.push(`/dashboard/payments?invoiceId=${row.original.invoiceId}`)}
-                  >
-                    <Wallet className="mr-2 h-4 w-4" />
-                    {translations.managePayments}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onSelect={() => router.push(`/dashboard/invoices/print/${row.original.invoiceId}`)}
+                    onSelect={handleCreateInvoice}
+                    disabled={isCreatingInvoice}
                   >
                     <FileText className="mr-2 h-4 w-4" />
-                    {translations.printInvoice}
+                    {isCreatingInvoice ? translations.creatingInvoice : translations.createInvoice}
                   </DropdownMenuItem>
                 </>
+              </PermissionGuard>
+              {row.original.invoiceId && (
+                <>
+                  <PermissionGuard permission="payments.create">
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onSelect={() => router.push(`/dashboard/payments/add?invoiceId=${row.original.invoiceId}`)}
+                      >
+                        <Wallet className="mr-2 h-4 w-4" />
+                        {translations.addPayment}
+                      </DropdownMenuItem>
+                    </>
+                  </PermissionGuard>
+                  <PermissionGuard permission="payments.read">
+                    <DropdownMenuItem
+                      onSelect={() => router.push(`/dashboard/payments?invoiceId=${row.original.invoiceId}`)}
+                    >
+                      <Wallet className="mr-2 h-4 w-4" />
+                      {translations.managePayments}
+                    </DropdownMenuItem>
+                  </PermissionGuard>
+                  <PermissionGuard permission="invoices.print">
+                    <DropdownMenuItem
+                      onSelect={() => router.push(`/dashboard/invoices/print/${row.original.invoiceId}`)}
+                    >
+                      <FileText className="mr-2 h-4 w-4" />
+                      {translations.printInvoice}
+                    </DropdownMenuItem>
+                  </PermissionGuard>
+                </>
               )}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onSelect={() => setRowAction({ row, variant: "delete" })}
-              >
-                {translations.delete}
-              </DropdownMenuItem>
+              <PermissionGuard permission="purchases.delete">
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onSelect={() => setRowAction({ row, variant: "delete" })}
+                  >
+                    {translations.delete}
+                  </DropdownMenuItem>
+                </>
+              </PermissionGuard>
             </DropdownMenuContent>
           </DropdownMenu>
         );

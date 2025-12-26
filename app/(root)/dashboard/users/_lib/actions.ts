@@ -10,6 +10,8 @@ import {
   seedUsers as seedUsersDAL,
 } from "@/data/user/user.dal";
 import type { UpdateUserSchema } from "./update-user.schemas";
+import { assignUserRoles } from "@/app/(root)/dashboard/roles/_lib/actions";
+import { requirePermission } from "@/lib/authz";
 
 export async function getUserById(input: { id: string }) {
   try {
@@ -69,7 +71,6 @@ export async function updateUser(input: UpdateUserSchema & { id: string }) {
     }
 
     if (input.email !== undefined) updateData.email = input.email;
-    if (input.role !== undefined) updateData.role = input.role || null;
     if (input.emailVerified !== undefined) {
       updateData.emailVerified = input.emailVerified;
     }
@@ -102,38 +103,34 @@ export async function updateUser(input: UpdateUserSchema & { id: string }) {
   }
 }
 
-export async function updateUsers(input: {
-  ids: string[];
-  role?: string | null;
-  emailVerified?: boolean;
-  banned?: boolean;
-}) {
+/**
+ * Assign roles to a user
+ */
+export async function assignRolesToUser(input: { userId: string; roleIds: string[] }) {
   try {
-    // Update multiple users - this would need to be added to DAL if needed
-    // For now, update them one by one
-    for (const id of input.ids) {
-      const updateData: Parameters<typeof updateUserDAL>[0] = {
-        id,
+    await requirePermission("settings.manage_users");
+    
+    const result = await assignUserRoles({
+      userId: input.userId,
+      roleIds: input.roleIds,
+    });
+
+    if (result.error) {
+      return {
+        data: null,
+        error: result.error,
       };
-
-      if (input.role !== undefined) updateData.role = input.role;
-      if (input.emailVerified !== undefined) {
-        updateData.emailVerified = input.emailVerified;
-      }
-
-      await updateUserDAL(updateData);
     }
 
     updateTag("users");
-    updateTag("user-role-counts");
-    updateTag("user-banned-counts");
-    updateTag("user-email-verified-counts");
+    updateTag("roles");
 
     return {
-      data: null,
+      data: result.data,
       error: null,
     };
   } catch (err) {
+    console.error("Error assigning roles to user", err);
     return {
       data: null,
       error: getErrorMessage(err),
@@ -144,11 +141,10 @@ export async function updateUsers(input: {
 export async function deleteUser(input: { id: string }) {
   try {
     await deleteUserDAL(input.id);
-
     updateTag("users");
     updateTag("user-role-counts");
-    updateTag("user-banned-counts");
     updateTag("user-email-verified-counts");
+    updateTag("user-banned-counts");
 
     return {
       data: null,
@@ -165,11 +161,10 @@ export async function deleteUser(input: { id: string }) {
 export async function deleteUsers(input: { ids: string[] }) {
   try {
     await deleteUsersDAL(input.ids);
-
     updateTag("users");
     updateTag("user-role-counts");
-    updateTag("user-banned-counts");
     updateTag("user-email-verified-counts");
+    updateTag("user-banned-counts");
 
     return {
       data: null,

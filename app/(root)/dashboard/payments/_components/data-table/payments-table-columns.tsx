@@ -27,6 +27,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/data-table/format";
 import type { DataTableRowAction } from "@/types/data-table";
 import type { PaymentDTOItem } from "@/data/payment/payment.dto";
+import { PermissionGuard } from "@/components/shared/permission-guard";
 
 interface GetPaymentsTableColumnsProps {
   setRowAction: React.Dispatch<
@@ -299,30 +300,38 @@ export function getPaymentsTableColumns({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40">
               {payment.invoiceId && (
-                <>
-                  <DropdownMenuItem
-                    onSelect={() => router.push(`/dashboard/invoices/print/${payment.invoiceId}`)}
-                  >
-                    <FileText className="mr-2 h-4 w-4" />
-                    {translations.viewInvoice}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                </>
+                <PermissionGuard permission="invoices.print">
+                  <>
+                    <DropdownMenuItem
+                      onSelect={() => router.push(`/dashboard/invoices/print/${payment.invoiceId}`)}
+                    >
+                      <FileText className="mr-2 h-4 w-4" />
+                      {translations.viewInvoice}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                </PermissionGuard>
               )}
-              <DropdownMenuItem
-                onSelect={() => router.push(`/dashboard/payments/modify/${payment.id}`)}
-              >
-                <Pencil className="mr-2 h-4 w-4" />
-                {translations.edit}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onSelect={() => setRowAction({ row, variant: "delete" })}
-                className="text-destructive"
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                {translations.delete}
-              </DropdownMenuItem>
+              <PermissionGuard permission="payments.update">
+                <DropdownMenuItem
+                  onSelect={() => router.push(`/dashboard/payments/modify/${payment.id}`)}
+                >
+                  <Pencil className="mr-2 h-4 w-4" />
+                  {translations.edit}
+                </DropdownMenuItem>
+              </PermissionGuard>
+              <PermissionGuard permission="payments.delete">
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onSelect={() => setRowAction({ row, variant: "delete" })}
+                    className="text-destructive"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    {translations.delete}
+                  </DropdownMenuItem>
+                </>
+              </PermissionGuard>
             </DropdownMenuContent>
           </DropdownMenu>
         );

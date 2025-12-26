@@ -4,9 +4,11 @@ import { betterAuth } from "better-auth";
 import { admin } from "better-auth/plugins"
 import { nextCookies } from "better-auth/next-js";
 import { organization } from "better-auth/plugins"
+import { customSession } from "better-auth/plugins"
 import { ac, admin as adminAc } from "./permissions";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import db from "@/db";
+import { getUserPermissions, getUserRoles } from "@/data/auth/roles.dal";
 
 // const prisma = new PrismaClient();
 
@@ -50,7 +52,40 @@ export const auth = betterAuth({
             defaultRole: "user",
         }),
         admin(),
-        nextCookies() 
+        nextCookies(),
+        customSession(async ({ user, session }) => {
+            // Load user roles and permissions
+            let permissions: string[] = [];
+            let roles: string[] = [];
+            
+            if (user?.id) {
+                try {
+                    const [permissionsResult, rolesResult] = await Promise.all([
+                        getUserPermissions(user.id),
+                        getUserRoles(user.id),
+                    ]);
+                    
+                    if (permissionsResult.data) {
+                        permissions = permissionsResult.data;
+                    }
+                    
+                    if (rolesResult.data) {
+                        roles = rolesResult.data.map((r) => r.name);
+                    }
+                } catch (error) {
+                    console.error("Error loading user permissions/roles in session", error);
+                }
+            }
+            
+            return {
+                user: {
+                    ...user,
+                    permissions,
+                    roles,
+                },
+                session,
+            };
+        }),
     ],
 });
 

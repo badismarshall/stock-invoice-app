@@ -2,9 +2,6 @@ import { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { getCurrentUser } from "@/data/user/user-auth"
 import { Suspense } from "react"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Plus, FileDown } from "lucide-react"
 import { FeatureFlagsProvider } from "../_components/feature-flags-provider"
 import { SearchParams } from "@/types"
 import { searchParamsCache } from "./_lib/validation"
@@ -12,6 +9,7 @@ import { getValidFilters } from "@/lib/data-table/data-table"
 import { getPurchaseOrders } from "./_lib/queries"
 import { PurchaseOrdersTable } from "./_components/data-table/purchase-orders-table"
 import { DataTableSkeleton } from "@/components/shared/data-table/data-table-skeleton"
+import { PurchasesPageButtons } from "./_components/purchases-page-buttons"
 
 export const metadata: Metadata = {
     title: "Achats",
@@ -37,26 +35,7 @@ async function PurchasesPageContent(props: IndexPageProps) {
               Gérez tous vos bons de commande ici!
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <Link href="/dashboard/purchases/export/pdf">
-              <Button variant="outline">
-                <FileDown className="mr-2 h-4 w-4" />
-                Exporter en PDF
-              </Button>
-            </Link>
-            <Link href="/dashboard/purchases/export/xlsx">
-              <Button variant="outline">
-                <FileDown className="mr-2 h-4 w-4" />
-                Exporter en XLSX
-              </Button>
-            </Link>
-            <Link href="/dashboard/purchases/new">
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Nouvel Achat
-              </Button>
-            </Link>
-          </div>
+          <PurchasesPageButtons />
         </div>
         <Suspense 
             fallback={    

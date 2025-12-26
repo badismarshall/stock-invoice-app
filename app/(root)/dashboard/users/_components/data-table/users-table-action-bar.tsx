@@ -18,7 +18,8 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { exportTableToCSV } from "@/lib/data-table/export";
-import { deleteUsers, updateUsers } from "../../_lib/actions";
+import { deleteUsers, assignRolesToUser, updateUser } from "../../_lib/actions";
+import { getRoles } from "@/app/(root)/dashboard/roles/_lib/actions";
 import type { UserDTOItem } from "@/data/user/user.dto";
 
 const actions = [
@@ -30,55 +31,113 @@ const actions = [
 
 type Action = (typeof actions)[number];
 
-// Common user roles - adjust based on your application needs
-const userRoles = ["admin", "user", "moderator"] as const;
-
 interface UsersTableActionBarProps {
   table: Table<UserDTOItem>;
+  roles?: Array<{
+    id: string;
+    name: string;
+    label: string;
+    description: string | null;
+    createdAt: Date;
+    userCount: number;
+  }>;
 }
 
-export function UsersTableActionBar({ table }: UsersTableActionBarProps) {
+export function UsersTableActionBar({ table, roles = [] }: UsersTableActionBarProps) {
   const rows = table.getFilteredSelectedRowModel().rows;
   const [isPending, startTransition] = React.useTransition();
   const [currentAction, setCurrentAction] = React.useState<Action | null>(null);
+  const [availableRoles, setAvailableRoles] = React.useState(roles);
+
+  // Load roles if not provided
+  React.useEffect(() => {
+    if (roles.length === 0) {
+      getRoles().then((result) => {
+        if (result.data) {
+          setAvailableRoles(result.data);
+        }
+      });
+    }
+  }, [roles]);
 
   const getIsActionPending = React.useCallback(
     (action: Action) => isPending && currentAction === action,
     [isPending, currentAction],
   );
 
-  const onUserUpdate = React.useCallback(
-    ({
-      field,
-      value,
-    }: {
-      field: "role" | "emailVerified";
-      value: UserDTOItem["role"] | UserDTOItem["emailVerified"];
-    }) => {
-      setCurrentAction(
-        field === "role" ? "update-role" : "update-email-verified",
-      );
+  const onRoleUpdate = React.useCallback(
+    (roleId: string) => {
+      setCurrentAction("update-role");
       startTransition(async () => {
-        const updateData: Parameters<typeof updateUsers>[0] = {
-          ids: rows.map((row) => row.original.id),
-        };
+        const roleIds = roleId ? [roleId] : [];
+        const userIds = rows.map((row) => row.original.id);
 
-        if (field === "role") {
-          updateData.role = value as UserDTOItem["role"];
-        } else if (field === "emailVerified") {
-          updateData.emailVerified = value as UserDTOItem["emailVerified"];
-        }
+        // Assign role to all selected users
+        const results = await Promise.all(
+          userIds.map((userId) =>
+            assignRolesToUser({
+              userId,
+              roleIds,
+            })
+          )
+        );
 
-        const { error } = await updateUsers(updateData);
-
-        if (error) {
-          toast.error(error);
+        const errors = results.filter((r) => r.error);
+        if (errors.length > 0) {
+          toast.error(
+            errors.length === 1
+              ? errors[0].error || "Erreur lors de la mise à jour"
+              : `${errors.length} erreurs lors de la mise à jour`
+          );
           return;
         }
-        toast.success("Users updated");
+
+        toast.success(
+          userIds.length === 1
+            ? "Rôle mis à jour"
+            : `${userIds.length} rôles mis à jour`
+        );
+        table.toggleAllRowsSelected(false);
       });
     },
-    [rows],
+    [rows, table],
+  );
+
+  const onEmailVerifiedUpdate = React.useCallback(
+    (emailVerified: boolean) => {
+      setCurrentAction("update-email-verified");
+      startTransition(async () => {
+        const userIds = rows.map((row) => row.original.id);
+
+        // Update emailVerified for all selected users
+        const results = await Promise.all(
+          userIds.map((userId) =>
+            updateUser({
+              id: userId,
+              emailVerified,
+            })
+          )
+        );
+
+        const errors = results.filter((r) => r.error);
+        if (errors.length > 0) {
+          toast.error(
+            errors.length === 1
+              ? errors[0].error || "Erreur lors de la mise à jour"
+              : `${errors.length} erreurs lors de la mise à jour`
+          );
+          return;
+        }
+
+        toast.success(
+          userIds.length === 1
+            ? "Utilisateur mis à jour"
+            : `${userIds.length} utilisateurs mis à jour`
+        );
+        table.toggleAllRowsSelected(false);
+      });
+    },
+    [rows, table],
   );
 
   const onUserExport = React.useCallback(() => {
@@ -116,14 +175,12 @@ export function UsersTableActionBar({ table }: UsersTableActionBarProps) {
       />
       <div className="flex items-center gap-1.5">
         <Select
-        onValueChange={(value: UserDTOItem["role"]) =>
-            onUserUpdate({ field: "role", value: value })
-        }
+          onValueChange={onRoleUpdate}
         >
           <SelectTrigger asChild>
             <DataTableActionBarAction
               size="icon"
-              tooltip="Update role"
+              tooltip="Mettre à jour le rôle"
               isPending={getIsActionPending("update-role")}
             >
               <Shield />
@@ -131,9 +188,10 @@ export function UsersTableActionBar({ table }: UsersTableActionBarProps) {
           </SelectTrigger>
           <SelectContent align="center">
             <SelectGroup>
-              {userRoles.map((role) => (
-                <SelectItem key={role} value={role} className="capitalize">
-                  {role}
+              <SelectItem value="">Aucun</SelectItem>
+              {availableRoles.map((role) => (
+                <SelectItem key={role.id} value={role.id}>
+                  {role.label}
                 </SelectItem>
               ))}
             </SelectGroup>
@@ -141,13 +199,13 @@ export function UsersTableActionBar({ table }: UsersTableActionBarProps) {
         </Select>
         <Select
           onValueChange={(value: string) =>
-            onUserUpdate({ field: "emailVerified", value: value === "true" ? true : false })
+            onEmailVerifiedUpdate(value === "true")
           }
         >
           <SelectTrigger asChild>
             <DataTableActionBarAction
               size="icon"
-              tooltip="Update email verified"
+              tooltip="Mettre à jour la vérification email"
               isPending={getIsActionPending("update-email-verified")}
             >
               <CheckCircle2 />
@@ -155,14 +213,14 @@ export function UsersTableActionBar({ table }: UsersTableActionBarProps) {
           </SelectTrigger>
           <SelectContent align="center">
             <SelectGroup>
-              <SelectItem value="true">Verified</SelectItem>
-              <SelectItem value="false">Unverified</SelectItem>
+              <SelectItem value="true">Vérifié</SelectItem>
+              <SelectItem value="false">Non vérifié</SelectItem>
             </SelectGroup>
           </SelectContent>
         </Select>
         <DataTableActionBarAction
           size="icon"
-          tooltip="Export users"
+          tooltip="Exporter les utilisateurs"
           isPending={getIsActionPending("export")}
           onClick={onUserExport}
         >
@@ -170,7 +228,7 @@ export function UsersTableActionBar({ table }: UsersTableActionBarProps) {
         </DataTableActionBarAction>
         <DataTableActionBarAction
           size="icon"
-          tooltip="Delete users"
+          tooltip="Supprimer les utilisateurs"
           isPending={getIsActionPending("delete")}
           onClick={onUserDelete}
         >

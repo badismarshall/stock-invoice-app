@@ -36,6 +36,7 @@ import { formatDate } from "@/lib/data-table/format";
 import type { DataTableRowAction } from "@/types/data-table";
 import type { DeliveryNoteDTOItem } from "@/data/delivery-note/delivery-note.dto";
 import { FileText } from "lucide-react";
+import { PermissionGuard } from "@/components/shared/permission-guard";
 
 interface GetDeliveryNotesTableColumnsProps {
   setRowAction: React.Dispatch<
@@ -369,69 +370,81 @@ export function getDeliveryNotesTableColumns({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem
-                onSelect={() => router.push(`/dashboard/sales/modify/${deliveryNote.id}`)}
-              >
-                {translations.edit}
-              </DropdownMenuItem>
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger>{translations.status}</DropdownMenuSubTrigger>
-                <DropdownMenuSubContent>
-                  <DropdownMenuRadioGroup
-                    value={deliveryNote.status || "active"}
-                    onValueChange={(value) => {
-                      startUpdateTransition(() => {
-                        toast.promise(
-                          updateDeliveryNoteStatus({
-                            id: deliveryNote.id,
-                            status: value as "active" | "cancelled",
-                          }),
-                          {
-                            loading: translations.updating,
-                            success: translations.statusUpdated,
-                            error: (err) => getErrorMessage(err),
-                          }
-                        );
-                      });
-                    }}
+              <PermissionGuard permission="sales.update">
+                <DropdownMenuItem
+                  onSelect={() => router.push(`/dashboard/sales/modify/${deliveryNote.id}`)}
+                >
+                  {translations.edit}
+                </DropdownMenuItem>
+              </PermissionGuard>
+              <PermissionGuard permission="sales.update">
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>{translations.status}</DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    <DropdownMenuRadioGroup
+                      value={deliveryNote.status || "active"}
+                      onValueChange={(value) => {
+                        startUpdateTransition(() => {
+                          toast.promise(
+                            updateDeliveryNoteStatus({
+                              id: deliveryNote.id,
+                              status: value as "active" | "cancelled",
+                            }),
+                            {
+                              loading: translations.updating,
+                              success: translations.statusUpdated,
+                              error: (err) => getErrorMessage(err),
+                            }
+                          );
+                        });
+                      }}
+                    >
+                      <DropdownMenuRadioItem
+                        value="active"
+                        disabled={isUpdatePending}
+                      >
+                        {translations.active}
+                      </DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem
+                        value="cancelled"
+                        disabled={isUpdatePending}
+                      >
+                        {translations.cancelled}
+                      </DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              </PermissionGuard>
+              <PermissionGuard permission="invoices.create">
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onSelect={handleCreateDeliveryNoteInvoice}
+                    disabled={isCreatingDeliveryNoteInvoice || isCreatingSaleInvoice}
                   >
-                    <DropdownMenuRadioItem
-                      value="active"
-                      disabled={isUpdatePending}
-                    >
-                      {translations.active}
-                    </DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem
-                      value="cancelled"
-                      disabled={isUpdatePending}
-                    >
-                      {translations.cancelled}
-                    </DropdownMenuRadioItem>
-                  </DropdownMenuRadioGroup>
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onSelect={handleCreateDeliveryNoteInvoice}
-                disabled={isCreatingDeliveryNoteInvoice || isCreatingSaleInvoice}
-              >
-                <FileText className="mr-2 h-4 w-4" />
-                {isCreatingDeliveryNoteInvoice ? "Création..." : deliveryNoteInvoice ? "Imprimer Bon de Livraison" : "Créer Bon de Livraison"}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onSelect={handleCreateSaleInvoice}
-                disabled={isCreatingSaleInvoice || isCreatingDeliveryNoteInvoice}
-              >
-                <FileText className="mr-2 h-4 w-4" />
-                {isCreatingSaleInvoice ? "Création..." : saleInvoice ? "Imprimer Facture de Vente" : "Créer Facture de Vente"}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onSelect={() => setRowAction({ row, variant: "delete" })}
-                className="text-destructive"
-              >
-                {translations.delete}
-              </DropdownMenuItem>
+                    <FileText className="mr-2 h-4 w-4" />
+                    {isCreatingDeliveryNoteInvoice ? "Création..." : deliveryNoteInvoice ? "Imprimer Bon de Livraison" : "Créer Bon de Livraison"}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={handleCreateSaleInvoice}
+                    disabled={isCreatingSaleInvoice || isCreatingDeliveryNoteInvoice}
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    {isCreatingSaleInvoice ? "Création..." : saleInvoice ? "Imprimer Facture de Vente" : "Créer Facture de Vente"}
+                  </DropdownMenuItem>
+                </>
+              </PermissionGuard>
+              <PermissionGuard permission="sales.delete">
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onSelect={() => setRowAction({ row, variant: "delete" })}
+                    className="text-destructive"
+                  >
+                    {translations.delete}
+                  </DropdownMenuItem>
+                </>
+              </PermissionGuard>
             </DropdownMenuContent>
           </DropdownMenu>
         );

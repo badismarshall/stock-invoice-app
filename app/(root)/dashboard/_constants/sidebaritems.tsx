@@ -1,4 +1,4 @@
-import { Home, Settings, Package, Boxes, ShoppingCart, FileBarChart, Users, HandCoins, Truck, List, Plus, AlertTriangle, Wallet, Lock, Database } from "lucide-react"
+import { Home, Settings, Package, Boxes, ShoppingCart, FileBarChart, Users, HandCoins, Truck, List, Plus, AlertTriangle, Wallet, Lock, Database, Shield } from "lucide-react"
 
 export const adminSidebarItemsGeneralSetting = [
   {
@@ -253,6 +253,12 @@ export const adminSidebarItemsGeneralSetting = [
         title: 'Backup',
         url: '/dashboard/settings/backup',
         icon: Database,
+        isActive: false,
+      },
+      {
+        title: 'Rôles & Permissions',
+        url: '/dashboard/roles',
+        icon: Shield,
         isActive: false,
       },
     ],

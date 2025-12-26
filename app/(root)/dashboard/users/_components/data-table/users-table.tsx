@@ -16,6 +16,7 @@ import type {
   getUserEmailVerifiedCounts,
   getUsers,
 } from "../../_lib/queries";
+import type { getRoles } from "@/app/(root)/dashboard/roles/_lib/actions";
 
 import { DeleteUsersDialog } from "./delete-users-dialog";
 import { useFeatureFlags } from "../../../_components/feature-flags-provider";
@@ -30,6 +31,7 @@ interface UsersTableProps {
       Awaited<ReturnType<typeof getUserRoleCounts>>,
       Awaited<ReturnType<typeof getUserBannedCounts>>,
       Awaited<ReturnType<typeof getUserEmailVerifiedCounts>>,
+      Awaited<ReturnType<typeof getRoles>>,
     ]
   >;
   queryKeys?: Partial<QueryKeys>;
@@ -39,11 +41,15 @@ export function UsersTable({ promises, queryKeys }: UsersTableProps) {
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
 
   const [
-    { data, pageCount },
+    { data, pageCount, usersRoles },
     roleCounts,
     bannedCounts,
     emailVerifiedCounts,
+    rolesResult,
   ] = React.use(promises);
+
+  const roles = rolesResult?.data || [];
+  const userRolesMap = usersRoles || {};
 
   const [rowAction, setRowAction] =
     React.useState<DataTableRowAction<UserDTOItem> | null>(null);
@@ -55,8 +61,10 @@ export function UsersTable({ promises, queryKeys }: UsersTableProps) {
         bannedCounts,
         emailVerifiedCounts,
         setRowAction,
+        roles,
+        usersRoles: userRolesMap,
       }),
-    [roleCounts, bannedCounts, emailVerifiedCounts],
+    [roleCounts, bannedCounts, emailVerifiedCounts, roles, userRolesMap],
   );
 
   const { table, shallow, debounceMs, throttleMs } = useDataTable({
@@ -78,7 +86,7 @@ export function UsersTable({ promises, queryKeys }: UsersTableProps) {
     <>
       <DataTable
         table={table}
-        actionBar={<UsersTableActionBar table={table} />}
+        actionBar={<UsersTableActionBar table={table} roles={roles} />}
       >
         {enableAdvancedFilter ? (
           <DataTableAdvancedToolbar table={table}>

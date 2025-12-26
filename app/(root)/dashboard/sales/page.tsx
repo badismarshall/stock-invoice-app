@@ -2,9 +2,6 @@ import { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { getCurrentUser } from "@/data/user/user-auth"
 import { Suspense } from "react"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Plus, FileDown } from "lucide-react"
 import { FeatureFlagsProvider } from "../_components/feature-flags-provider"
 import { SearchParams } from "@/types"
 import { searchParamsCache } from "./_lib/validation"
@@ -12,6 +9,7 @@ import { getValidFilters } from "@/lib/data-table/data-table"
 import { getDeliveryNotes } from "./_lib/queries"
 import { DeliveryNotesTableWrapper } from "./_components/data-table/delivery-notes-table-wrapper"
 import { DataTableSkeleton } from "@/components/shared/data-table/data-table-skeleton"
+import { SalesPageButtons } from "./_components/sales-page-buttons"
 
 export const metadata: Metadata = {
     title: "Ventes Locales",
@@ -37,26 +35,7 @@ async function SalesPageContent(props: SalesPageProps) {
               Gérez vos bons de livraison et factures pour les ventes locales
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <Link href="/dashboard/sales/export/pdf">
-              <Button variant="outline">
-                <FileDown className="mr-2 h-4 w-4" />
-                Exporter en PDF
-              </Button>
-            </Link>
-            <Link href="/dashboard/sales/export/xlsx">
-              <Button variant="outline">
-                <FileDown className="mr-2 h-4 w-4" />
-                Exporter en XLSX
-              </Button>
-            </Link>
-            <Link href="/dashboard/sales/new">
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Nouveau Bon de Livraison
-              </Button>
-            </Link>
-          </div>
+          <SalesPageButtons />
         </div>
         <Suspense 
             fallback={    

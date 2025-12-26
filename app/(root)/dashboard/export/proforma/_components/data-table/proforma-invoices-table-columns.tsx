@@ -28,6 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/data-table/format";
 import type { DataTableRowAction } from "@/types/data-table";
 import type { InvoiceDTOItem } from "@/data/invoice/invoice.dto";
+import { PermissionGuard } from "@/components/shared/permission-guard";
 
 interface GetProformaInvoicesTableColumnsProps {
   setRowAction: React.Dispatch<
@@ -247,26 +248,36 @@ export function getProformaInvoicesTableColumns({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem
-                onSelect={() => router.push(`/dashboard/export/proforma/modify/${invoice.id}`)}
-              >
-                <Pencil className="mr-2 h-4 w-4" />
-                {translations.edit}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onSelect={() => router.push(`/dashboard/invoices/print/${invoice.id}`)}
-              >
-                <FileText className="mr-2 h-4 w-4" />
-                {translations.print}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onSelect={() => setRowAction({ row, variant: "delete" })}
-                className="text-destructive"
-              >
-                {translations.delete}
-              </DropdownMenuItem>
+              <PermissionGuard permission="invoices.update">
+                <DropdownMenuItem
+                  onSelect={() => router.push(`/dashboard/export/proforma/modify/${invoice.id}`)}
+                >
+                  <Pencil className="mr-2 h-4 w-4" />
+                  {translations.edit}
+                </DropdownMenuItem>
+              </PermissionGuard>
+              <PermissionGuard permission="invoices.print">
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onSelect={() => router.push(`/dashboard/invoices/print/${invoice.id}`)}
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    {translations.print}
+                  </DropdownMenuItem>
+                </>
+              </PermissionGuard>
+              <PermissionGuard permission="invoices.delete">
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onSelect={() => setRowAction({ row, variant: "delete" })}
+                    className="text-destructive"
+                  >
+                    {translations.delete}
+                  </DropdownMenuItem>
+                </>
+              </PermissionGuard>
             </DropdownMenuContent>
           </DropdownMenu>
         );
