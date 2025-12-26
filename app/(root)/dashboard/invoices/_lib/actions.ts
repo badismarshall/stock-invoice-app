@@ -458,12 +458,14 @@ export async function getCompanySettings() {
       return {
         data: {
           id: "1",
-          name: "Sirof Algeria",
+          name: "Sirof France",
           address: "Adresse de l'entreprise",
-          phone: "+213 555 55 55 55",
-          email: "contact@sirof.dz",
-          nif: "1234567890",
-          rc: "1234567890",
+          phone: "+33 1 XX XX XX XX",
+          email: "contact@sirof.fr",
+          nafApe: null,
+          rcsRm: null,
+          eori: null,
+          tvaNumber: null,
           logo: "/logo.png",
         },
         error: null,
@@ -480,12 +482,14 @@ export async function getCompanySettings() {
     return {
       data: {
         id: "1",
-        name: "Sirof Algeria",
+        name: "Sirof France",
         address: "Adresse de l'entreprise",
-        phone: "+213 555 55 55 55",
-        email: "contact@sirof.dz",
-        nif: "1234567890",
-        rc: "1234567890",
+        phone: "+33 1 XX XX XX XX",
+        email: "contact@sirof.fr",
+        nafApe: null,
+        rcsRm: null,
+        eori: null,
+        tvaNumber: null,
         logo: "/logo.png",
       },
       error: getErrorMessage(err),
@@ -498,8 +502,10 @@ export async function updateCompanySettings(input: {
   address?: string | null;
   phone?: string | null;
   email?: string | null;
-  nif?: string | null;
-  rc?: string | null;
+  nafApe?: string | null;
+  rcsRm?: string | null;
+  eori?: string | null;
+  tvaNumber?: string | null;
   logo?: string | null;
 }) {
   try {
@@ -527,8 +533,10 @@ export async function updateCompanySettings(input: {
         address: input.address || null,
         phone: input.phone || null,
         email: input.email || null,
-        nif: input.nif || null,
-        rc: input.rc || null,
+        nafApe: input.nafApe || null,
+        rcsRm: input.rcsRm || null,
+        eori: input.eori || null,
+        tvaNumber: input.tvaNumber || null,
         logo: input.logo || null,
       });
     } else {
@@ -540,8 +548,10 @@ export async function updateCompanySettings(input: {
           address: input.address || null,
           phone: input.phone || null,
           email: input.email || null,
-          nif: input.nif || null,
-          rc: input.rc || null,
+          nafApe: input.nafApe || null,
+          rcsRm: input.rcsRm || null,
+          eori: input.eori || null,
+          tvaNumber: input.tvaNumber || null,
           logo: input.logo || null,
         })
         .where(eq(companySettings.id, "1"));

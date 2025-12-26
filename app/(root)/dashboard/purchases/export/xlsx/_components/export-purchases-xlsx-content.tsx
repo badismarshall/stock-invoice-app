@@ -47,8 +47,10 @@ interface CompanyInfo {
   address: string | null;
   phone: string | null;
   email: string | null;
-  nif: string | null;
-  rc: string | null;
+  nafApe: string | null;
+  rcsRm: string | null;
+  eori: string | null;
+  tvaNumber: string | null;
   logo: string | null;
 }
 
@@ -190,12 +192,14 @@ export function ExportPurchasesXLSXContent({
         ["EXPORT DES COMMANDES D'ACHAT"],
         [""],
         ["Informations de l'entreprise"],
-        ["Nom:", companyInfo?.name || "Sirof Algeria"],
+        ["Nom:", companyInfo?.name || "Sirof France"],
         ["Adresse:", companyInfo?.address || "-"],
         ["Téléphone:", companyInfo?.phone || "-"],
         ["Email:", companyInfo?.email || "-"],
-        ["NIF:", companyInfo?.nif || "-"],
-        ["RC:", companyInfo?.rc || "-"],
+        ["NAF-APE:", companyInfo?.nafApe || "-"],
+        ["RCS/RM:", companyInfo?.rcsRm || "-"],
+        ["EORI:", companyInfo?.eori || "-"],
+        ["Numéro TVA:", companyInfo?.tvaNumber || "-"],
         [""],
         ["Informations de l'export"],
         ["Date d'export:", format(new Date(), "dd MMMM yyyy", { locale: fr })],

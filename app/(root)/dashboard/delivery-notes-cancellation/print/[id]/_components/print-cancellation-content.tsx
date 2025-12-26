@@ -307,11 +307,15 @@ export function PrintCancellationContent({ cancellationId }: PrintCancellationCo
               {companyInfo?.address && <p>{companyInfo.address}</p>}
               {companyInfo?.phone && <p>Tél: {companyInfo.phone}</p>}
               {companyInfo?.email && <p>Email: {companyInfo.email}</p>}
-              {(companyInfo?.nif || companyInfo?.rc) && (
+              {(companyInfo?.nafApe || companyInfo?.rcsRm || companyInfo?.eori || companyInfo?.tvaNumber) && (
                 <p>
-                  {companyInfo.nif && `NIF: ${companyInfo.nif}`}
-                  {companyInfo.nif && companyInfo.rc && " | "}
-                  {companyInfo.rc && `RC: ${companyInfo.rc}`}
+                  {companyInfo.nafApe && `NAF-APE: ${companyInfo.nafApe}`}
+                  {companyInfo.nafApe && (companyInfo.rcsRm || companyInfo.eori || companyInfo.tvaNumber) && " | "}
+                  {companyInfo.rcsRm && `RCS/RM: ${companyInfo.rcsRm}`}
+                  {companyInfo.rcsRm && (companyInfo.eori || companyInfo.tvaNumber) && " | "}
+                  {companyInfo.eori && `EORI: ${companyInfo.eori}`}
+                  {companyInfo.eori && companyInfo.tvaNumber && " | "}
+                  {companyInfo.tvaNumber && `TVA: ${companyInfo.tvaNumber}`}
                 </p>
               )}
             </div>

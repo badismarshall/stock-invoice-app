@@ -6,8 +6,10 @@ export const companySettings = pgTable("company_settings", {
   address: text("address"),
   phone: text("phone"),
   email: text("email"),
-  nif: text("nif"),
-  rc: text("rc"),
+  nafApe: text("naf_ape"), // Code NAF-APE (activité principale)
+  rcsRm: text("rcs_rm"), // Numéro RCS/RM (Registre du Commerce)
+  eori: text("eori"), // Numéro EORI (Economic Operators Registration and Identification)
+  tvaNumber: text("tva_number"), // Numéro TVA intracommunautaire
   logo: text("logo"), // Path to logo image
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")

@@ -17,8 +17,10 @@ interface CompanySettingsData {
   address?: string | null;
   phone?: string | null;
   email?: string | null;
-  nif?: string | null;
-  rc?: string | null;
+  nafApe?: string | null;
+  rcsRm?: string | null;
+  eori?: string | null;
+  tvaNumber?: string | null;
 }
 
 export function CompanySettingsForm() {
@@ -64,8 +66,10 @@ export function CompanySettingsForm() {
         address: settings.address || null,
         phone: settings.phone || null,
         email: settings.email || null,
-        nif: settings.nif || null,
-        rc: settings.rc || null,
+        nafApe: settings.nafApe || null,
+        rcsRm: settings.rcsRm || null,
+        eori: settings.eori || null,
+        tvaNumber: settings.tvaNumber || null,
       });
 
       if (result.error) {
@@ -190,23 +194,47 @@ export function CompanySettingsForm() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <Label htmlFor="nif">NIF (Numéro d'Identification Fiscale)</Label>
+              <Label htmlFor="nafApe">NAF-APE (Code d'activité)</Label>
               <Input
-                id="nif"
-                placeholder="NIF-XXXXXXX"
-                value={settings.nif || ""}
-                onChange={(e) => updateField("nif", e.target.value)}
+                id="nafApe"
+                placeholder="Ex: 1234Z"
+                value={settings.nafApe || ""}
+                onChange={(e) => updateField("nafApe", e.target.value)}
                 disabled={saving}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="rc">RC (Registre de Commerce)</Label>
+              <Label htmlFor="rcsRm">RCS/RM (Registre du Commerce)</Label>
               <Input
-                id="rc"
-                placeholder="RC-XXXXXXX"
-                value={settings.rc || ""}
-                onChange={(e) => updateField("rc", e.target.value)}
+                id="rcsRm"
+                placeholder="Ex: RCS Paris 123 456 789"
+                value={settings.rcsRm || ""}
+                onChange={(e) => updateField("rcsRm", e.target.value)}
+                disabled={saving}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="eori">EORI (Numéro d'opérateur économique)</Label>
+              <Input
+                id="eori"
+                placeholder="Ex: FR12345678901234"
+                value={settings.eori || ""}
+                onChange={(e) => updateField("eori", e.target.value)}
+                disabled={saving}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="tvaNumber">Numéro TVA intracommunautaire</Label>
+              <Input
+                id="tvaNumber"
+                placeholder="Ex: FR12345678901"
+                value={settings.tvaNumber || ""}
+                onChange={(e) => updateField("tvaNumber", e.target.value)}
                 disabled={saving}
               />
             </div>
