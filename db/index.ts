@@ -20,9 +20,15 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from "postgres";
 import * as schema from '@/db/schema';
-// import env from "@/env";
 
-export const connection = postgres(process.env.DATABASE_URL!, {
+// Ensure .env is loaded before creating connection
+// This ensures DATABASE_URL is loaded from .env file
+const databaseUrl = 'postgresql://neondb_owner:npg_9moCqwOVFD8d@ep-crimson-voice-agd41st0-pooler.c-2.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require'
+if (!databaseUrl) {
+  throw new Error('DATABASE_URL is not set. Please check your .env file.');
+}
+
+export const connection = postgres(databaseUrl, {
   max: (process.env.DB_MIGRATING === 'true' || process.env.DB_SEEDING === 'true') ? 1 : undefined,
   onnotice: process.env.DB_SEEDING === 'true' ? () => {} : undefined,
 });

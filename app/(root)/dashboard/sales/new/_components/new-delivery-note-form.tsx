@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ProductSelect } from "./product-select"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { CalendarIcon } from "lucide-react"
@@ -37,15 +38,6 @@ export function NewDeliveryNoteForm() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [clients, setClients] = useState<Array<{ id: string; name: string }>>([]);
-  const [products, setProducts] = useState<Array<{ 
-    id: string; 
-    name: string; 
-    code: string;
-    purchasePrice: number;
-    salePriceLocal: number | null;
-    taxRate: number;
-    unitOfMeasure: string;
-  }>>([]);
 
   const [formData, setFormData] = useState({
     noteNumber: "",
@@ -59,21 +51,12 @@ export function NewDeliveryNoteForm() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [{ getAllClients }, { getAllActiveProducts }] = await Promise.all([
-          import("../../_lib/actions"),
-          import("../../_lib/actions"),
-        ]);
+        const { getAllClients } = await import("../../_lib/actions");
 
-        const [clientsResult, productsResult] = await Promise.all([
-          getAllClients(),
-          getAllActiveProducts(),
-        ]);
+        const clientsResult = await getAllClients();
 
         if (clientsResult.data) {
           setClients(clientsResult.data);
-        }
-        if (productsResult.data) {
-          setProducts(productsResult.data);
         }
       } catch (error) {
         console.error("Error fetching data", error);
@@ -106,25 +89,22 @@ export function NewDeliveryNoteForm() {
     }));
   };
 
-  const updateItem = (index: number, field: keyof DeliveryNoteItem, value: any) => {
+  const updateItem = (index: number, field: keyof DeliveryNoteItem, value: any, productData?: any) => {
     setFormData((prev) => {
       const newItems = [...prev.items];
       const item = { ...newItems[index], [field]: value };
 
       // If product changed, update related fields
-      if (field === "productId") {
-        const product = products.find((p) => p.id === value);
-        if (product) {
-          item.productName = product.name;
-          item.purchasePrice = product.purchasePrice || 0;
-          item.unitPrice = product.salePriceLocal || 0;
-          item.taxRate = product.taxRate || 0;
-          // Calculate initial margin
-          item.margin = item.unitPrice - item.purchasePrice;
-          item.marginPercent = item.purchasePrice > 0 
-            ? (item.margin / item.purchasePrice) * 100 
-            : 0;
-        }
+      if (field === "productId" && productData) {
+        item.productName = productData.name;
+        item.purchasePrice = productData.purchasePrice || 0;
+        item.unitPrice = productData.salePriceLocal || 0;
+        item.taxRate = productData.taxRate || 0;
+        // Calculate initial margin
+        item.margin = item.unitPrice - item.purchasePrice;
+        item.marginPercent = item.purchasePrice > 0 
+          ? (item.margin / item.purchasePrice) * 100 
+          : 0;
       }
 
       // If unitPrice changed, recalculate margin
@@ -366,22 +346,12 @@ export function NewDeliveryNoteForm() {
                 {formData.items.map((item, index) => (
                   <tr key={item.id} className="text-card-foreground">
                     <td className="px-4 py-2">
-                      <Select
+                      <ProductSelect
                         value={item.productId}
-                        onValueChange={(value) => updateItem(index, "productId", value)}
+                        onValueChange={(value, productData) => updateItem(index, "productId", value, productData)}
                         disabled={loading}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Sélectionner..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {products.map((product) => (
-                            <SelectItem key={product.id} value={product.id}>
-                              {product.name} ({product.code})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        placeholder="Sélectionner un produit..."
+                      />
                     </td>
                     <td className="px-4 py-2">
                       <Input
