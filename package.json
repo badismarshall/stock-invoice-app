@@ -10,7 +10,9 @@
     "db:migrate": "tsx db/migrate.ts",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "db:seed": "tsx db/seed.ts",
+    "db:test-connection": "tsx db/test-connection.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

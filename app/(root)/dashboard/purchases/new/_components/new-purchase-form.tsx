@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ProductSelect } from "./product-select"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { CalendarIcon } from "lucide-react"
@@ -32,14 +33,6 @@ export function NewPurchaseForm() {
   const pathname = usePathname();
   const [loading, setLoading] = useState(false);
   const [suppliers, setSuppliers] = useState<Array<{ id: string; name: string }>>([]);
-  const [products, setProducts] = useState<Array<{ 
-    id: string; 
-    name: string; 
-    code: string;
-    purchasePrice: string | null;
-    taxRate: string | null;
-    unitOfMeasure: string;
-  }>>([]);
 
   const [formData, setFormData] = useState({
     orderNumber: "",
@@ -70,21 +63,12 @@ export function NewPurchaseForm() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [{ getAllSuppliers }, { getAllActiveProducts }] = await Promise.all([
-          import("../../_lib/actions"),
-          import("../../_lib/actions"),
-        ]);
+        const { getAllSuppliers } = await import("../../_lib/actions");
 
-        const [suppliersResult, productsResult] = await Promise.all([
-          getAllSuppliers(),
-          getAllActiveProducts(),
-        ]);
+        const suppliersResult = await getAllSuppliers();
 
         if (suppliersResult.data) {
           setSuppliers(suppliersResult.data);
-        }
-        if (productsResult.data) {
-          setProducts(productsResult.data);
         }
       } catch (error) {
         console.error("Error fetching data", error);
@@ -111,19 +95,16 @@ export function NewPurchaseForm() {
     }));
   };
 
-  const updateItem = (index: number, field: keyof PurchaseOrderItem, value: any) => {
+  const updateItem = (index: number, field: keyof PurchaseOrderItem, value: any, productData?: any) => {
     setFormData((prev) => {
       const newItems = [...prev.items];
       const item = { ...newItems[index], [field]: value };
 
       // If product changed, update related fields
-      if (field === "productId") {
-        const product = products.find((p) => p.id === value);
-        if (product) {
-          item.productName = product.name;
-          item.unitCost = product.purchasePrice ? parseFloat(product.purchasePrice) : 0;
-          item.taxRate = product.taxRate ? parseFloat(product.taxRate) : 0;
-        }
+      if (field === "productId" && productData) {
+        item.productName = productData.name;
+        item.unitCost = productData.purchasePrice ? parseFloat(productData.purchasePrice) : 0;
+        item.taxRate = productData.taxRate ? parseFloat(productData.taxRate) : 0;
       }
 
       // Recalculate line total
@@ -408,22 +389,12 @@ export function NewPurchaseForm() {
                 {formData.items.map((item, index) => (
                   <tr key={item.id} className="text-card-foreground">
                     <td className="px-4 py-2">
-                      <Select
+                      <ProductSelect
                         value={item.productId}
-                        onValueChange={(value) => updateItem(index, "productId", value)}
+                        onValueChange={(value, productData) => updateItem(index, "productId", value, productData)}
                         disabled={loading}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Sélectionner..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {products.map((product) => (
-                            <SelectItem key={product.id} value={product.id}>
-                              {product.name} ({product.code})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        placeholder="Sélectionner un produit..."
+                      />
                     </td>
                     <td className="px-4 py-2">
                       <Input

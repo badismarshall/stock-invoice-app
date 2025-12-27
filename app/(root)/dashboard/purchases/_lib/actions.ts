@@ -5,7 +5,7 @@ import { getErrorMessage } from "@/lib/handle-error";
 import { generateId } from "@/lib/data-table/id";
 import db from "@/db";
 import { purchaseOrder, purchaseOrderItem, partner, product, stockCurrent, stockMovement, invoice, invoiceItem, payment, user } from "@/db/schema";
-import { eq, inArray, and, asc, desc, not, or, gte, lte } from "drizzle-orm";
+import { eq, inArray, and, asc, desc, not, or, gte, lte, ilike, sql } from "drizzle-orm";
 import { getCurrentUser } from "@/data/user/user-auth";
 import { getPurchaseOrderById } from "@/data/purchase-order/purchase-order.dal";
 
@@ -100,6 +100,92 @@ export async function getAllActiveProducts() {
     console.error("Error getting all active products", err);
     return {
       data: [],
+      error: getErrorMessage(err),
+    };
+  }
+}
+
+/**
+ * Get active products with pagination and search
+ */
+export async function getActiveProductsPaginated(input: {
+  page?: number;
+  limit?: number;
+  search?: string;
+}) {
+  try {
+    const page = input.page ?? 1;
+    const limit = input.limit ?? 20;
+    const offset = (page - 1) * limit;
+    const searchTerm = input.search?.trim();
+
+    // Build where conditions
+    const conditions = [eq(product.isActive, true)];
+    
+    if (searchTerm) {
+      conditions.push(
+        or(
+          ilike(product.name, `%${searchTerm}%`),
+          ilike(product.code, `%${searchTerm}%`)
+        )!
+      );
+    }
+
+    // Get total count for pagination
+    const [totalResult] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(product)
+      .where(and(...conditions));
+
+    const total = totalResult?.count ?? 0;
+
+    // Get paginated products
+    const products = await db
+      .select({
+        id: product.id,
+        name: product.name,
+        code: product.code,
+        purchasePrice: product.purchasePrice,
+        salePriceLocal: product.salePriceLocal,
+        salePriceExport: product.salePriceExport,
+        taxRate: product.taxRate,
+        unitOfMeasure: product.unitOfMeasure,
+      })
+      .from(product)
+      .where(and(...conditions))
+      .limit(limit)
+      .offset(offset)
+      .orderBy(asc(product.name));
+
+    return {
+      data: products.map((p) => ({
+        id: p.id,
+        name: p.name,
+        code: p.code,
+        purchasePrice: p.purchasePrice,
+        salePriceLocal: p.salePriceLocal,
+        salePriceExport: p.salePriceExport,
+        taxRate: p.taxRate,
+        unitOfMeasure: p.unitOfMeasure || "unité",
+      })),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+      error: null,
+    };
+  } catch (err) {
+    console.error("Error getting paginated active products", err);
+    return {
+      data: [],
+      pagination: {
+        page: input.page ?? 1,
+        limit: input.limit ?? 20,
+        total: 0,
+        totalPages: 0,
+      },
       error: getErrorMessage(err),
     };
   }

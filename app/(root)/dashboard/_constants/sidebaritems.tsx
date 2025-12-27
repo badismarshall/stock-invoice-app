@@ -248,7 +248,7 @@ export const adminSidebarItemsGeneralSetting = [
         url: '/dashboard/settings/change-password',
         icon: Lock,
         isActive: false,
-      },
+        },
       {
         title: 'Backup',
         url: '/dashboard/settings/backup',
