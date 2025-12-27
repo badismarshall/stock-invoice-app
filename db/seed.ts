@@ -677,13 +677,12 @@ async function main() {
   }
   
   // Validate database connection - use env object which is already validated
-//   const dbUrl = env.DATABASE_URL || process.env.DATABASE_URL;
-  const dbUrl = process.env.DATABASE_URL;
+  const dbUrl = env.DATABASE_URL || process.env.DATABASE_URL;
   console.log(dbUrl);
 
-//   if (!dbUrl) {
-//     throw new Error('DATABASE_URL is not set in environment variables. Please check your .env file.');
-//   }
+  if (!dbUrl) {
+    throw new Error('DATABASE_URL is not set in environment variables. Please check your .env file.');
+  }
   
   // Check if DATABASE_URL looks valid
   if (!dbUrl.includes('://') || !dbUrl.includes('@')) {
