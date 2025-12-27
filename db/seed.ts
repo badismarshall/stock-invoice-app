@@ -678,7 +678,7 @@ async function main() {
   
   // Validate database connection - use env object which is already validated
 //   const dbUrl = env.DATABASE_URL || process.env.DATABASE_URL;
-  const dbUrl = "postgresql://neondb_owner:npg_9moCqwOVFD8d@ep-crimson-voice-agd41st0-pooler.c-2.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require";
+  const dbUrl = process.env.DATABASE_URL;
   console.log(dbUrl);
 
 //   if (!dbUrl) {
