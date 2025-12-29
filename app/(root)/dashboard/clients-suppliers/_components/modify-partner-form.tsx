@@ -19,8 +19,10 @@ const modifyPartnerSchema = z.object({
   email: z.string().email("Email invalide").optional().or(z.literal("")),
   address: z.string().optional(),
   credit: z.string().optional(),
-  nif: z.string().optional(),
-  rc: z.string().optional(),
+  nafApe: z.string().optional(),
+  rcsRm: z.string().optional(),
+  eori: z.string().optional(),
+  tvaNumber: z.string().optional(),
 });
 
 type ModifyPartnerFormValues = z.infer<typeof modifyPartnerSchema>;
@@ -33,8 +35,10 @@ interface ModifyPartnerFormProps extends React.HTMLAttributes<HTMLDivElement> {
     email: string | null;
     address: string | null;
     credit: string | null;
-    nif: string | null;
-    rc: string | null;
+    nafApe: string | null;
+    rcsRm: string | null;
+    eori: string | null;
+    tvaNumber: string | null;
     type: string;
   };
   onSuccess?: () => void
@@ -52,8 +56,10 @@ export function ModifyPartnerForm({ className, partner, onSuccess, ...props }: M
       email: partner.email || '',
       address: partner.address || '',
       credit: partner.credit || '0',
-      nif: partner.nif || '',
-      rc: partner.rc || '',
+      nafApe: partner.nafApe || '',
+      rcsRm: partner.rcsRm || '',
+      eori: partner.eori || '',
+      tvaNumber: partner.tvaNumber || '',
     },
   })
 
@@ -65,8 +71,10 @@ export function ModifyPartnerForm({ className, partner, onSuccess, ...props }: M
       email: partner.email || '',
       address: partner.address || '',
       credit: partner.credit || '0',
-      nif: partner.nif || '',
-      rc: partner.rc || '',
+      nafApe: partner.nafApe || '',
+      rcsRm: partner.rcsRm || '',
+      eori: partner.eori || '',
+      tvaNumber: partner.tvaNumber || '',
     });
   }, [partner, form]);
 
@@ -219,16 +227,16 @@ export function ModifyPartnerForm({ className, partner, onSuccess, ...props }: M
         <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="nif"
+            name="nafApe"
             render={({ field }) => (
               <FormItem className="grid gap-1">
-                <FormLabel htmlFor="nif">
-                  NIF
+                <FormLabel htmlFor="nafApe">
+                  NAF-APE
                 </FormLabel>
                 <FormControl>
                   <Input
-                      id="nif"
-                      placeholder="NIF"
+                      id="nafApe"
+                      placeholder="Code NAF-APE"
                       type="text"
                       disabled={loading}
                       {...field}
@@ -240,16 +248,60 @@ export function ModifyPartnerForm({ className, partner, onSuccess, ...props }: M
           />
           <FormField
             control={form.control}
-            name="rc"
+            name="rcsRm"
             render={({ field }) => (
               <FormItem className="grid gap-1">
-                <FormLabel htmlFor="rc">
-                  RC
+                <FormLabel htmlFor="rcsRm">
+                  RCS/RM
                 </FormLabel>
                 <FormControl>
                   <Input
-                      id="rc"
-                      placeholder="RC"
+                      id="rcsRm"
+                      placeholder="Numéro RCS/RM"
+                      type="text"
+                      disabled={loading}
+                      {...field}
+                    />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="eori"
+            render={({ field }) => (
+              <FormItem className="grid gap-1">
+                <FormLabel htmlFor="eori">
+                  EORI
+                </FormLabel>
+                <FormControl>
+                  <Input
+                      id="eori"
+                      placeholder="Numéro EORI"
+                      type="text"
+                      disabled={loading}
+                      {...field}
+                    />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="tvaNumber"
+            render={({ field }) => (
+              <FormItem className="grid gap-1">
+                <FormLabel htmlFor="tvaNumber">
+                  TVA
+                </FormLabel>
+                <FormControl>
+                  <Input
+                      id="tvaNumber"
+                      placeholder="Numéro TVA intracommunautaire"
                       type="text"
                       disabled={loading}
                       {...field}

@@ -39,14 +39,14 @@ export const getPartners = async (input: GetPartnersSchema & { type: "client" | 
     : and(
       // Filter by type
       eq(partner.type, input.type),
-      // Search by name, email, phone, nif, or rc (basic toolbar filters)
-      input.name || input.email || input.phone || input.nif || input.rc
+      // Search by name, email, phone, nafApe, or rcsRm (basic toolbar filters)
+      input.name || input.email || input.phone || input.nafApe || input.rcsRm
         ? or(
             input.name ? ilike(partner.name, `%${input.name}%`) : undefined,
             input.email ? ilike(partner.email, `%${input.email}%`) : undefined,
             input.phone ? ilike(partner.phone, `%${input.phone}%`) : undefined,
-            input.nif ? ilike(partner.nif, `%${input.nif}%`) : undefined,
-            input.rc ? ilike(partner.rc, `%${input.rc}%`) : undefined,
+            input.nafApe ? ilike(partner.nafApe, `%${input.nafApe}%`) : undefined,
+            input.rcsRm ? ilike(partner.rcsRm, `%${input.rcsRm}%`) : undefined,
           )
         : undefined,
       // Filter by createdAt date range
@@ -85,8 +85,8 @@ export const getPartners = async (input: GetPartnersSchema & { type: "client" | 
       email: partner.email,
       address: partner.address,
       credit: partner.credit,
-      nif: partner.nif,
-      rc: partner.rc,
+      nafApe: partner.nafApe,
+      rcsRm: partner.rcsRm,
       type: partner.type,
       createdAt: partner.createdAt,
       updatedAt: partner.updatedAt,
@@ -136,8 +136,10 @@ export const getPartners = async (input: GetPartnersSchema & { type: "client" | 
         email: p.email,
         address: p.address,
         credit: p.credit,
-        nif: p.nif,
-        rc: p.rc,
+        nafApe: p.nafApe,
+        rcsRm: p.rcsRm,
+        eori: p.eori,
+        tvaNumber: p.tvaNumber,
         type: p.type,
         createdAt: p.createdAt,
         updatedAt: p.updatedAt,

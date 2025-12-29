@@ -42,10 +42,10 @@ const translations = {
   address: "Adresse",
   searchAddress: "Rechercher une adresse...",
   credit: "Crédit",
-  nif: "NIF",
-  searchNif: "Rechercher un NIF...",
-  rc: "RC",
-  searchRc: "Rechercher un RC...",
+  nafApe: "NAF-APE",
+  searchNafApe: "Rechercher un NAF-APE...",
+  rcsRm: "RCS/RM",
+  searchRcsRm: "Rechercher un RCS/RM...",
   createdAt: "Créé le",
   edit: "Modifier",
   delete: "Supprimer",
@@ -184,44 +184,44 @@ export function getPartnersTableColumns({
       enableColumnFilter: false,
     },
     {
-      id: "nif",
-      accessorKey: "nif",
+      id: "nafApe",
+      accessorKey: "nafApe",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} label={translations.nif} title={translations.nif} />
+        <DataTableColumnHeader column={column} label={translations.nafApe} title={translations.nafApe} />
       ),
       cell: ({ row }) => {
-        const nif = row.getValue<string | null>("nif");
+        const nafApe = row.getValue<string | null>("nafApe");
         return (
           <span className="max-w-125 truncate">
-            {nif || "-"}
+            {nafApe || "-"}
           </span>
         );
       },
       meta: {
-        label: translations.nif,
-        placeholder: translations.searchNif,
+        label: translations.nafApe,
+        placeholder: translations.searchNafApe,
         variant: "text",
         icon: Hash,
       },
       enableColumnFilter: true,
     },
     {
-      id: "rc",
-      accessorKey: "rc",
+      id: "rcsRm",
+      accessorKey: "rcsRm",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} label={translations.rc} title={translations.rc} />
+        <DataTableColumnHeader column={column} label={translations.rcsRm} title={translations.rcsRm} />
       ),
       cell: ({ row }) => {
-        const rc = row.getValue<string | null>("rc");
+        const rcsRm = row.getValue<string | null>("rcsRm");
         return (
           <span className="max-w-125 truncate">
-            {rc || "-"}
+            {rcsRm || "-"}
           </span>
         );
       },
       meta: {
-        label: translations.rc,
-        placeholder: translations.searchRc,
+        label: translations.rcsRm,
+        placeholder: translations.searchRcsRm,
         variant: "text",
         icon: FileText,
       },

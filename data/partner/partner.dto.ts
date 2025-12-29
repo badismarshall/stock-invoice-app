@@ -11,8 +11,10 @@ export const partnerSchema = z.object({
             email: z.string().nullable(),
             address: z.string().nullable(),
             credit: z.string().nullable(), // numeric as string
-            nif: z.string().nullable(),
-            rc: z.string().nullable(),
+            nafApe: z.string().nullable(),
+            rcsRm: z.string().nullable(),
+            eori: z.string().nullable(),
+            tvaNumber: z.string().nullable(),
             type: z.string(), // "client" or "fournisseur"
             createdAt: z.date(),
             updatedAt: z.date(),

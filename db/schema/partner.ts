@@ -8,8 +8,10 @@ export const partner = pgTable("partner", {
   email: text("email"), // Email
   address: text("address"), // Adresse
   credit: numeric("credit", { precision: 10, scale: 2 }).default("0"), // Crédit
-  nif: text("nif"), // Numéro d'Identification Fiscale
-  rc: text("rc"), // Registre de Commerce
+  nafApe: text("naf_ape"), // Code NAF-APE (activité principale) - renamed from nif
+  rcsRm: text("rcs_rm"), // Numéro RCS/RM (Registre du Commerce) - renamed from rc
+  eori: text("eori"), // Numéro EORI (Economic Operators Registration and Identification)
+  tvaNumber: text("tva_number"), // Numéro TVA intracommunautaire
   type: text("type").notNull(), // "client" or "fournisseur"
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
