@@ -267,8 +267,8 @@ export async function getInvoiceById(input: { id: string }) {
           phone: partner.phone,
           email: partner.email,
           address: partner.address,
-          nif: partner.nif,
-          rc: partner.rc,
+          nafApe: partner.nafApe,
+          rcsRm: partner.rcsRm,
         },
       })
       .from(invoice)
@@ -296,8 +296,8 @@ export async function getInvoiceById(input: { id: string }) {
           phone: partner.phone,
           email: partner.email,
           address: partner.address,
-          nif: partner.nif,
-          rc: partner.rc,
+          nafApe: partner.nafApe,
+          rcsRm: partner.rcsRm,
         })
         .from(partner)
         .where(eq(partner.id, item.invoice.clientId))
