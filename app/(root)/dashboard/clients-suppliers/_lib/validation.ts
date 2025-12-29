@@ -24,8 +24,8 @@ import {
     email: parseAsString.withDefault(""),
     address: parseAsString.withDefault(""),
     credit: parseAsString.withDefault(""),
-    nif: parseAsString.withDefault(""),
-    rc: parseAsString.withDefault(""),
+    nafApe: parseAsString.withDefault(""),
+    rcsRm: parseAsString.withDefault(""),
     createdAt: parseAsArrayOf(parseAsInteger).withDefault([]),
     // advanced filter
     filters: getFiltersStateParser().withDefault([]),

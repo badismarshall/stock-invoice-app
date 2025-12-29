@@ -29,8 +29,10 @@ export function ModifyPartnerDialog({ partnerId, open, onOpenChange, onSuccess }
     email: string | null;
     address: string | null;
     credit: string | null;
-    nif: string | null;
-    rc: string | null;
+    nafApe: string | null;
+    rcsRm: string | null;
+    eori: string | null;
+    tvaNumber: string | null;
     type: string;
   } | null>(null);
 

@@ -14,8 +14,10 @@ export async function addPartner(input: {
   email?: string;
   address?: string;
   credit?: string;
-  nif?: string;
-  rc?: string;
+  nafApe?: string;
+  rcsRm?: string;
+  eori?: string;
+  tvaNumber?: string;
   type: "client" | "fournisseur";
 }) {
   try {
@@ -30,8 +32,10 @@ export async function addPartner(input: {
       email: input.email || null,
       address: input.address || null,
       credit: creditValue,
-      nif: input.nif || null,
-      rc: input.rc || null,
+      nafApe: input.nafApe || null,
+      rcsRm: input.rcsRm || null,
+      eori: input.eori || null,
+      tvaNumber: input.tvaNumber || null,
       type: input.type,
     });
 
@@ -124,8 +128,10 @@ export async function updatePartner(input: {
   email?: string;
   address?: string;
   credit?: string;
-  nif?: string;
-  rc?: string;
+  nafApe?: string;
+  rcsRm?: string;
+  eori?: string;
+  tvaNumber?: string;
 }) {
   try {
     const creditValue = input.credit ? input.credit : "0";
@@ -139,8 +145,10 @@ export async function updatePartner(input: {
         email: input.email || null,
         address: input.address || null,
         credit: creditValue,
-        nif: input.nif || null,
-        rc: input.rc || null,
+        nafApe: input.nafApe || null,
+        rcsRm: input.rcsRm || null,
+        eori: input.eori || null,
+        tvaNumber: input.tvaNumber || null,
         updatedAt: new Date(),
       })
       .where(eq(partner.id, input.id));
