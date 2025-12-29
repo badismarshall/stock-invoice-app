@@ -181,8 +181,10 @@ function generateInvoiceEmailHTML(
       ${companyInfo.address ? `<p>${companyInfo.address}</p>` : ''}
       ${companyInfo.phone ? `<p>Téléphone: ${companyInfo.phone}</p>` : ''}
       ${companyInfo.email ? `<p>Email: ${companyInfo.email}</p>` : ''}
-      ${companyInfo.nif ? `<p>NIF: ${companyInfo.nif}</p>` : ''}
-      ${companyInfo.rc ? `<p>RC: ${companyInfo.rc}</p>` : ''}
+      ${companyInfo.nafApe ? `<p>NAF-APE: ${companyInfo.nafApe}</p>` : ''}
+      ${companyInfo.rcsRm ? `<p>RCS/RM: ${companyInfo.rcsRm}</p>` : ''}
+      ${companyInfo.eori ? `<p>EORI: ${companyInfo.eori}</p>` : ''}
+      ${companyInfo.tvaNumber ? `<p>TVA: ${companyInfo.tvaNumber}</p>` : ''}
     </div>
   </div>
 
@@ -200,8 +202,10 @@ function generateInvoiceEmailHTML(
       ${partnerInfo.address ? `<p>${partnerInfo.address}</p>` : ''}
       ${partnerInfo.phone ? `<p>Téléphone: ${partnerInfo.phone}</p>` : ''}
       ${partnerInfo.email ? `<p>Email: ${partnerInfo.email}</p>` : ''}
-      ${partnerInfo.nif ? `<p>NIF: ${partnerInfo.nif}</p>` : ''}
-      ${partnerInfo.rc ? `<p>RC: ${partnerInfo.rc}</p>` : ''}
+      ${partnerInfo.nafApe ? `<p>NAF-APE: ${partnerInfo.nafApe}</p>` : ''}
+      ${partnerInfo.rcsRm ? `<p>RCS/RM: ${partnerInfo.rcsRm}</p>` : ''}
+      ${partnerInfo.eori ? `<p>EORI: ${partnerInfo.eori}</p>` : ''}
+      ${partnerInfo.tvaNumber ? `<p>TVA: ${partnerInfo.tvaNumber}</p>` : ''}
     ` : ''}
   </div>
 

@@ -444,8 +444,10 @@ export function PrintInvoiceContent({ invoiceId }: PrintInvoiceContentProps) {
                 {partnerInfo.address && <p>{partnerInfo.address}</p>}
                 {partnerInfo.phone && <p>Tél: {partnerInfo.phone}</p>}
                 {partnerInfo.email && <p>Email: {partnerInfo.email}</p>}
-                {partnerInfo.nif && <p>NIF: {partnerInfo.nif}</p>}
-                {partnerInfo.rc && <p>RC: {partnerInfo.rc}</p>}
+                {partnerInfo.nafApe && <p>NAF-APE: {partnerInfo.nafApe}</p>}
+                {partnerInfo.rcsRm && <p>RCS/RM: {partnerInfo.rcsRm}</p>}
+                {partnerInfo.eori && <p>EORI: {partnerInfo.eori}</p>}
+                {partnerInfo.tvaNumber && <p>TVA: {partnerInfo.tvaNumber}</p>}
               </div>
             ) : (
               <p className="text-sm text-gray-500">Non renseigné</p>
