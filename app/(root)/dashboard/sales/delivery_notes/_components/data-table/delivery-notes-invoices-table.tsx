@@ -8,12 +8,14 @@ import { DataTableFilterMenu } from "@/components/shared/data-table/data-table-f
 import { DataTableSortList } from "@/components/shared/data-table/data-table-sort-list";
 import { DataTableToolbar } from "@/components/shared/data-table/data-table-toolbar";
 import { useDataTable } from "@/hooks/data-table/use-data-table";
+import { useTableLoading } from "@/hooks/data-table/use-table-loading";
 import type { DataTableRowAction, QueryKeys } from "@/types/data-table";
 import type { InvoiceDTOItem } from "@/data/invoice/invoice.dto";
 import type { getDeliveryNotesInvoices } from "../../_lib/queries";
 import { DeliveryNotesInvoicesTableActionBar } from "./delivery-notes-invoices-table-action-bar";
 import { getDeliveryNotesInvoicesTableColumns } from "./delivery-notes-invoices-table-columns";
 import { useFeatureFlags } from "@/app/(root)/dashboard/_components/feature-flags-provider";
+import { DataTableBodySkeleton } from "@/components/shared/data-table/data-table-body-skeleton";
 
 interface DeliveryNotesInvoicesTableProps {
   promises: Promise<
@@ -25,8 +27,16 @@ interface DeliveryNotesInvoicesTableProps {
 
 export function DeliveryNotesInvoicesTable({ promises, clients = [], queryKeys }: DeliveryNotesInvoicesTableProps) {
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
+  const { showLoading, startTransition, resetLoading } = useTableLoading();
 
   const { data, pageCount } = React.use(promises);
+
+  // Reset loading when data is received
+  React.useEffect(() => {
+    if (data) {
+      resetLoading();
+    }
+  }, [data, resetLoading]);
 
   const [rowAction, setRowAction] =
     React.useState<DataTableRowAction<InvoiceDTOItem> | null>(null);
@@ -53,6 +63,7 @@ export function DeliveryNotesInvoicesTable({ promises, clients = [], queryKeys }
     getRowId: (originalRow) => originalRow.id,
     shallow: false,
     clearOnDefault: true,
+    startTransition,
   });
 
   return (
@@ -60,6 +71,17 @@ export function DeliveryNotesInvoicesTable({ promises, clients = [], queryKeys }
       <DataTable
         table={table}
         actionBar={<DeliveryNotesInvoicesTableActionBar table={table} />}
+        renderTableBody={
+          showLoading
+            ? () => (
+                <DataTableBodySkeleton
+                  columnCount={9}
+                  rowCount={10}
+                  shrinkZero
+                />
+              )
+            : undefined
+        }
       >
         {enableAdvancedFilter ? (
           <DataTableAdvancedToolbar table={table}>

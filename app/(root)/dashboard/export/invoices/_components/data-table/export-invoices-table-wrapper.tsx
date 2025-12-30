@@ -23,6 +23,14 @@ export async function ExportInvoicesTableWrapper({ searchParams }: ExportInvoice
     filters: validFilters,
   });
 
-  return <ExportInvoicesTable promises={promises} clients={clients} />
+  // Use a unique key based on search params to force React to recreate the component on page change
+  const tableKey = JSON.stringify({
+    page: search.page,
+    perPage: search.perPage,
+    sort: search.sort,
+    filters: search.filters,
+  });
+
+  return <ExportInvoicesTable key={tableKey} promises={promises} clients={clients} />
 }
 

@@ -788,6 +788,57 @@ export async function getInvoicesByDeliveryNoteId(input: { deliveryNoteId: strin
   }
 }
 
+export async function getInvoicesByDeliveryNoteIds(input: { deliveryNoteIds: string[] }) {
+  try {
+    if (input.deliveryNoteIds.length === 0) {
+      return {
+        data: {},
+        error: null,
+      };
+    }
+
+    const invoices = await db
+      .select({
+        id: invoice.id,
+        invoiceNumber: invoice.invoiceNumber,
+        invoiceType: invoice.invoiceType,
+        deliveryNoteId: invoice.deliveryNoteId,
+      })
+      .from(invoice)
+      .where(
+        and(
+          inArray(invoice.deliveryNoteId, input.deliveryNoteIds),
+          eq(invoice.status, "active")
+        )
+      );
+
+    // Group invoices by deliveryNoteId
+    const invoicesByDeliveryNoteId = invoices.reduce((acc, inv) => {
+      if (!inv.deliveryNoteId) return acc;
+      if (!acc[inv.deliveryNoteId]) {
+        acc[inv.deliveryNoteId] = [];
+      }
+      acc[inv.deliveryNoteId].push({
+        id: inv.id,
+        invoiceNumber: inv.invoiceNumber,
+        invoiceType: inv.invoiceType,
+      });
+      return acc;
+    }, {} as Record<string, Array<{ id: string; invoiceNumber: string; invoiceType: string }>>);
+
+    return {
+      data: invoicesByDeliveryNoteId,
+      error: null,
+    };
+  } catch (err) {
+    console.error("Error getting invoices by delivery note ids", err);
+    return {
+      data: {},
+      error: getErrorMessage(err),
+    };
+  }
+}
+
 export async function createInvoiceFromDeliveryNote(input: { 
   deliveryNoteId: string; 
   invoiceType: "delivery_note_invoice" | "sale_export";

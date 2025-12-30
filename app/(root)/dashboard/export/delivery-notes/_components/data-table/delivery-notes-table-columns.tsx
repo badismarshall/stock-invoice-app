@@ -39,6 +39,7 @@ interface GetDeliveryNotesTableColumnsProps {
   setRowAction: React.Dispatch<
     React.SetStateAction<DataTableRowAction<DeliveryNoteDTOItem> | null>
   >;
+  invoices: Record<string, Array<{ id: string; invoiceNumber: string; invoiceType: string }>>;
 }
 
 const translations = {
@@ -67,6 +68,7 @@ const statusConfig: Record<string, { label: string; variant: "default" | "second
 
 export function getDeliveryNotesTableColumns({
   setRowAction,
+  invoices,
 }: GetDeliveryNotesTableColumnsProps): ColumnDef<DeliveryNoteDTOItem>[] {
   return [
     {
@@ -231,29 +233,19 @@ export function getDeliveryNotesTableColumns({
         const router = useRouter();
         const deliveryNote = row.original;
         const [isUpdatePending, startUpdateTransition] = React.useTransition();
-        const [isLoadingInvoices, setIsLoadingInvoices] = React.useState(true);
-        const [invoices, setInvoices] = React.useState<Array<{ id: string; invoiceNumber: string; invoiceType: string }>>([]);
+        const [localInvoices, setLocalInvoices] = React.useState<Array<{ id: string; invoiceNumber: string; invoiceType: string }>>(
+          invoices[deliveryNote.id] || []
+        );
 
-        // Load invoices when component mounts
+        // Sync localInvoices with prop when it changes
         React.useEffect(() => {
-          const loadInvoices = async () => {
-            setIsLoadingInvoices(true);
-            try {
-              const result = await getInvoicesByDeliveryNoteId({ deliveryNoteId: deliveryNote.id });
-              if (result.data) {
-                setInvoices(result.data);
-              }
-            } catch (error) {
-              console.error("Error loading invoices", error);
-            } finally {
-              setIsLoadingInvoices(false);
-            }
-          };
-          loadInvoices();
-        }, [deliveryNote.id]);
+          setLocalInvoices(invoices[deliveryNote.id] || []);
+        }, [deliveryNote.id, invoices]);
 
-        const deliveryNoteInvoice = invoices.find(inv => inv.invoiceType === "delivery_note_invoice");
-        const exportInvoice = invoices.find(inv => inv.invoiceType === "sale_export");
+        // Use localInvoices (which may be updated after creating invoices) or fall back to prop
+        const currentInvoices = localInvoices.length > 0 ? localInvoices : (invoices[deliveryNote.id] || []);
+        const deliveryNoteInvoice = currentInvoices.find(inv => inv.invoiceType === "delivery_note_invoice");
+        const exportInvoice = currentInvoices.find(inv => inv.invoiceType === "sale_export");
 
         const [isCreatingDeliveryNoteInvoice, setIsCreatingDeliveryNoteInvoice] = React.useState(false);
         const [isCreatingExportInvoice, setIsCreatingExportInvoice] = React.useState(false);
@@ -295,7 +287,7 @@ export function getDeliveryNotesTableColumns({
             // Reload invoices
             const result = await getInvoicesByDeliveryNoteId({ deliveryNoteId: deliveryNote.id });
             if (result.data) {
-              setInvoices(result.data);
+              setLocalInvoices(result.data);
             }
           }
         };
@@ -337,7 +329,7 @@ export function getDeliveryNotesTableColumns({
             // Reload invoices
             const result = await getInvoicesByDeliveryNoteId({ deliveryNoteId: deliveryNote.id });
             if (result.data) {
-              setInvoices(result.data);
+              setLocalInvoices(result.data);
             }
           }
         };

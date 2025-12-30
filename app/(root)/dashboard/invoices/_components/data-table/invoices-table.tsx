@@ -8,12 +8,14 @@ import { DataTableFilterMenu } from "@/components/shared/data-table/data-table-f
 import { DataTableSortList } from "@/components/shared/data-table/data-table-sort-list";
 import { DataTableToolbar } from "@/components/shared/data-table/data-table-toolbar";
 import { useDataTable } from "@/hooks/data-table/use-data-table";
+import { useTableLoading } from "@/hooks/data-table/use-table-loading";
 import type { DataTableRowAction, QueryKeys } from "@/types/data-table";
 import type { InvoiceDTOItem } from "@/data/invoice/invoice.dto";
 import type { getInvoices } from "../../_lib/queries";
 import { InvoicesTableActionBar } from "./invoices-table-action-bar";
 import { getInvoicesTableColumns } from "./invoices-table-columns";
 import { useFeatureFlags } from "@/app/(root)/dashboard/_components/feature-flags-provider";
+import { DataTableBodySkeleton } from "@/components/shared/data-table/data-table-body-skeleton";
 
 interface InvoicesTableProps {
   promises: Promise<
@@ -26,8 +28,16 @@ interface InvoicesTableProps {
 
 export function InvoicesTable({ promises, clients = [], suppliers = [], queryKeys }: InvoicesTableProps) {
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
+  const { showLoading, startTransition, resetLoading } = useTableLoading();
 
   const { data, pageCount } = React.use(promises);
+
+  // Reset loading when data is received
+  React.useEffect(() => {
+    if (data) {
+      resetLoading();
+    }
+  }, [data, resetLoading]);
 
   const [rowAction, setRowAction] =
     React.useState<DataTableRowAction<InvoiceDTOItem> | null>(null);
@@ -55,6 +65,7 @@ export function InvoicesTable({ promises, clients = [], suppliers = [], queryKey
     getRowId: (originalRow) => originalRow.id,
     shallow: false,
     clearOnDefault: true,
+    startTransition,
   });
 
   return (
@@ -62,6 +73,17 @@ export function InvoicesTable({ promises, clients = [], suppliers = [], queryKey
       <DataTable
         table={table}
         actionBar={<InvoicesTableActionBar table={table} />}
+        renderTableBody={
+          showLoading
+            ? () => (
+                <DataTableBodySkeleton
+                  columnCount={10}
+                  rowCount={10}
+                  shrinkZero
+                />
+              )
+            : undefined
+        }
       >
         {enableAdvancedFilter ? (
           <DataTableAdvancedToolbar table={table}>

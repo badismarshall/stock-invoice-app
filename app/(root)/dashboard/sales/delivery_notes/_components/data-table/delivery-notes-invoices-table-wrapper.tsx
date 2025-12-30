@@ -23,6 +23,12 @@ export async function DeliveryNotesInvoicesTableWrapper({ searchParams }: Delive
     filters: validFilters,
   });
 
-  return <DeliveryNotesInvoicesTable promises={promises} clients={clients} />
+  return (
+    <DeliveryNotesInvoicesTable
+      key={new URLSearchParams(searchParamsResolved as Record<string, string>).toString()}
+      promises={promises}
+      clients={clients}
+    />
+  );
 }
 

@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 interface DataTableProps<TData> extends React.ComponentProps<"div"> {
   table: TanstackTable<TData>;
   actionBar?: React.ReactNode;
+  renderTableBody?: () => React.ReactNode;
 }
 
 export function DataTable<TData>({
@@ -23,6 +24,7 @@ export function DataTable<TData>({
   actionBar,
   children,
   className,
+  renderTableBody,
   ...props
 }: DataTableProps<TData>) {
   return (
@@ -63,47 +65,51 @@ export function DataTable<TData>({
               </TableRow>
             ))}
           </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                >
-                  {row.getVisibleCells().map((cell) => {
-                    const align = cell.column.columnDef.meta?.align as "left" | "right" | "center" | undefined;
-                    return (
-                      <TableCell
-                        key={cell.id}
-                        className={cn(
-                          align === "right" && "text-right",
-                          align === "center" && "text-center",
-                          align === "left" && "text-left"
-                        )}
-                        style={{
-                          ...getCommonPinningStyles({ column: cell.column }),
-                        }}
-                      >
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext(),
-                        )}
-                      </TableCell>
-                    );
-                  })}
+          {renderTableBody ? (
+            renderTableBody()
+          ) : (
+            <TableBody>
+              {table.getRowModel().rows?.length ? (
+                table.getRowModel().rows.map((row) => (
+                  <TableRow
+                    key={row.id}
+                    data-state={row.getIsSelected() && "selected"}
+                  >
+                    {row.getVisibleCells().map((cell) => {
+                      const align = cell.column.columnDef.meta?.align as "left" | "right" | "center" | undefined;
+                      return (
+                        <TableCell
+                          key={cell.id}
+                          className={cn(
+                            align === "right" && "text-right",
+                            align === "center" && "text-center",
+                            align === "left" && "text-left"
+                          )}
+                          style={{
+                            ...getCommonPinningStyles({ column: cell.column }),
+                          }}
+                        >
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext(),
+                          )}
+                        </TableCell>
+                      );
+                    })}
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell
+                    colSpan={table.getAllColumns().length}
+                    className="h-24 text-center"
+                  >
+                    No results.
+                  </TableCell>
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={table.getAllColumns().length}
-                  className="h-24 text-center"
-                >
-                  No results.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
+              )}
+            </TableBody>
+          )}
         </Table>
       </div>
       <div className="flex flex-col gap-2.5">

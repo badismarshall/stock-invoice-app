@@ -8,6 +8,7 @@ import { DataTableFilterMenu } from "@/components/shared/data-table/data-table-f
 import { DataTableSortList } from "@/components/shared/data-table/data-table-sort-list";
 import { DataTableToolbar } from "@/components/shared/data-table/data-table-toolbar";
 import { useDataTable } from "@/hooks/data-table/use-data-table";
+import { useTableLoading } from "@/hooks/data-table/use-table-loading";
 import type { QueryKeys, DataTableRowAction } from "@/types/data-table";
 import type { DeliveryNoteCancellationDTOItem } from "@/data/delivery-note-cancellation/delivery-note-cancellation.dto";
 import type { getDeliveryNoteCancellations } from "../../_lib/queries";
@@ -15,6 +16,7 @@ import { getDeliveryNoteCancellationsTableColumns } from "./delivery-note-cancel
 import { DeliveryNoteCancellationsTableActionBar } from "./delivery-note-cancellations-table-action-bar";
 import { useFeatureFlags } from "@/app/(root)/dashboard/_components/feature-flags-provider";
 import { DeleteDeliveryNoteCancellationsDialog } from "./delete-delivery-note-cancellations-dialog";
+import { DataTableBodySkeleton } from "@/components/shared/data-table/data-table-body-skeleton";
 
 interface DeliveryNoteCancellationsTableProps {
   promises: Promise<
@@ -26,8 +28,16 @@ interface DeliveryNoteCancellationsTableProps {
 
 export function DeliveryNoteCancellationsTable({ promises, clients = [], queryKeys }: DeliveryNoteCancellationsTableProps) {
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
+  const { showLoading, startTransition, resetLoading } = useTableLoading();
 
   const { data, pageCount } = React.use(promises);
+
+  // Reset loading when data is received
+  React.useEffect(() => {
+    if (data) {
+      resetLoading();
+    }
+  }, [data, resetLoading]);
 
   const [rowAction, setRowAction] =
     React.useState<DataTableRowAction<DeliveryNoteCancellationDTOItem> | null>(null);
@@ -51,6 +61,7 @@ export function DeliveryNoteCancellationsTable({ promises, clients = [], queryKe
     getRowId: (originalRow) => originalRow.id,
     shallow: false,
     clearOnDefault: true,
+    startTransition,
   });
 
   return (
@@ -58,6 +69,17 @@ export function DeliveryNoteCancellationsTable({ promises, clients = [], queryKe
       <DataTable
         table={table}
         actionBar={<DeliveryNoteCancellationsTableActionBar table={table} setRowAction={setRowAction} />}
+        renderTableBody={
+          showLoading
+            ? () => (
+                <DataTableBodySkeleton
+                  columnCount={6}
+                  rowCount={10}
+                  shrinkZero
+                />
+              )
+            : undefined
+        }
       >
         {enableAdvancedFilter ? (
           <DataTableAdvancedToolbar table={table}>

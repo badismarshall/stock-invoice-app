@@ -37,6 +37,12 @@ export async function DeliveryNoteCancellationsTableWrapper({ searchParams }: De
     filters: validFilters,
   });
 
-  return <DeliveryNoteCancellationsTable promises={promises} clients={clients} />
+  return (
+    <DeliveryNoteCancellationsTable
+      key={new URLSearchParams(searchParamsResolved as Record<string, string>).toString()}
+      promises={promises}
+      clients={clients}
+    />
+  );
 }
 

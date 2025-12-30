@@ -8,6 +8,7 @@ import { DataTableFilterMenu } from "@/components/shared/data-table/data-table-f
 import { DataTableSortList } from "@/components/shared/data-table/data-table-sort-list";
 import { DataTableToolbar } from "@/components/shared/data-table/data-table-toolbar";
 import { useDataTable } from "@/hooks/data-table/use-data-table";
+import { useTableLoading } from "@/hooks/data-table/use-table-loading";
 import type { DataTableRowAction, QueryKeys } from "@/types/data-table";
 import type { CategoryDTOItem } from "@/data/category/category.dto";
 import type { getCategories } from "../../_lib/queries";
@@ -15,6 +16,8 @@ import { CategoryTableActionBar } from "./category-table-action-bar";
 import { getCategoryTableColumns } from "./category-table-columns";
 import { useFeatureFlags } from "@/app/(root)/dashboard/_components/feature-flags-provider";
 import { DeleteCategoriesDialog } from "./delete-categories-dialog";
+import { cn } from "@/lib/utils";
+import { Loader2 } from "lucide-react";
 
 interface CategoryTableProps {
   promises: Promise<
@@ -25,8 +28,16 @@ interface CategoryTableProps {
 
 export function CategoryTable({ promises, queryKeys }: CategoryTableProps) {
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
+  const { showLoading, startTransition, resetLoading } = useTableLoading();
 
   const { data, pageCount } = React.use(promises);
+
+  // Reset loading when data is received
+  React.useEffect(() => {
+    if (data) {
+      resetLoading();
+    }
+  }, [data, resetLoading]);
 
   const [rowAction, setRowAction] =
     React.useState<DataTableRowAction<CategoryDTOItem> | null>(null);
@@ -52,14 +63,26 @@ export function CategoryTable({ promises, queryKeys }: CategoryTableProps) {
     getRowId: (originalRow) => originalRow.id,
     shallow: false,
     clearOnDefault: true,
+    startTransition,
   });
 
   return (
     <>
-      <DataTable
-        table={table}
-        actionBar={<CategoryTableActionBar table={table} />}
-      >
+      <div className="relative">
+        {/* Simple loading overlay */}
+        {showLoading && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm rounded-md">
+            <div className="flex flex-col items-center gap-2">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              <p className="text-xs text-muted-foreground">Chargement...</p>
+            </div>
+          </div>
+        )}
+        <div className={cn(showLoading && "opacity-50 pointer-events-none")}>
+          <DataTable
+            table={table}
+            actionBar={<CategoryTableActionBar table={table} />}
+          >
         {enableAdvancedFilter ? (
           <DataTableAdvancedToolbar table={table}>
             <DataTableSortList table={table} align="start" />
@@ -83,9 +106,11 @@ export function CategoryTable({ promises, queryKeys }: CategoryTableProps) {
         ) : (
           <DataTableToolbar table={table}>
             <DataTableSortList table={table} align="end" />
-          </DataTableToolbar>
-        )}
-      </DataTable>
+        </DataTableToolbar>
+      )}
+    </DataTable>
+        </div>
+      </div>
       <DeleteCategoriesDialog
         open={rowAction?.variant === "delete"}
         onOpenChange={() => setRowAction(null)}
