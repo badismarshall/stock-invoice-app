@@ -8,6 +8,7 @@ import { DataTableFilterMenu } from "@/components/shared/data-table/data-table-f
 import { DataTableSortList } from "@/components/shared/data-table/data-table-sort-list";
 import { DataTableToolbar } from "@/components/shared/data-table/data-table-toolbar";
 import { useDataTable } from "@/hooks/data-table/use-data-table";
+import { useTableLoading } from "@/hooks/data-table/use-table-loading";
 import type { DataTableRowAction, QueryKeys } from "@/types/data-table";
 import type { PurchaseOrderDTOItem } from "@/data/purchase-order/purchase-order.dto";
 import type { getPurchaseOrders } from "../../_lib/queries";
@@ -15,6 +16,7 @@ import { PurchaseOrdersTableActionBar } from "./purchase-orders-table-action-bar
 import { getPurchaseOrdersTableColumns } from "./purchase-orders-table-columns";
 import { useFeatureFlags } from "@/app/(root)/dashboard/_components/feature-flags-provider";
 import { DeletePurchaseOrdersDialog } from "./delete-purchase-orders-dialog";
+import { DataTableBodySkeleton } from "@/components/shared/data-table/data-table-body-skeleton";
 
 interface PurchaseOrdersTableProps {
   promises: Promise<
@@ -25,8 +27,16 @@ interface PurchaseOrdersTableProps {
 
 export function PurchaseOrdersTable({ promises, queryKeys }: PurchaseOrdersTableProps) {
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
+  const { showLoading, startTransition, resetLoading } = useTableLoading();
 
   const { data, pageCount } = React.use(promises);
+
+  // Reset loading when data is received
+  React.useEffect(() => {
+    if (data) {
+      resetLoading();
+    }
+  }, [data, resetLoading]);
 
   const [rowAction, setRowAction] =
     React.useState<DataTableRowAction<PurchaseOrderDTOItem> | null>(null);
@@ -36,9 +46,10 @@ export function PurchaseOrdersTable({ promises, queryKeys }: PurchaseOrdersTable
       getPurchaseOrdersTableColumns({
         setRowAction,
       }),
-    [],
+    [setRowAction],
   );
 
+  // Always call useDataTable hook (React rules)
   const { table, shallow, debounceMs, throttleMs } = useDataTable({
     data,
     columns,
@@ -52,6 +63,7 @@ export function PurchaseOrdersTable({ promises, queryKeys }: PurchaseOrdersTable
     getRowId: (originalRow) => originalRow.id,
     shallow: false,
     clearOnDefault: true,
+    startTransition,
   });
 
   return (
@@ -59,6 +71,17 @@ export function PurchaseOrdersTable({ promises, queryKeys }: PurchaseOrdersTable
       <DataTable
         table={table}
         actionBar={<PurchaseOrdersTableActionBar table={table} />}
+        renderTableBody={
+          showLoading
+            ? () => (
+                <DataTableBodySkeleton
+                  columnCount={9}
+                  rowCount={10}
+                  shrinkZero
+                />
+              )
+            : undefined
+        }
       >
         {enableAdvancedFilter ? (
           <DataTableAdvancedToolbar table={table}>

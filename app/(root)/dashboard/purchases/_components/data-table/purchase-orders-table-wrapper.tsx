@@ -19,6 +19,15 @@ export async function PurchaseOrdersTableWrapper({ searchParams }: PurchaseOrder
     filters: validFilters,
   });
 
-  return <PurchaseOrdersTable promises={promises} />
+  // Use a unique key based on search params to force React to recreate the component on page change
+  // This prevents duplicate keys when data changes
+  const tableKey = JSON.stringify({
+    page: search.page,
+    perPage: search.perPage,
+    sort: search.sort,
+    filters: search.filters,
+  });
+
+  return <PurchaseOrdersTable key={tableKey} promises={promises} />
 }
 

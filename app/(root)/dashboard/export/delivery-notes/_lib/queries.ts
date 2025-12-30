@@ -4,6 +4,7 @@ import "server-only";
 
 import { cacheLife, cacheTag } from "next/cache";
 import { getDeliveryNotes as getDeliveryNotesDAL } from "@/data/delivery-note/delivery-note.dal";
+import { getInvoicesByDeliveryNoteIds } from "../../_lib/actions";
 import type { GetDeliveryNotesSchema } from "./validation";
 
 export async function getDeliveryNotes(input: GetDeliveryNotesSchema) {
@@ -24,13 +25,18 @@ export async function getDeliveryNotes(input: GetDeliveryNotesSchema) {
     const result = await getDeliveryNotesDAL(dalInput);
     const pageCount = Math.ceil(result.options.totalCount / input.perPage);
     
+    // Fetch invoices for all delivery notes in a single batch query
+    const deliveryNoteIds = result.deliveryNotes.map(dn => dn.id);
+    const invoicesResult = await getInvoicesByDeliveryNoteIds({ deliveryNoteIds });
+    
     return { 
       data: result.deliveryNotes, 
-      pageCount 
+      pageCount,
+      invoices: invoicesResult.data || {},
     };
   } catch (error) {
     console.error("Error in getDeliveryNotes service", error);
-    return { data: [], pageCount: 0 };
+    return { data: [], pageCount: 0, invoices: {} };
   }
 }
 

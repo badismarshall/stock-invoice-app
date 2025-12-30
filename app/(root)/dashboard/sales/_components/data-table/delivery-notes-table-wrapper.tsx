@@ -24,6 +24,12 @@ export async function DeliveryNotesTableWrapper({ searchParams }: DeliveryNotesT
     noteType: ["local"], // Only show local delivery notes
   });
 
-  return <DeliveryNotesTable promises={promises} clients={clients} />
+  return (
+    <DeliveryNotesTable
+      key={new URLSearchParams(searchParamsResolved as Record<string, string>).toString()}
+      promises={promises}
+      clients={clients}
+    />
+  );
 }
 

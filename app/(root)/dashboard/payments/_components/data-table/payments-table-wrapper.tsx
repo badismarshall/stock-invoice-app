@@ -28,6 +28,14 @@ export async function PaymentsTableWrapper({ searchParams }: PaymentsTableWrappe
     filters: validFilters,
   });
 
-  return <PaymentsTable promises={promises} clients={clients} suppliers={suppliers} />
+  // Use a unique key based on search params to force React to recreate the component on page change
+  const tableKey = JSON.stringify({
+    page: search.page,
+    perPage: search.perPage,
+    sort: search.sort,
+    filters: search.filters,
+  });
+
+  return <PaymentsTable key={tableKey} promises={promises} clients={clients} suppliers={suppliers} />
 }
 

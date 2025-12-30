@@ -23,6 +23,12 @@ export async function SaleInvoicesTableWrapper({ searchParams }: SaleInvoicesTab
     filters: validFilters,
   });
 
-  return <SaleInvoicesTable promises={promises} clients={clients} />
+  return (
+    <SaleInvoicesTable
+      key={new URLSearchParams(searchParamsResolved as Record<string, string>).toString()}
+      promises={promises}
+      clients={clients}
+    />
+  );
 }
 

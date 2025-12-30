@@ -23,6 +23,14 @@ export async function PurchaseInvoicesTableWrapper({ searchParams }: PurchaseInv
     filters: validFilters,
   });
 
-  return <PurchaseInvoicesTable promises={promises} suppliers={suppliers} />
+  // Use a unique key based on search params to force React to recreate the component on page change
+  const tableKey = JSON.stringify({
+    page: search.page,
+    perPage: search.perPage,
+    sort: search.sort,
+    filters: search.filters,
+  });
+
+  return <PurchaseInvoicesTable key={tableKey} promises={promises} suppliers={suppliers} />
 }
 

@@ -8,6 +8,7 @@ import { DataTableFilterMenu } from "@/components/shared/data-table/data-table-f
 import { DataTableSortList } from "@/components/shared/data-table/data-table-sort-list";
 import { DataTableToolbar } from "@/components/shared/data-table/data-table-toolbar";
 import { useDataTable } from "@/hooks/data-table/use-data-table";
+import { useTableLoading } from "@/hooks/data-table/use-table-loading";
 import type { DataTableRowAction, QueryKeys } from "@/types/data-table";
 import type { InvoiceDTOItem } from "@/data/invoice/invoice.dto";
 import type { getExportInvoices } from "../../_lib/queries";
@@ -15,6 +16,7 @@ import { ExportInvoicesTableActionBar } from "./export-invoices-table-action-bar
 import { getExportInvoicesTableColumns } from "./export-invoices-table-columns";
 import { useFeatureFlags } from "@/app/(root)/dashboard/_components/feature-flags-provider";
 import { DeleteExportInvoiceDialog } from "./delete-export-invoice-dialog";
+import { DataTableBodySkeleton } from "@/components/shared/data-table/data-table-body-skeleton";
 
 interface ExportInvoicesTableProps {
   promises: Promise<
@@ -26,8 +28,16 @@ interface ExportInvoicesTableProps {
 
 export function ExportInvoicesTable({ promises, clients = [], queryKeys }: ExportInvoicesTableProps) {
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
+  const { showLoading, startTransition, resetLoading } = useTableLoading();
 
   const { data, pageCount } = React.use(promises);
+
+  // Reset loading when data is received
+  React.useEffect(() => {
+    if (data) {
+      resetLoading();
+    }
+  }, [data, resetLoading]);
 
   const [rowAction, setRowAction] =
     React.useState<DataTableRowAction<InvoiceDTOItem> | null>(null);
@@ -54,6 +64,7 @@ export function ExportInvoicesTable({ promises, clients = [], queryKeys }: Expor
     getRowId: (originalRow) => originalRow.id,
     shallow: false,
     clearOnDefault: true,
+    startTransition,
   });
 
   return (
@@ -61,6 +72,17 @@ export function ExportInvoicesTable({ promises, clients = [], queryKeys }: Expor
       <DataTable
         table={table}
         actionBar={<ExportInvoicesTableActionBar table={table} />}
+        renderTableBody={
+          showLoading
+            ? () => (
+                <DataTableBodySkeleton
+                  columnCount={10}
+                  rowCount={10}
+                  shrinkZero
+                />
+              )
+            : undefined
+        }
       >
         {enableAdvancedFilter ? (
           <DataTableAdvancedToolbar table={table}>
