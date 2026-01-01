@@ -7,7 +7,7 @@ import { getInvoices as getInvoicesDAL } from "@/data/invoice/invoice.dal";
 import type { GetInvoicesSchema } from "./validation";
 
 // Valid enum values
-const validInvoiceTypes = ["sale_local", "sale_export", "proforma", "purchase", "sale_invoice", "delivery_note_invoice"] as const;
+const validInvoiceTypes = ["sale_local", "sale_export", "proforma", "purchase", "delivery_note_invoice"] as const;
 const validPaymentStatuses = ["unpaid", "partially_paid", "paid"] as const;
 const validStatuses = ["active", "cancelled"] as const;
 

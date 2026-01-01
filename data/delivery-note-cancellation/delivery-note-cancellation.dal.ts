@@ -25,6 +25,7 @@ type GetDeliveryNoteCancellationsSchema = {
   clientId?: string[];
   cancellationDate?: number[];
   createdAt?: number[];
+  noteType?: "local" | "export";
 };
 
 export const getDeliveryNoteCancellations = async (
@@ -303,6 +304,22 @@ export const getDeliveryNoteCancellations = async (
                     )
                   : undefined
               )
+            : undefined,
+          // Filter by noteType (local or export)
+          input.noteType
+            ? sql`EXISTS (
+              SELECT 1 FROM ${deliveryNote} AS dn
+              WHERE (
+                dn.id = ${deliveryNoteCancellation.originalDeliveryNoteId}
+                OR dn.id IN (
+                  SELECT dni.delivery_note_id
+                  FROM ${deliveryNoteCancellationItem} AS dnci
+                  INNER JOIN ${deliveryNoteItem} AS dni ON dnci.delivery_note_item_id = dni.id
+                  WHERE dnci.delivery_note_cancellation_id = ${deliveryNoteCancellation.id}
+                )
+              )
+              AND dn.note_type = ${input.noteType}
+            )`
             : undefined
         )
       : and(
@@ -374,6 +391,22 @@ export const getDeliveryNoteCancellations = async (
                     )
                   : undefined
               )
+            : undefined,
+          // Filter by noteType (local or export)
+          input.noteType
+            ? sql`EXISTS (
+              SELECT 1 FROM ${deliveryNote} AS dn
+              WHERE (
+                dn.id = ${deliveryNoteCancellation.originalDeliveryNoteId}
+                OR dn.id IN (
+                  SELECT dni.delivery_note_id
+                  FROM ${deliveryNoteCancellationItem} AS dnci
+                  INNER JOIN ${deliveryNoteItem} AS dni ON dnci.delivery_note_item_id = dni.id
+                  WHERE dnci.delivery_note_cancellation_id = ${deliveryNoteCancellation.id}
+                )
+              )
+              AND dn.note_type = ${input.noteType}
+            )`
             : undefined
         ) || undefined;
 
@@ -444,6 +477,9 @@ export const getDeliveryNoteCancellations = async (
       .limit(input.perPage)
       .offset(offset);
 
+    // Build count where clause (same as query where but without joins needed for count)
+    const countWhere = where;
+
     // Get total count
     const countQuery = db
       .select({ count: sql<number>`count(*)` })
@@ -452,7 +488,7 @@ export const getDeliveryNoteCancellations = async (
         partner,
         eq(deliveryNoteCancellation.clientId, partner.id)
       )
-      .where(where);
+      .where(countWhere);
 
     const [data, countResult] = await Promise.all([query, countQuery]);
     const total = Number(countResult[0]?.count || 0);
@@ -503,9 +539,21 @@ export const getDeliveryNoteCancellations = async (
  * Returns items with their original quantities and already cancelled quantities
  */
 export const getClientDeliveryNoteItems = async (
-  clientId: string
+  clientId: string,
+  noteType?: "local" | "export"
 ): Promise<ClientDeliveryNoteItemDTO[]> => {
   try {
+    // Build where conditions
+    const whereConditions = [
+      eq(deliveryNote.clientId, clientId),
+      eq(deliveryNote.status, "active")
+    ];
+    
+    // Add noteType filter if provided
+    if (noteType) {
+      whereConditions.push(eq(deliveryNote.noteType, noteType));
+    }
+
     // Get all delivery note items for this client from active delivery notes
     const items = await db
       .select({
@@ -515,6 +563,7 @@ export const getClientDeliveryNoteItems = async (
           noteNumber: deliveryNote.noteNumber,
           noteDate: deliveryNote.noteDate,
           status: deliveryNote.status,
+          noteType: deliveryNote.noteType,
         },
         product: {
           id: product.id,
@@ -525,12 +574,7 @@ export const getClientDeliveryNoteItems = async (
       .from(deliveryNoteItem)
       .innerJoin(deliveryNote, eq(deliveryNoteItem.deliveryNoteId, deliveryNote.id))
       .leftJoin(product, eq(deliveryNoteItem.productId, product.id))
-      .where(
-        and(
-          eq(deliveryNote.clientId, clientId),
-          eq(deliveryNote.status, "active")
-        )
-      )
+      .where(and(...whereConditions))
       .orderBy(desc(deliveryNote.noteDate), desc(deliveryNoteItem.id));
 
     // Get already cancelled quantities for each item

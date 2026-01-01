@@ -381,12 +381,44 @@ export function ExportPurchasesPDFContent({
                 background-color: #111827;
               }
             }
+            .totals-summary {
+              margin-top: 20px;
+              padding: 12px;
+              background-color: #eff6ff;
+              border-top: 3px solid #3b82f6;
+              display: flex;
+              justify-content: flex-end;
+              gap: 20px;
+              font-weight: 700;
+              font-size: 11px;
+              color: #1e40af;
+            }
+            @media (prefers-color-scheme: dark) {
+              .totals-summary {
+                background-color: #1e3a8a;
+                border-top-color: #60a5fa;
+                color: #93c5fd;
+              }
+            }
             @media print {
               body {
                 padding: 0;
               }
               @page {
                 margin: 1cm;
+              }
+              thead {
+                display: table-header-group;
+              }
+              tbody {
+                display: table-row-group;
+              }
+              tr {
+                page-break-inside: avoid;
+              }
+              .totals-summary {
+                page-break-inside: avoid;
+                break-inside: avoid;
               }
             }
           </style>
@@ -550,48 +582,47 @@ export function ExportPurchasesPDFContent({
             const totalAmount = allItems.reduce((sum, item) => sum + item.lineTotal, 0);
 
             return (
-              <table>
-                <thead>
-                  <tr>
-                    <th>N° Commande</th>
-                    <th>Date</th>
-                    <th>Fournisseur</th>
-                    <th>Code Produit</th>
-                    <th>Produit</th>
-                    <th className="text-right">Quantité</th>
-                    <th className="text-right">Prix unitaire</th>
-                    <th className="text-right">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {allItems.map((item, index) => (
-                    <tr key={`${item.orderNumber}-${item.id}-${index}`}>
-                      <td>{item.orderNumber}</td>
-                      <td>{format(item.orderDate, "dd/MM/yyyy", { locale: fr })}</td>
-                      <td>{item.supplierName}</td>
-                      <td className="product-code">{item.productCode || "-"}</td>
-                      <td>{item.productName || "-"}</td>
-                      <td className="text-right">{item.quantity.toFixed(2)}</td>
-                      <td className="text-right">{item.unitCost.toFixed(2)} DZD</td>
-                      <td className="text-right">{item.lineTotal.toFixed(2)} DZD</td>
+              <>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>N° Commande</th>
+                      <th>Date</th>
+                      <th>Fournisseur</th>
+                      <th>Code Produit</th>
+                      <th>Produit</th>
+                      <th className="text-right">Quantité</th>
+                      <th className="text-right">Prix unitaire</th>
+                      <th className="text-right">Total</th>
                     </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <td colSpan={5} className="text-right">
-                      <strong>Totaux:</strong>
-                    </td>
-                    <td className="text-right">
-                      <strong>{totalQuantity.toFixed(2)}</strong>
-                    </td>
-                    <td></td>
-                    <td className="text-right">
-                      <strong>{totalAmount.toFixed(2)} DZD</strong>
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
+                  </thead>
+                  <tbody>
+                    {allItems.map((item, index) => (
+                      <tr key={`${item.orderNumber}-${item.id}-${index}`}>
+                        <td>{item.orderNumber}</td>
+                        <td>{format(item.orderDate, "dd/MM/yyyy", { locale: fr })}</td>
+                        <td>{item.supplierName}</td>
+                        <td className="product-code">{item.productCode || "-"}</td>
+                        <td>{item.productName || "-"}</td>
+                        <td className="text-right">{item.quantity.toFixed(2)}</td>
+                        <td className="text-right">{item.unitCost.toFixed(2)} DZD</td>
+                        <td className="text-right">{item.lineTotal.toFixed(2)} DZD</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <div className="totals-summary" style={{ marginTop: '20px', padding: '12px', background: '#eff6ff', borderTop: '3px solid #3b82f6', display: 'flex', justifyContent: 'flex-end', gap: '20px', fontWeight: '700', fontSize: '11px' }}>
+                  <div style={{ textAlign: 'right' }}>
+                    <strong>Totaux:</strong>
+                  </div>
+                  <div style={{ textAlign: 'right', minWidth: '80px' }}>
+                    <strong>{totalQuantity.toFixed(2)}</strong>
+                  </div>
+                  <div style={{ textAlign: 'right', minWidth: '120px' }}>
+                    <strong>{totalAmount.toFixed(2)} DZD</strong>
+                  </div>
+                </div>
+              </>
             );
           })()
         )}

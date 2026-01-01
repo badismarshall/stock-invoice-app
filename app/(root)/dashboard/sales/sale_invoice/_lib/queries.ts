@@ -44,10 +44,10 @@ export async function getSaleInvoices(input: GetSaleInvoicesSchema) {
       ? input.createdAt.map((ts) => new Date(ts))
       : [];
 
-    // Force invoiceType to only include sale_invoice
+    // Force invoiceType to only include sale_local
     const result = await getInvoicesDAL({
       ...input,
-      invoiceType: ["sale_invoice"],
+      invoiceType: ["sale_local"],
       paymentStatus,
       status,
       invoiceDate,

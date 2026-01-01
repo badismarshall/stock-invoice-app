@@ -2,7 +2,7 @@
 
 import db from "@/db";
 import { invoice, payment, stockCurrent, product, partner } from "@/db/schema";
-import { eq, sql, and, gte, lte, inArray } from "drizzle-orm";
+import { eq, sql, and, gte, lte, inArray, or } from "drizzle-orm";
 import { startOfMonth, endOfMonth } from "date-fns";
 
 export async function getDashboardStats() {
@@ -24,7 +24,10 @@ export async function getDashboardStats() {
       .from(invoice)
       .where(
         and(
-          eq(invoice.invoiceType, "sale_invoice"),
+          or(
+            eq(invoice.invoiceType, "sale_local"),
+            eq(invoice.invoiceType, "sale_export")
+          ),
           eq(invoice.status, "active"),
           gte(invoice.invoiceDate, startOfCurrentMonth.toISOString().split('T')[0]),
           lte(invoice.invoiceDate, endOfCurrentMonth.toISOString().split('T')[0])
@@ -41,7 +44,10 @@ export async function getDashboardStats() {
       .from(invoice)
       .where(
         and(
-          eq(invoice.invoiceType, "sale_invoice"),
+          or(
+            eq(invoice.invoiceType, "sale_local"),
+            eq(invoice.invoiceType, "sale_export")
+          ),
           eq(invoice.status, "active"),
           gte(invoice.invoiceDate, startOfLastMonth.toISOString().split('T')[0]),
           lte(invoice.invoiceDate, endOfLastMonth.toISOString().split('T')[0])

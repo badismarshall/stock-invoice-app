@@ -155,6 +155,18 @@ export const adminSidebarItemsGeneralSetting = [
         icon: Plus,
         isActive: false,
       },
+      {
+        title: 'Liste des annulations de bons de livraison',
+        url: '/dashboard/export/delivery-notes-cancellation',
+        icon: List,
+        isActive: false,
+      },
+      {
+        title: 'Ajouter une annulation de bon de livraison',
+        url: '/dashboard/export/delivery-notes-cancellation/new',
+        icon: Plus,
+        isActive: false,
+      },
     ],
   },
   {

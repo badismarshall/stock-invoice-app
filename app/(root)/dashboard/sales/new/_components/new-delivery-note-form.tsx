@@ -43,6 +43,7 @@ export function NewDeliveryNoteForm() {
     noteNumber: "",
     clientId: "",
     noteDate: new Date(),
+    currency: "DZD",
     deliveryLocation: "",
     notes: "",
     items: [] as DeliveryNoteItem[],
@@ -170,7 +171,7 @@ export function NewDeliveryNoteForm() {
         clientId: formData.clientId,
         noteDate: formData.noteDate,
         status: "active",
-        currency: "DZD",
+        currency: formData.currency,
         deliveryLocation: formData.deliveryLocation || undefined,
         notes: formData.notes || undefined,
         items: formData.items.map((item) => ({
@@ -298,7 +299,28 @@ export function NewDeliveryNoteForm() {
             </Popover>
           </div>
 
-          <div className="space-y-2 md:col-span-3">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Devise</label>
+            <Select
+              value={formData.currency}
+              onValueChange={(value) =>
+                setFormData((prev) => ({ ...prev, currency: value }))
+              }
+              disabled={loading}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="USD">USD</SelectItem>
+                <SelectItem value="EUR">EUR</SelectItem>
+                <SelectItem value="GBP">GBP</SelectItem>
+                <SelectItem value="DZD">DZD</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
             <label className="text-sm font-medium text-foreground">Lieu de livraison</label>
             <Input
               placeholder="Adresse de livraison (optionnel)"

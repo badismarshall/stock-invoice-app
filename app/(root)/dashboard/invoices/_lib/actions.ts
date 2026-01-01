@@ -97,7 +97,7 @@ export async function getAllActiveProducts() {
 
 export async function addInvoice(input: {
   invoiceNumber?: string;
-  invoiceType: "sale_local" | "sale_export" | "proforma" | "purchase" | "sale_invoice" | "delivery_note_invoice";
+  invoiceType: "sale_local" | "sale_export" | "proforma" | "purchase" | "delivery_note_invoice";
   clientId?: string;
   supplierId?: string;
   invoiceDate: Date;
@@ -352,6 +352,7 @@ export async function getInvoiceById(input: { id: string }) {
           noteNumber: deliveryNote.noteNumber,
           noteDate: deliveryNote.noteDate,
           status: deliveryNote.status,
+          currency: deliveryNote.currency,
         })
         .from(deliveryNote)
         .where(eq(deliveryNote.id, item.invoice.deliveryNoteId))
@@ -367,6 +368,7 @@ export async function getInvoiceById(input: { id: string }) {
             ? new Date(dn.noteDate + 'T00:00:00')
             : dn.noteDate,
           status: dn.status,
+          currency: dn.currency || "DZD",
         };
       }
     }
@@ -397,6 +399,12 @@ export async function getInvoiceById(input: { id: string }) {
           : item.invoice.dueDate)
       : null;
 
+    // Determine currency: use delivery note currency for delivery_note_invoice, otherwise use invoice currency
+    const displayCurrency = 
+      item.invoice.invoiceType === "delivery_note_invoice" && deliveryNoteInfo?.currency
+        ? deliveryNoteInfo.currency
+        : (item.invoice.currency || "DZD");
+
     return {
       data: {
         id: item.invoice.id,
@@ -408,7 +416,7 @@ export async function getInvoiceById(input: { id: string }) {
         deliveryNote: deliveryNoteInfo,
         invoiceDate,
         dueDate,
-        currency: item.invoice.currency || "DZD",
+        currency: displayCurrency,
         subtotal: parseFloat(item.invoice.subtotal || "0"),
         taxAmount: parseFloat(item.invoice.taxAmount || "0"),
         totalAmount: parseFloat(item.invoice.totalAmount || "0"),

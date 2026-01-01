@@ -49,7 +49,7 @@ export function NewInvoiceForm() {
 
   const [formData, setFormData] = useState({
     invoiceNumber: "",
-    invoiceType: "sale_local" as "sale_local" | "sale_export" | "proforma" | "purchase" | "sale_invoice" | "delivery_note_invoice",
+    invoiceType: "sale_local" as "sale_local" | "sale_export" | "proforma" | "purchase" | "delivery_note_invoice",
     clientId: "",
     supplierId: "",
     invoiceDate: new Date(),
@@ -178,7 +178,7 @@ export function NewInvoiceForm() {
         return;
       }
 
-      if ((formData.invoiceType === "sale_local" || formData.invoiceType === "sale_export" || formData.invoiceType === "proforma" || formData.invoiceType === "sale_invoice" || formData.invoiceType === "delivery_note_invoice") && !formData.clientId) {
+      if ((formData.invoiceType === "sale_local" || formData.invoiceType === "sale_export" || formData.invoiceType === "proforma" || formData.invoiceType === "delivery_note_invoice") && !formData.clientId) {
         toast.error("Veuillez sélectionner un client");
         setLoading(false);
         return;
@@ -279,7 +279,7 @@ export function NewInvoiceForm() {
             <label className="text-sm font-medium text-foreground">Type de facture *</label>
             <Select
               value={formData.invoiceType}
-              onValueChange={(value: "sale_local" | "sale_export" | "proforma" | "purchase" | "sale_invoice" | "delivery_note_invoice") => {
+              onValueChange={(value: "sale_local" | "sale_export" | "proforma" | "purchase" | "delivery_note_invoice") => {
                 // Generate invoice number based on type
                 const generatedNumber = generateInvoiceNumber(value as InvoiceType);
                 setFormData((prev) => ({ 
@@ -303,7 +303,6 @@ export function NewInvoiceForm() {
                 <SelectItem value="sale_local">Vente locale</SelectItem>
                 <SelectItem value="sale_export">Vente export</SelectItem>
                 <SelectItem value="proforma">Facture de Proforma</SelectItem>
-                <SelectItem value="sale_invoice">Facture de Vente</SelectItem>
                 <SelectItem value="delivery_note_invoice">Bon de Livraison</SelectItem>
                 <SelectItem value="purchase">Achat</SelectItem>
               </SelectContent>
@@ -443,7 +442,7 @@ export function NewInvoiceForm() {
             </Popover>
           </div>
 
-          {(formData.invoiceType === "sale_export" || formData.invoiceType === "proforma" || formData.invoiceType === "sale_invoice" || formData.invoiceType === "delivery_note_invoice") && (
+          {(formData.invoiceType === "sale_export" || formData.invoiceType === "proforma" || formData.invoiceType === "delivery_note_invoice") && (
             <>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">Pays de destination</label>

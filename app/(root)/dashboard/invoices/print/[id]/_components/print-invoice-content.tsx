@@ -327,7 +327,7 @@ export function PrintInvoiceContent({ invoiceId }: PrintInvoiceContentProps) {
   const deliveryNote = invoice.deliveryNote;
   const isPurchaseInvoice = invoice.invoiceType === "purchase";
   const isDeliveryNoteInvoice = invoice.invoiceType === "delivery_note_invoice";
-  const isSaleInvoice = invoice.invoiceType === "sale_invoice";
+  const isSaleInvoice = invoice.invoiceType === "sale_local" || invoice.invoiceType === "sale_export";
   
   // Determine partner info based on invoice type
   const partnerInfo = isPurchaseInvoice ? supplier : client;
@@ -415,8 +415,10 @@ export function PrintInvoiceContent({ invoiceId }: PrintInvoiceContentProps) {
                 ? "FACTURE D'ACHAT" 
                 : invoice.invoiceType === "proforma"
                 ? "FACTURE DE PROFORMA"
-                : invoice.invoiceType === "sale_invoice"
-                ? "FACTURE DE VENTE"
+                : invoice.invoiceType === "sale_local"
+                ? "FACTURE DE VENTE LOCALE"
+                : invoice.invoiceType === "sale_export"
+                ? "FACTURE DE VENTE EXPORT"
                 : invoice.invoiceType === "delivery_note_invoice"
                 ? "BON DE LIVRAISON"
                 : "FACTURE"}

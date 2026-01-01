@@ -197,11 +197,12 @@ export function getDeliveryNotesTableColumns({
       ),
       cell: ({ row }) => {
         const amount = row.getValue<number | undefined>("totalAmount") || 0;
+        const currency = row.original.currency || "DZD";
         return (
           <span className="max-w-125 truncate font-medium">
             {amount.toLocaleString("fr-FR", {
               style: "currency",
-              currency: "DZD",
+              currency: currency,
               minimumFractionDigits: 0,
               maximumFractionDigits: 0,
             })}
@@ -268,7 +269,7 @@ export function getDeliveryNotesTableColumns({
         }, [deliveryNote.id]);
 
         const deliveryNoteInvoice = invoices.find(inv => inv.invoiceType === "delivery_note_invoice");
-        const saleInvoice = invoices.find(inv => inv.invoiceType === "sale_invoice");
+        const saleInvoice = invoices.find(inv => inv.invoiceType === "sale_local");
 
         const [isCreatingDeliveryNoteInvoice, setIsCreatingDeliveryNoteInvoice] = React.useState(false);
         const [isCreatingSaleInvoice, setIsCreatingSaleInvoice] = React.useState(false);
@@ -326,7 +327,7 @@ export function getDeliveryNotesTableColumns({
           try {
             const result = await createInvoiceFromDeliveryNote({
               deliveryNoteId: deliveryNote.id,
-              invoiceType: "sale_invoice",
+              invoiceType: "sale_local",
             });
 
             if (result.error) {

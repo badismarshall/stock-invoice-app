@@ -852,7 +852,7 @@ export async function getInvoicesByDeliveryNoteId(input: { deliveryNoteId: strin
 
 export async function createInvoiceFromDeliveryNote(input: { 
   deliveryNoteId: string; 
-  invoiceType: "delivery_note_invoice" | "sale_invoice";
+  invoiceType: "delivery_note_invoice" | "sale_local";
   invoiceNumber?: string;
 }) {
   try {
@@ -973,9 +973,9 @@ export async function createInvoiceFromDeliveryNote(input: {
       ? formatDateLocal(invoiceDate)
       : formatDateLocal(new Date(invoiceDate));
     
-    // Due date: 30 days from invoice date (only for sale_invoice)
+    // Due date: 30 days from invoice date (only for sale_local)
     let dueDateValue: string | null = null;
-    if (input.invoiceType === "sale_invoice") {
+    if (input.invoiceType === "sale_local") {
       const dueDate = new Date(invoiceDate);
       dueDate.setDate(dueDate.getDate() + 30);
       dueDateValue = formatDateLocal(dueDate);

@@ -286,7 +286,7 @@ export function PrintCancellationContent({ cancellationId }: PrintCancellationCo
     return (
       <div className="p-8">
         <div className="text-destructive">{error || "Annulation non trouvée"}</div>
-        <Button onClick={() => router.back()} className="mt-4">
+        <Button onClick={() => router.push("/dashboard/export/delivery-notes-cancellation")} className="mt-4">
           <ArrowLeft className="mr-2 h-4 w-4" />
           Retour
         </Button>
@@ -317,7 +317,7 @@ export function PrintCancellationContent({ cancellationId }: PrintCancellationCo
       <div className="mb-6 flex items-center justify-between print:hidden">
         <Button
           variant="outline"
-          onClick={() => router.back()}
+          onClick={() => router.push("/dashboard/export/delivery-notes-cancellation")}
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Retour

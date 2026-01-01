@@ -184,11 +184,12 @@ export function getDeliveryNotesTableColumns({
       ),
       cell: ({ row }) => {
         const amount = row.getValue<number | undefined>("totalAmount") || 0;
+        const currency = row.original.currency || "DZD";
         return (
           <span className="max-w-125 truncate font-medium">
             {amount.toLocaleString("fr-FR", {
               style: "currency",
-              currency: "DZD",
+              currency: currency,
               minimumFractionDigits: 0,
               maximumFractionDigits: 0,
             })}

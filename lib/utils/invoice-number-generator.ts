@@ -3,28 +3,27 @@
  * Format: PREFIX-YYYY-XXXXXX
  * 
  * Prefixes:
- * - sale_invoice: FAC-VT
+ * - sale_local: FAC-LOC
+ * - sale_export: FAC-EXP
  * - purchase: FAC-ACH
  * - delivery_note_invoice: BL
  * - proforma: FAC-PRO
- * - sale_local: FAC-LOC
- * - sale_export: FAC-EXP
  * - cancellation: BL-ANL
- * - cancelled sale_invoice: FAC-VT-AN
+ * - cancelled sale_local: FAC-LOC-AN
+ * - cancelled sale_export: FAC-EXP-AN
  * - delivery_note (local): BL
  * - delivery_note (export): BL-EXP
  * - purchase_order: CMD-ACH
  */
 
 export type InvoiceType = 
-  | "sale_invoice" 
+  | "sale_local" 
+  | "sale_export"
   | "purchase" 
   | "delivery_note_invoice" 
-  | "proforma" 
-  | "sale_local" 
-  | "sale_export";
+  | "proforma";
 
-export type CancellationType = "delivery_note_cancellation" | "sale_invoice_cancellation";
+export type CancellationType = "delivery_note_cancellation" | "sale_local_cancellation" | "sale_export_cancellation";
 
 export type DeliveryNoteType = "local" | "export";
 
@@ -35,12 +34,11 @@ export type PurchaseOrderType = "purchase_order";
  */
 export function getInvoicePrefix(invoiceType: InvoiceType): string {
   const prefixMap: Record<InvoiceType, string> = {
-    sale_invoice: "FAC-VT",
+    sale_local: "FAC-LOC",
+    sale_export: "FAC-EXP",
     purchase: "FAC-ACH",
     delivery_note_invoice: "BL",
     proforma: "FAC-PRO",
-    sale_local: "FAC-LOC",
-    sale_export: "FAC-EXP",
   };
   
   return prefixMap[invoiceType] || "FAC";
@@ -52,7 +50,8 @@ export function getInvoicePrefix(invoiceType: InvoiceType): string {
 export function getCancellationPrefix(cancellationType: CancellationType): string {
   const prefixMap: Record<CancellationType, string> = {
     delivery_note_cancellation: "BL-ANL",
-    sale_invoice_cancellation: "FAC-VT-AN",
+    sale_local_cancellation: "FAC-LOC-AN",
+    sale_export_cancellation: "FAC-EXP-AN",
   };
   
   return prefixMap[cancellationType] || "ANL";
