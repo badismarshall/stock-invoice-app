@@ -14,6 +14,7 @@ import {
   Clock,
   DollarSign,
   Wallet,
+  FileText,
 } from "lucide-react";
 import * as React from "react";
 import { DataTableColumnHeader } from "@/components/shared/data-table/data-table-column-header";
@@ -56,6 +57,7 @@ const translations = {
   delete: "Supprimer",
   managePayments: "Gérer les paiements",
   addPayment: "Créer un paiement",
+  print: "Imprimer",
   selectAll: "Tout sélectionner",
   selectRow: "Sélectionner la ligne",
   active: "Actif",
@@ -86,7 +88,6 @@ const invoiceTypeConfig: Record<string, string> = {
   sale_local: translations.saleLocal,
   sale_export: translations.saleExport,
   proforma: translations.proforma,
-  sale_invoice: translations.saleInvoice,
   delivery_note_invoice: translations.deliveryNoteInvoice,
   purchase: translations.purchase,
 };
@@ -164,7 +165,6 @@ export function getInvoicesTableColumns({
                 { label: translations.saleLocal, value: "sale_local", count: 0, icon: BadgeIcon },
                 { label: translations.saleExport, value: "sale_export", count: 0, icon: BadgeIcon },
                 { label: translations.proforma, value: "proforma", count: 0, icon: BadgeIcon },
-                { label: translations.saleInvoice, value: "sale_invoice", count: 0, icon: BadgeIcon },
                 { label: translations.deliveryNoteInvoice, value: "delivery_note_invoice", count: 0, icon: BadgeIcon },
                 { label: translations.purchase, value: "purchase", count: 0, icon: BadgeIcon },
               ],
@@ -393,6 +393,13 @@ export function getInvoicesTableColumns({
               >
                 <Wallet className="mr-2 h-4 w-4" />
                 {translations.managePayments}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onSelect={() => router.push(`/dashboard/invoices/print/${invoice.id}`)}
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                {translations.print}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem

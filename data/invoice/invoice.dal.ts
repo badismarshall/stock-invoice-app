@@ -20,7 +20,7 @@ import type { InvoiceDTO } from "./invoice.dto";
 import { filterColumns } from "@/lib/data-table/filter-columns";
 
 // Schema for invoice queries
-const invoiceTypes = ["sale_local", "sale_export", "proforma", "purchase", "sale_invoice", "delivery_note_invoice"] as const;
+const invoiceTypes = ["sale_local", "sale_export", "proforma", "purchase", "delivery_note_invoice"] as const;
 const paymentStatuses = ["unpaid", "partially_paid", "paid"] as const;
 const statuses = ["active", "cancelled"] as const;
 

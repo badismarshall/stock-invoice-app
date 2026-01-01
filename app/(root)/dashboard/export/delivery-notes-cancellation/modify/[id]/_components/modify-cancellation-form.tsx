@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useRouter, usePathname } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { ArrowLeft, Save } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -62,7 +62,6 @@ interface ItemQuantity {
 
 export function ModifyCancellationForm({ cancellation }: ModifyCancellationFormProps) {
   const router = useRouter();
-  const pathname = usePathname();
   const [loading, setLoading] = useState(false);
   const [clientItems, setClientItems] = useState<ClientDeliveryNoteItemDTO[]>([]);
   const [loadingItems, setLoadingItems] = useState(false);
@@ -82,7 +81,11 @@ export function ModifyCancellationForm({ cancellation }: ModifyCancellationFormP
 
       setLoadingItems(true);
       try {
-        const result = await getClientDeliveryNoteItemsAction({ clientId: cancellation.clientId });
+        // Filter by export delivery notes only
+        const result = await getClientDeliveryNoteItemsAction({ 
+          clientId: cancellation.clientId,
+          noteType: "export"
+        });
         if (result.data) {
           setClientItems(result.data);
           
@@ -192,9 +195,7 @@ export function ModifyCancellationForm({ cancellation }: ModifyCancellationFormP
       }
 
       toast.success("Annulation modifiée avec succès");
-      // Check if we're in export module
-      const isExport = pathname.includes("/export/");
-      router.push(isExport ? "/dashboard/export/delivery-notes-cancellation" : "/dashboard/delivery-notes-cancellation");
+      router.push("/dashboard/export/delivery-notes-cancellation");
     } catch (error) {
       console.error("Error updating cancellation", error);
       toast.error("Erreur lors de la modification de l'annulation");
@@ -209,15 +210,12 @@ export function ModifyCancellationForm({ cancellation }: ModifyCancellationFormP
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => {
-              const isExport = pathname.includes("/export/");
-              router.push(isExport ? "/dashboard/export/delivery-notes-cancellation" : "/dashboard/delivery-notes-cancellation");
-            }}
+            onClick={() => router.push("/dashboard/export/delivery-notes-cancellation")}
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Modifier Annulation</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Modifier Annulation Export</h1>
             <p className="text-muted-foreground">
               {cancellation.cancellationNumber}
             </p>
@@ -288,7 +286,7 @@ export function ModifyCancellationForm({ cancellation }: ModifyCancellationFormP
         {/* Items Table */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Produits annulés</h3>
+            <h3 className="text-lg font-semibold">Produits annulés (Export)</h3>
             {loadingItems && <Icons.spinner className="h-4 w-4 animate-spin" />}
           </div>
 
@@ -436,10 +434,7 @@ export function ModifyCancellationForm({ cancellation }: ModifyCancellationFormP
           <Button
             type="button"
             variant="outline"
-            onClick={() => {
-              const isExport = pathname.includes("/export/");
-              router.push(isExport ? "/dashboard/export/delivery-notes-cancellation" : "/dashboard/delivery-notes-cancellation");
-            }}
+            onClick={() => router.push("/dashboard/export/delivery-notes-cancellation")}
             disabled={loading}
           >
             Annuler

@@ -96,9 +96,9 @@ async function updateStockFromCancellation(
 /**
  * Get all delivery note items for a client that can be cancelled
  */
-export async function getClientDeliveryNoteItemsAction(input: { clientId: string }) {
+export async function getClientDeliveryNoteItemsAction(input: { clientId: string; noteType?: "local" | "export" }) {
   try {
-    const items = await getClientDeliveryNoteItems(input.clientId);
+    const items = await getClientDeliveryNoteItems(input.clientId, input.noteType);
     return {
       data: items,
       error: null,
