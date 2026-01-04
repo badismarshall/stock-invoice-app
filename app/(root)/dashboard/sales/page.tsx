@@ -38,18 +38,6 @@ async function SalesPageContent(props: SalesPageProps) {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Link href="/dashboard/sales/export/pdf">
-              <Button variant="outline">
-                <FileDown className="mr-2 h-4 w-4" />
-                Exporter en PDF
-              </Button>
-            </Link>
-            <Link href="/dashboard/sales/export/xlsx">
-              <Button variant="outline">
-                <FileDown className="mr-2 h-4 w-4" />
-                Exporter en XLSX
-              </Button>
-            </Link>
             <Link href="/dashboard/sales/new">
               <Button>
                 <Plus className="mr-2 h-4 w-4" />

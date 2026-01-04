@@ -6,12 +6,9 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
 import { FeatureFlagsProvider } from "../_components/feature-flags-provider"
-import { SearchParams } from "@/types"
-import { searchParamsCache } from "./_lib/validation"
-import { getValidFilters } from "@/lib/data-table/data-table"
-import { getProducts } from "./_lib/queries"
-import { ProductsTable } from "./_components/data-table/products-table"
 import { DataTableSkeleton } from "@/components/shared/data-table/data-table-skeleton"
+import { ProductsTableWrapper } from "./_components/data-table/products-table-wrapper"
+import type { SearchParams } from "@/types"
 
 export const metadata: Metadata = {
     title: "Produits",
@@ -64,7 +61,7 @@ async function ProductsPageContent(props: IndexPageProps) {
             />
             }>
               <FeatureFlagsProvider>
-                <ProductsTableWrapper {...props} />
+                <ProductsTableWrapper searchParams={props.searchParams} />
               </FeatureFlagsProvider>
         </Suspense>
       </div>
@@ -108,20 +105,5 @@ export default function ProductsPage(props: IndexPageProps) {
       <ProductsPageContent {...props} />
     </Suspense>
   );
-}  
-
-async function ProductsTableWrapper(props: IndexPageProps ) {
-    
-    const searchParams = await props.searchParams;
-    const search = searchParamsCache.parse(searchParams);
-  
-    const validFilters = getValidFilters(search.filters);
-  
-    const promises = getProducts({
-      ...search,
-      filters: validFilters,
-    });
-
-    return <ProductsTable promises={promises}/>
 }
 

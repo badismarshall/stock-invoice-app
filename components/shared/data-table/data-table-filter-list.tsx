@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { parseAsStringEnum, useQueryState } from "nuqs";
 import * as React from "react";
+import { fr } from "date-fns/locale";
 
 import { DataTableRangeFilter } from "@/components/shared/data-table/data-table-range-filter";
 import { Badge } from "@/components/ui/badge";
@@ -819,6 +820,7 @@ function onFilterInputRender<TData>({
                 autoFocus
                 captionLayout="dropdown"
                 mode="range"
+                locale={fr}
                 selected={
                   dateValue.length === 2
                     ? {
@@ -847,6 +849,7 @@ function onFilterInputRender<TData>({
                 autoFocus
                 captionLayout="dropdown"
                 mode="single"
+                locale={fr}
                 selected={
                   dateValue[0] ? new Date(Number(dateValue[0])) : undefined
                 }

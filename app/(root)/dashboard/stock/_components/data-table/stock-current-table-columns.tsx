@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import * as React from "react";
 import { DataTableColumnHeader } from "@/components/shared/data-table/data-table-column-header";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/data-table/format";
 import type { StockCurrentDTOItem } from "@/data/stock/stock.dto";
@@ -27,6 +28,8 @@ const translations = {
   lastUpdated: "Dernière Mise à Jour",
   lowStock: "Stock Faible",
   inStock: "En Stock",
+  selectAll: "Tout sélectionner",
+  selectRow: "Sélectionner la ligne",
 };
 
 interface GetStockCurrentTableColumnsProps {
@@ -38,6 +41,31 @@ export function getStockCurrentTableColumns(
 ): ColumnDef<StockCurrentDTOItem>[] {
   const { categories = [] } = props;
   return [
+    {
+      id: "select",
+      header: ({ table }) => (
+        <Checkbox
+          aria-label={translations.selectAll}
+          className="translate-y-0.5"
+          checked={
+            table.getIsAllPageRowsSelected() ||
+            (table.getIsSomePageRowsSelected() && "indeterminate")
+          }
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          aria-label={translations.selectRow}
+          className="translate-y-0.5"
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+      size: 40,
+    },
     {
       id: "productCode",
       accessorKey: "productCode",

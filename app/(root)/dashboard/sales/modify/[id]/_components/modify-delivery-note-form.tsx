@@ -84,7 +84,7 @@ export function ModifyDeliveryNoteForm({ deliveryNote }: ModifyDeliveryNoteFormP
       purchasePrice: number;
       salePriceLocal: number | null;
       taxRate: number;
-      unitOfMeasure: string;
+      unitOfMeasure: string | null;
     }>
   >([]);
 

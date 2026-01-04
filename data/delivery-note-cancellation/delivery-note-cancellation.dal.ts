@@ -22,6 +22,7 @@ type GetDeliveryNoteCancellationsSchema = {
   joinOperator?: "and" | "or";
   search?: string;
   cancellationNumber?: string;
+  originalDeliveryNoteNumber?: string;
   clientId?: string[];
   cancellationDate?: number[];
   createdAt?: number[];
@@ -247,6 +248,24 @@ export const getDeliveryNoteCancellations = async (
           input.cancellationNumber
             ? ilike(deliveryNoteCancellation.cancellationNumber, `%${input.cancellationNumber}%`)
             : undefined,
+          // Filter by originalDeliveryNoteNumber (from toolbar)
+          // Check both originalDeliveryNoteId (via subquery) and cancellation items
+          input.originalDeliveryNoteNumber
+            ? sql`(
+              EXISTS (
+                SELECT 1 FROM ${deliveryNote} AS dn
+                WHERE dn.id = ${deliveryNoteCancellation.originalDeliveryNoteId}
+                AND dn.note_number ILIKE ${`%${input.originalDeliveryNoteNumber}%`}
+              )
+              OR EXISTS (
+                SELECT 1 FROM ${deliveryNoteCancellationItem} AS dnci
+                INNER JOIN ${deliveryNoteItem} AS dni ON dnci.delivery_note_item_id = dni.id
+                INNER JOIN ${deliveryNote} AS dn ON dni.delivery_note_id = dn.id
+                WHERE dnci.delivery_note_cancellation_id = ${deliveryNoteCancellation.id}
+                AND dn.note_number ILIKE ${`%${input.originalDeliveryNoteNumber}%`}
+              )
+            )`
+            : undefined,
           // Filter by clientId (from toolbar)
           input.clientId && input.clientId.length > 0
             ? inArray(deliveryNoteCancellation.clientId, input.clientId)
@@ -333,6 +352,24 @@ export const getDeliveryNoteCancellations = async (
           // Filter by cancellation number (from toolbar)
           input.cancellationNumber
             ? ilike(deliveryNoteCancellation.cancellationNumber, `%${input.cancellationNumber}%`)
+            : undefined,
+          // Filter by originalDeliveryNoteNumber (from toolbar)
+          // Check both originalDeliveryNoteId (via subquery) and cancellation items
+          input.originalDeliveryNoteNumber
+            ? sql`(
+              EXISTS (
+                SELECT 1 FROM ${deliveryNote} AS dn
+                WHERE dn.id = ${deliveryNoteCancellation.originalDeliveryNoteId}
+                AND dn.note_number ILIKE ${`%${input.originalDeliveryNoteNumber}%`}
+              )
+              OR EXISTS (
+                SELECT 1 FROM ${deliveryNoteCancellationItem} AS dnci
+                INNER JOIN ${deliveryNoteItem} AS dni ON dnci.delivery_note_item_id = dni.id
+                INNER JOIN ${deliveryNote} AS dn ON dni.delivery_note_id = dn.id
+                WHERE dnci.delivery_note_cancellation_id = ${deliveryNoteCancellation.id}
+                AND dn.note_number ILIKE ${`%${input.originalDeliveryNoteNumber}%`}
+              )
+            )`
             : undefined,
           // Filter by clientId (from toolbar)
           input.clientId && input.clientId.length > 0

@@ -107,7 +107,13 @@ export function getDeliveryNoteCancellationsTableColumns({ clients = [] }: GetDe
           </span>
         );
       },
-      enableColumnFilter: false,
+      meta: {
+        label: translations.originalDeliveryNote,
+        placeholder: "Rechercher un numéro de bon de livraison...",
+        variant: "text",
+        icon: FileText,
+      },
+      enableColumnFilter: true,
     },
     {
       id: "clientId",

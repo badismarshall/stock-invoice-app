@@ -1,5 +1,6 @@
 import { pgTable, text, boolean, timestamp, numeric, index } from "drizzle-orm/pg-core";
 import { category } from "./category";
+import { unitOfMeasure } from "./unit-of-measure";
 
 export const product = pgTable(
   "product",
@@ -11,7 +12,9 @@ export const product = pgTable(
     categoryId: text("category_id").references(() => category.id, {
       onDelete: "set null",
     }),
-    unitOfMeasure: text("unit_of_measure").notNull(),
+    unitOfMeasureId: text("unit_of_measure_id").references(() => unitOfMeasure.id, {
+      onDelete: "restrict",
+    }),
     purchasePrice: numeric("purchase_price", { precision: 15, scale: 2 })
       .notNull()
       .default("0"),
@@ -29,6 +32,7 @@ export const product = pgTable(
   },
   (table) => ({
     categoryIdx: index("idx_products_category").on(table.categoryId),
+    unitOfMeasureIdx: index("idx_products_unit_of_measure").on(table.unitOfMeasureId),
     activeIdx: index("idx_products_active").on(table.isActive),
   })
 );

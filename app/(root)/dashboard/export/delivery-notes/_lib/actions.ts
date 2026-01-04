@@ -10,7 +10,8 @@ import {
   partner, 
   product, 
   stockCurrent, 
-  stockMovement 
+  stockMovement,
+  unitOfMeasure,
 } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getCurrentUser } from "@/data/user/user-auth";
@@ -270,9 +271,12 @@ export async function getAllActiveProducts() {
         salePriceLocal: product.salePriceLocal,
         salePriceExport: product.salePriceExport,
         taxRate: product.taxRate,
-        unitOfMeasure: product.unitOfMeasure,
+        unitOfMeasure: {
+          symbol: unitOfMeasure.symbol,
+        },
       })
       .from(product)
+      .leftJoin(unitOfMeasure, eq(product.unitOfMeasureId, unitOfMeasure.id))
       .where(eq(product.isActive, true));
 
     return {
@@ -283,7 +287,7 @@ export async function getAllActiveProducts() {
         salePriceLocal: p.salePriceLocal ? parseFloat(p.salePriceLocal) : null,
         salePriceExport: p.salePriceExport ? parseFloat(p.salePriceExport) : null,
         taxRate: p.taxRate ? parseFloat(p.taxRate) : 0,
-        unitOfMeasure: p.unitOfMeasure,
+        unitOfMeasure: p.unitOfMeasure?.symbol || null,
       })),
       error: null,
     };

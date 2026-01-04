@@ -32,28 +32,16 @@ async function PurchasesPageContent(props: IndexPageProps) {
       <div className="h-full flex-1 flex-col space-y-8">
         <div className="flex items-center justify-between space-y-2">
           <div>
-            <h2 className="text-2xl font-bold tracking-tight">Achats</h2>
-            <p className="text-muted-foreground">
+            <h2 className="text-2xl font-bold tracking-tight">Bons de Commande</h2>
+            <p className="text-muted-foreground"> 
               Gérez tous vos bons de commande ici!
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Link href="/dashboard/purchases/export/pdf">
-              <Button variant="outline">
-                <FileDown className="mr-2 h-4 w-4" />
-                Exporter en PDF
-              </Button>
-            </Link>
-            <Link href="/dashboard/purchases/export/xlsx">
-              <Button variant="outline">
-                <FileDown className="mr-2 h-4 w-4" />
-                Exporter en XLSX
-              </Button>
-            </Link>
             <Link href="/dashboard/purchases/new">
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
-                Nouvel Achat
+                Nouveau Bon de Commande
               </Button>
             </Link>
           </div>
@@ -131,11 +119,16 @@ async function PurchaseOrdersTableWrapper(props: IndexPageProps ) {
   
     const validFilters = getValidFilters(search.filters);
   
+    const { getAllSuppliers } = await import("./_lib/actions");
+    
+    const suppliersResult = await getAllSuppliers();
+    const suppliers = suppliersResult.data || [];
+
     const promises = getPurchaseOrders({
       ...search,
       filters: validFilters,
     });
 
-    return <PurchaseOrdersTable promises={promises}/>
+    return <PurchaseOrdersTable promises={promises} suppliers={suppliers} />
 }
 

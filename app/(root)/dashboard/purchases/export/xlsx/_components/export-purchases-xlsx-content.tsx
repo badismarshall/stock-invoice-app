@@ -24,7 +24,6 @@ interface PurchaseOrder {
   orderDate: Date;
   receptionDate: Date | null;
   status: string;
-  supplierOrderNumber: string | null;
   totalAmount: number;
   notes: string | null;
   createdBy: string | null;

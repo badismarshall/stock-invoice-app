@@ -14,6 +14,8 @@ import type { StockCurrentDTOItem } from "@/data/stock/stock.dto";
 import type { getStockCurrentQuery } from "../../_lib/queries";
 import { useFeatureFlags } from "../../../_components/feature-flags-provider";
 import { getStockCurrentTableColumns } from "./stock-current-table-columns";
+import { StockCurrentTableActionBar } from "./stock-current-table-action-bar";
+import { ExportStockButtons } from "./export-stock-buttons";
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 
@@ -48,6 +50,7 @@ export function StockCurrentTable({ promises, queryKeys, categories }: StockCurr
     enableAdvancedFilter,
     initialState: {
       sorting: [{ id: "lastUpdated", desc: true }],
+      columnPinning: { left: ["select"] },
     },
     queryKeys,
     getRowId: (originalRow) => originalRow.id,
@@ -70,6 +73,7 @@ export function StockCurrentTable({ promises, queryKeys, categories }: StockCurr
       <div className={cn(showLoading && "opacity-50 pointer-events-none")}>
         <DataTable
           table={table}
+          actionBar={<StockCurrentTableActionBar table={table} />}
         >
       {enableAdvancedFilter ? (
         <DataTableAdvancedToolbar table={table}>
@@ -90,10 +94,12 @@ export function StockCurrentTable({ promises, queryKeys, categories }: StockCurr
               throttleMs={throttleMs}
             />
           )}
+          <ExportStockButtons />
         </DataTableAdvancedToolbar>
       ) : (
         <DataTableToolbar table={table}>
           <DataTableSortList table={table} align="end" />
+          <ExportStockButtons />
         </DataTableToolbar>
       )}
     </DataTable>

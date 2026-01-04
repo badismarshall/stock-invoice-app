@@ -40,7 +40,7 @@ export function NewExportInvoiceForm() {
     code: string;
     salePriceExport: number | null;
     taxRate: number;
-    unitOfMeasure: string;
+    unitOfMeasure: string | null;
   }>>([]);
   const [deliveryNotes, setDeliveryNotes] = useState<Array<{ id: string; noteNumber: string }>>([]);
 

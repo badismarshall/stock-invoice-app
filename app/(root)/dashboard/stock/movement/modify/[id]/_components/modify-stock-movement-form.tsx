@@ -49,7 +49,7 @@ export function ModifyStockMovementForm({ movement }: ModifyStockMovementFormPro
     name: string; 
     code: string;
     purchasePrice: string | null;
-    unitOfMeasure: string;
+    unitOfMeasure: string | null;
   }>>([]);
 
   useEffect(() => {
@@ -202,7 +202,7 @@ export function ModifyStockMovementForm({ movement }: ModifyStockMovementFormPro
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      Quantité * {selectedProduct && `(${selectedProduct.unitOfMeasure})`}
+                      Quantité * {selectedProduct && selectedProduct.unitOfMeasure && `(${selectedProduct.unitOfMeasure})`}
                     </FormLabel>
                     <FormControl>
                       <Input

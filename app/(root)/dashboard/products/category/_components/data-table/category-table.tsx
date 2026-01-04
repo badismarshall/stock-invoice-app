@@ -16,6 +16,7 @@ import { CategoryTableActionBar } from "./category-table-action-bar";
 import { getCategoryTableColumns } from "./category-table-columns";
 import { useFeatureFlags } from "@/app/(root)/dashboard/_components/feature-flags-provider";
 import { DeleteCategoriesDialog } from "./delete-categories-dialog";
+import { UpdateCategoryDialog } from "./update-category-dialog";
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 
@@ -111,6 +112,16 @@ export function CategoryTable({ promises, queryKeys }: CategoryTableProps) {
     </DataTable>
         </div>
       </div>
+      {rowAction?.variant === "update" && rowAction.row.original && (
+        <UpdateCategoryDialog
+          open={true}
+          onOpenChange={() => setRowAction(null)}
+          category={rowAction.row.original}
+          onSuccess={() => {
+            setRowAction(null);
+          }}
+        />
+      )}
       <DeleteCategoriesDialog
         open={rowAction?.variant === "delete"}
         onOpenChange={() => setRowAction(null)}

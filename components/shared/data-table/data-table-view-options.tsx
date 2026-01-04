@@ -43,7 +43,7 @@ export function DataTableViewOptions<TData>({
     <Popover>
       <PopoverTrigger asChild>
         <Button
-          aria-label="basculer columns"
+          aria-label="Basculer les colonnes"
           role="combobox"
           variant="outline"
           size="sm"
@@ -57,7 +57,7 @@ export function DataTableViewOptions<TData>({
         <Command>
           <CommandInput placeholder="Rechercher des colonnes..." />
           <CommandList>
-            <CommandEmpty>aucune colonne trouvée</CommandEmpty>
+            <CommandEmpty>Aucune colonne trouvée</CommandEmpty>
             <CommandGroup>
               {columns.map((column) => (
                 <CommandItem

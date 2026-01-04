@@ -17,15 +17,18 @@ import { getProductsTableColumns } from "./products-table-columns";
 import { useFeatureFlags } from "@/app/(root)/dashboard/_components/feature-flags-provider";
 import { DeleteProductsDialog } from "./delete-products-dialog";
 import { DataTableBodySkeleton } from "@/components/shared/data-table/data-table-body-skeleton";
+import { ExportProductsButtons } from "./export-products-buttons";
 
 interface ProductsTableProps {
   promises: Promise<
     Awaited<ReturnType<typeof getProducts>>
   >;
+  categories?: Array<{ id: string; name: string }>;
+  unitsOfMeasure?: Array<{ id: string; name: string; symbol: string }>;
   queryKeys?: Partial<QueryKeys>;
 }
 
-export function ProductsTable({ promises, queryKeys }: ProductsTableProps) {
+export function ProductsTable({ promises, categories = [], unitsOfMeasure = [], queryKeys }: ProductsTableProps) {
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
   const { showLoading, startTransition, resetLoading } = useTableLoading();
 
@@ -45,8 +48,10 @@ export function ProductsTable({ promises, queryKeys }: ProductsTableProps) {
     () =>
       getProductsTableColumns({
         setRowAction,
+        categories,
+        unitsOfMeasure,
       }),
-    [],
+    [setRowAction, categories, unitsOfMeasure],
   );
 
   const { table, shallow, debounceMs, throttleMs } = useDataTable({
@@ -112,10 +117,12 @@ export function ProductsTable({ promises, queryKeys }: ProductsTableProps) {
                 throttleMs={throttleMs}
               />
             )}
+            <ExportProductsButtons />
           </DataTableAdvancedToolbar>
         ) : (
           <DataTableToolbar table={table}>
             <DataTableSortList table={table} align="end" />
+            <ExportProductsButtons />
           </DataTableToolbar>
         )}
       </DataTable>

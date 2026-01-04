@@ -4,6 +4,7 @@ import type { Column } from "@tanstack/react-table";
 import { CalendarIcon, XCircle } from "lucide-react";
 import * as React from "react";
 import type { DateRange } from "react-day-picker";
+import { fr } from "date-fns/locale";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -202,6 +203,7 @@ export function DataTableDateFilter<TData>({
             autoFocus
             captionLayout="dropdown"
             mode="range"
+            locale={fr}
             selected={
               getIsDateRange(selectedDates)
                 ? selectedDates
@@ -213,6 +215,7 @@ export function DataTableDateFilter<TData>({
           <Calendar
             captionLayout="dropdown"
             mode="single"
+            locale={fr}
             selected={
               !getIsDateRange(selectedDates) ? selectedDates[0] : undefined
             }

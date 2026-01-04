@@ -13,7 +13,7 @@ import {
   or,
 } from "drizzle-orm";
 import db from "@/db";
-import { product, category } from "@/db/schema";
+import { product, category, unitOfMeasure } from "@/db/schema";
 import type { GetProductsSchema } from "@/app/(root)/dashboard/products/_lib/validation";
 import type { ProductDTO } from "./product.dto";
 import { filterColumns } from "@/lib/data-table/filter-columns";
@@ -27,9 +27,15 @@ export const getProductById = async (id: string) => {
           id: category.id,
           name: category.name,
         },
+        unitOfMeasure: {
+          id: unitOfMeasure.id,
+          name: unitOfMeasure.name,
+          symbol: unitOfMeasure.symbol,
+        },
       })
       .from(product)
       .leftJoin(category, eq(product.categoryId, category.id))
+      .leftJoin(unitOfMeasure, eq(product.unitOfMeasureId, unitOfMeasure.id))
       .where(eq(product.id, id))
       .limit(1)
       .execute();
@@ -46,7 +52,9 @@ export const getProductById = async (id: string) => {
       description: item.product.description,
       categoryId: item.product.categoryId,
       categoryName: item.category?.name || null,
-      unitOfMeasure: item.product.unitOfMeasure,
+      unitOfMeasureId: item.product.unitOfMeasureId || "",
+      unitOfMeasureName: item.unitOfMeasure?.name || null,
+      unitOfMeasureSymbol: item.unitOfMeasure?.symbol || null,
       purchasePrice: item.product.purchasePrice,
       salePriceLocal: item.product.salePriceLocal,
       salePriceExport: item.product.salePriceExport,
@@ -89,9 +97,13 @@ export const getProducts = async (input: GetProductsSchema): Promise<ProductDTO>
           input.categoryId && input.categoryId.length > 0
             ? inArray(product.categoryId, input.categoryId)
             : undefined,
-          // Filter by isActive
+          // Filter by unit of measure
+          input.unitOfMeasureId && input.unitOfMeasureId.length > 0
+            ? inArray(product.unitOfMeasureId, input.unitOfMeasureId)
+            : undefined,
+          // Filter by isActive (convert string to boolean)
           input.isActive && input.isActive.length > 0
-            ? inArray(product.isActive, input.isActive)
+            ? inArray(product.isActive, input.isActive.map((active) => active === "true"))
             : undefined,
           // Filter by createdAt date range
           input.createdAt.length > 0
@@ -127,7 +139,7 @@ export const getProducts = async (input: GetProductsSchema): Promise<ProductDTO>
       name: product.name,
       description: product.description,
       categoryId: product.categoryId,
-      unitOfMeasure: product.unitOfMeasure,
+      unitOfMeasureId: product.unitOfMeasureId,
       purchasePrice: product.purchasePrice,
       salePriceLocal: product.salePriceLocal,
       salePriceExport: product.salePriceExport,
@@ -156,9 +168,15 @@ export const getProducts = async (input: GetProductsSchema): Promise<ProductDTO>
             id: category.id,
             name: category.name,
           },
+          unitOfMeasure: {
+            id: unitOfMeasure.id,
+            name: unitOfMeasure.name,
+            symbol: unitOfMeasure.symbol,
+          },
         })
         .from(product)
         .leftJoin(category, eq(product.categoryId, category.id))
+        .leftJoin(unitOfMeasure, eq(product.unitOfMeasureId, unitOfMeasure.id))
         .limit(input.perPage)
         .offset(offset)
         .where(where)
@@ -187,7 +205,9 @@ export const getProducts = async (input: GetProductsSchema): Promise<ProductDTO>
         description: item.product.description,
         categoryId: item.product.categoryId,
         categoryName: item.category?.name || null,
-        unitOfMeasure: item.product.unitOfMeasure,
+        unitOfMeasureId: item.product.unitOfMeasureId || "",
+        unitOfMeasureName: item.unitOfMeasure?.name || null,
+        unitOfMeasureSymbol: item.unitOfMeasure?.symbol || null,
         purchasePrice: item.product.purchasePrice,
         salePriceLocal: item.product.salePriceLocal,
         salePriceExport: item.product.salePriceExport,

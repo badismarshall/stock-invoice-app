@@ -40,7 +40,6 @@ export function NewPurchaseForm() {
     orderDate: new Date(),
     receptionDate: new Date(),
     status: "pending" as "pending" | "received" | "cancelled",
-    supplierOrderNumber: "",
     notes: "",
     items: [] as PurchaseOrderItem[],
   });
@@ -53,7 +52,6 @@ export function NewPurchaseForm() {
       orderDate: new Date(),
       receptionDate: new Date(),
       status: "pending",
-      supplierOrderNumber: "",
       notes: "",
       items: [],
     });
@@ -158,13 +156,13 @@ export function NewPurchaseForm() {
         orderDate: formData.orderDate,
         receptionDate: formData.receptionDate,
         status: formData.status,
-        supplierOrderNumber: formData.supplierOrderNumber || undefined,
         totalAmount: totalTTC.toString(),
         notes: formData.notes || undefined,
         items: formData.items.map((item) => ({
           productId: item.productId,
           quantity: item.quantity,
           unitCost: item.unitCost,
+          taxRate: item.taxRate,
           lineTotal: item.lineTotal,
         })),
       });
@@ -206,8 +204,8 @@ export function NewPurchaseForm() {
             <ArrowLeft size={24} />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Nouvel Achat</h1>
-            <p className="text-muted-foreground">Enregistrement d'une facture fournisseur</p>
+            <h1 className="text-2xl font-bold text-foreground">Nouveau Bon de Commande</h1>
+            <p className="text-muted-foreground">Enregistrement d'un nouveau bon de commande</p>
           </div>
         </div>
       </div>
@@ -246,18 +244,6 @@ export function NewPurchaseForm() {
                 ))}
               </SelectContent>
             </Select>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">N° de commande fournisseur</label>
-            <Input
-              placeholder="Numéro de commande du fournisseur"
-              value={formData.supplierOrderNumber}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, supplierOrderNumber: e.target.value }))
-              }
-              disabled={loading}
-            />
           </div>
 
           <div className="space-y-2">

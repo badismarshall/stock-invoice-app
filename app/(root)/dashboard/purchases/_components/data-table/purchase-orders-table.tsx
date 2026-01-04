@@ -17,15 +17,17 @@ import { getPurchaseOrdersTableColumns } from "./purchase-orders-table-columns";
 import { useFeatureFlags } from "@/app/(root)/dashboard/_components/feature-flags-provider";
 import { DeletePurchaseOrdersDialog } from "./delete-purchase-orders-dialog";
 import { DataTableBodySkeleton } from "@/components/shared/data-table/data-table-body-skeleton";
+import { ExportPurchaseOrdersButtons } from "./export-purchase-orders-buttons";
 
 interface PurchaseOrdersTableProps {
   promises: Promise<
     Awaited<ReturnType<typeof getPurchaseOrders>>
   >;
+  suppliers?: Array<{ id: string; name: string }>;
   queryKeys?: Partial<QueryKeys>;
 }
 
-export function PurchaseOrdersTable({ promises, queryKeys }: PurchaseOrdersTableProps) {
+export function PurchaseOrdersTable({ promises, suppliers = [], queryKeys }: PurchaseOrdersTableProps) {
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
   const { showLoading, startTransition, resetLoading } = useTableLoading();
 
@@ -45,8 +47,9 @@ export function PurchaseOrdersTable({ promises, queryKeys }: PurchaseOrdersTable
     () =>
       getPurchaseOrdersTableColumns({
         setRowAction,
+        suppliers,
       }),
-    [setRowAction],
+    [setRowAction, suppliers],
   );
 
   // Always call useDataTable hook (React rules)
@@ -102,10 +105,12 @@ export function PurchaseOrdersTable({ promises, queryKeys }: PurchaseOrdersTable
                 throttleMs={throttleMs}
               />
             )}
+            <ExportPurchaseOrdersButtons />
           </DataTableAdvancedToolbar>
         ) : (
           <DataTableToolbar table={table}>
             <DataTableSortList table={table} align="end" />
+            <ExportPurchaseOrdersButtons />
           </DataTableToolbar>
         )}
       </DataTable>
