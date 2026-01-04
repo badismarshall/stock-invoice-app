@@ -67,7 +67,7 @@ export function ModifyPurchaseForm({ purchaseOrder }: ModifyPurchaseFormProps) {
     code: string;
     purchasePrice: string | null;
     taxRate: string | null;
-    unitOfMeasure: string;
+    unitOfMeasure: string | null;
   }>>([]);
 
   const [formData, setFormData] = useState({
@@ -219,6 +219,7 @@ export function ModifyPurchaseForm({ purchaseOrder }: ModifyPurchaseFormProps) {
               productId: item.productId,
               quantity: item.quantity,
               unitCost: item.unitCost,
+              taxRate: item.taxRate,
               lineTotal: item.lineTotal,
             }))
           : [], // Allow empty items array

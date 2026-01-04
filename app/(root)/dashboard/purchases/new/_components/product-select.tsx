@@ -34,7 +34,7 @@ type ProductData = {
   salePriceLocal: string | null;
   salePriceExport: string | null;
   taxRate: string | null;
-  unitOfMeasure: string;
+  unitOfMeasure: string | null;
 };
 
 export function ProductSelect({

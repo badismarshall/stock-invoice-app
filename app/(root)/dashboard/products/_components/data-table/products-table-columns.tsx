@@ -9,6 +9,9 @@ import {
   CheckCircle2,
   XCircle,
   Package,
+  List,
+  Ruler,
+  Badge as BadgeIcon,
 } from "lucide-react";
 import * as React from "react";
 import { useRouter } from "next/navigation";
@@ -31,6 +34,8 @@ interface GetProductsTableColumnsProps {
   setRowAction: React.Dispatch<
     React.SetStateAction<DataTableRowAction<ProductDTOItem> | null>
   >;
+  categories?: Array<{ id: string; name: string }>;
+  unitsOfMeasure?: Array<{ id: string; name: string; symbol: string }>;
 }
 
 const translations = {
@@ -56,6 +61,8 @@ const translations = {
 
 export function getProductsTableColumns({
   setRowAction,
+  categories = [],
+  unitsOfMeasure = [],
 }: GetProductsTableColumnsProps): ColumnDef<ProductDTOItem>[] {
   return [
     {
@@ -126,35 +133,57 @@ export function getProductsTableColumns({
       enableColumnFilter: true,
     },
     {
-      id: "categoryName",
+      id: "categoryId",
       accessorKey: "categoryName",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} label={translations.category} title={translations.category} />
       ),
       cell: ({ row }) => {
-        const categoryName = row.getValue<string | null>("categoryName");
+        const categoryName = row.original.categoryName;
         return (
           <span className="max-w-125 truncate">
             {categoryName || "-"}
           </span>
         );
       },
-      enableColumnFilter: false,
+      meta: {
+        label: translations.category,
+        variant: "multiSelect",
+        options: categories.map((category) => ({
+          label: category.name,
+          value: category.id,
+          count: 0,
+        })),
+        icon: List,
+      },
+      enableColumnFilter: true,
     },
     {
-      id: "unitOfMeasure",
-      accessorKey: "unitOfMeasure",
+      id: "unitOfMeasureId",
+      accessorKey: "unitOfMeasureSymbol",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} label={translations.unitOfMeasure} title={translations.unitOfMeasure} />
       ),
       cell: ({ row }) => {
+        const symbol = row.original.unitOfMeasureSymbol;
+        const name = row.original.unitOfMeasureName;
         return (
           <span className="max-w-125 truncate">
-            {row.getValue("unitOfMeasure")}
+            {symbol || name || "-"}
           </span>
         );
       },
-      enableColumnFilter: false,
+      meta: {
+        label: translations.unitOfMeasure,
+        variant: "multiSelect",
+        options: unitsOfMeasure.map((unit) => ({
+          label: `${unit.name} (${unit.symbol})`,
+          value: unit.id,
+          count: 0,
+        })),
+        icon: Ruler,
+      },
+      enableColumnFilter: true,
     },
     {
       id: "purchasePrice",
@@ -220,7 +249,16 @@ export function getProductsTableColumns({
           </Badge>
         );
       },
-      enableColumnFilter: false,
+      meta: {
+        label: translations.isActive,
+        variant: "multiSelect",
+        options: [
+          { label: translations.active, value: "true", count: 0, icon: CheckCircle2 },
+          { label: translations.inactive, value: "false", count: 0, icon: XCircle },
+        ],
+        icon: BadgeIcon,
+      },
+      enableColumnFilter: true,
     },
     {
       id: "createdAt",

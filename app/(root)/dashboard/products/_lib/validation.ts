@@ -22,7 +22,8 @@ export const searchParamsCache = createSearchParamsCache({
   name: parseAsString.withDefault(""),
   code: parseAsString.withDefault(""),
   categoryId: parseAsArrayOf(parseAsString).withDefault([]),
-  isActive: parseAsArrayOf(parseAsBoolean).withDefault([]),
+  unitOfMeasureId: parseAsArrayOf(parseAsString).withDefault([]),
+  isActive: parseAsArrayOf(parseAsStringEnum(["true", "false"])).withDefault([]),
   createdAt: parseAsArrayOf(parseAsInteger).withDefault([]),
   // advanced filter
   filters: getFiltersStateParser().withDefault([]),

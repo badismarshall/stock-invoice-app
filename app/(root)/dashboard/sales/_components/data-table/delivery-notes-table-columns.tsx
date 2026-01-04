@@ -239,7 +239,7 @@ export function getDeliveryNotesTableColumns({
         variant: "dateRange",
         icon: CalendarIcon,
       },
-      enableColumnFilter: true,
+      enableColumnFilter: false,
     },
     {
       id: "actions",
@@ -411,21 +411,25 @@ export function getDeliveryNotesTableColumns({
                   </DropdownMenuRadioGroup>
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onSelect={handleCreateDeliveryNoteInvoice}
-                disabled={isCreatingDeliveryNoteInvoice || isCreatingSaleInvoice}
-              >
-                <FileText className="mr-2 h-4 w-4" />
-                {isCreatingDeliveryNoteInvoice ? "Création..." : deliveryNoteInvoice ? "Imprimer Bon de Livraison" : "Créer Bon de Livraison"}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onSelect={handleCreateSaleInvoice}
-                disabled={isCreatingSaleInvoice || isCreatingDeliveryNoteInvoice}
-              >
-                <FileText className="mr-2 h-4 w-4" />
-                {isCreatingSaleInvoice ? "Création..." : saleInvoice ? "Imprimer Facture de Vente" : "Créer Facture de Vente"}
-              </DropdownMenuItem>
+              {deliveryNote.status !== "cancelled" && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onSelect={handleCreateDeliveryNoteInvoice}
+                    disabled={isCreatingDeliveryNoteInvoice || isCreatingSaleInvoice}
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    {isCreatingDeliveryNoteInvoice ? "Création..." : deliveryNoteInvoice ? "Imprimer Bon de Livraison" : "Créer Bon de Livraison"}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={handleCreateSaleInvoice}
+                    disabled={isCreatingSaleInvoice || isCreatingDeliveryNoteInvoice}
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    {isCreatingSaleInvoice ? "Création..." : saleInvoice ? "Imprimer Facture de Vente" : "Créer Facture de Vente"}
+                  </DropdownMenuItem>
+                </>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onSelect={() => setRowAction({ row, variant: "delete" })}

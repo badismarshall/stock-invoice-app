@@ -27,6 +27,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import Link from "next/link"
 import useDialogState from "@/hooks/use-dialog-state"
 import { SignOutDialog } from "../sign-out-dialog"
@@ -46,80 +47,89 @@ export function NavUser({
     <>
       <SidebarMenu>
         <SidebarMenuItem>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <SidebarMenuButton
-                size='lg'
-                className='data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground'
-              >
-                <Avatar className='h-8 w-8 rounded-lg'>
-                  {/* <AvatarImage src={user.image} alt={user.name} /> */}
-                  <AvatarFallback className='rounded-lg'>
-                    {user.name
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")
-                      .toUpperCase()
-                      .slice(0, 2)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className='grid flex-1 text-start text-sm leading-tight'>
-                  <span className='truncate font-semibold'>{user.name}</span>
-                  <span className='truncate text-xs'>{user.email}</span>
-                </div>
-                <ChevronsUpDown className='ms-auto size-4' />
-              </SidebarMenuButton>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              className='w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg'
-              side={isMobile ? 'bottom' : 'right'}
-              align='end'
-              sideOffset={4}
-            >
-              <DropdownMenuLabel className='p-0 font-normal'>
-                <div className='flex items-center gap-2 px-1 py-1.5 text-start text-sm'>
-                  <Avatar className='h-8 w-8 rounded-lg'>
-                    {/* <AvatarImage src={user.image} alt={user.name} /> */}
-                    <AvatarFallback className='rounded-lg'>
-                      {user.name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")
-                        .toUpperCase()
-                        .slice(0, 2)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className='grid flex-1 text-start text-sm leading-tight'>
-                    <span className='truncate font-semibold'>{user.name}</span>
-                    <span className='truncate text-xs'>{user.email}</span>
-                  </div>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuGroup>
-                <DropdownMenuItem asChild>
-                  <Link href='/dashboard/settings/account'>
-                    <BadgeCheck />
-                    Mon compte
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href='/dashboard/settings/company-settings'>
-                    <Settings />
-                    Paramètres
-                  </Link>
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                variant='destructive'
-                onClick={() => setOpen(true)}
-              >
-                <LogOut />
-                Se déconnecter
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <SidebarMenuButton
+                      size='lg'
+                      className='data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground'
+                    >
+                      <Avatar className='h-8 w-8 rounded-lg'>
+                        {/* <AvatarImage src={user.image} alt={user.name} /> */}
+                        <AvatarFallback className='rounded-lg'>
+                          {user.name
+                            .split(" ")
+                            .map((n) => n[0])
+                            .join("")
+                            .toUpperCase()
+                            .slice(0, 2)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className='grid flex-1 text-start text-sm leading-tight'>
+                        <span className='truncate font-semibold'>{user.name}</span>
+                        <span className='truncate text-xs'>{user.email}</span>
+                      </div>
+                      <ChevronsUpDown className='ms-auto size-4' />
+                    </SidebarMenuButton>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    className='w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg'
+                    side={isMobile ? 'bottom' : 'right'}
+                    align='end'
+                    sideOffset={4}
+                  >
+                    <DropdownMenuLabel className='p-0 font-normal'>
+                      <div className='flex items-center gap-2 px-1 py-1.5 text-start text-sm'>
+                        <Avatar className='h-8 w-8 rounded-lg'>
+                          {/* <AvatarImage src={user.image} alt={user.name} /> */}
+                          <AvatarFallback className='rounded-lg'>
+                            {user.name
+                              .split(" ")
+                              .map((n) => n[0])
+                              .join("")
+                              .toUpperCase()
+                              .slice(0, 2)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className='grid flex-1 text-start text-sm leading-tight'>
+                          <span className='truncate font-semibold'>{user.name}</span>
+                          <span className='truncate text-xs'>{user.email}</span>
+                        </div>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuGroup>
+                      <DropdownMenuItem asChild>
+                        <Link href='/dashboard/settings/account'>
+                          <BadgeCheck />
+                          Mon compte
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href='/dashboard/settings/company-settings'>
+                          <Settings />
+                          Paramètres
+                        </Link>
+                      </DropdownMenuItem>
+                    </DropdownMenuGroup>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      variant='destructive'
+                      onClick={() => setOpen(true)}
+                    >
+                      <LogOut />
+                      Se déconnecter
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="right" align="center">
+              {user.name}
+            </TooltipContent>
+          </Tooltip>
         </SidebarMenuItem>
       </SidebarMenu>
 

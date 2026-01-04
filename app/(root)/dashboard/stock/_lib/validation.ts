@@ -20,9 +20,7 @@ export const searchParamsCache = createSearchParamsCache({
   ),
   page: parseAsInteger.withDefault(1),
   perPage: parseAsInteger.withDefault(10),
-  sort: getSortingStateParser<StockCurrent>().withDefault([
-    { id: "lastUpdated", desc: true },
-  ]),
+  sort: getSortingStateParser<StockCurrent>().withDefault([]),
   // Stock Current specific
   search: parseAsString.withDefault(""),
   productCode: parseAsString.withDefault(""),
@@ -39,6 +37,8 @@ export const searchParamsCache = createSearchParamsCache({
   movementSource: parseAsArrayOf(parseAsStringEnum([...movementSources])).withDefault([]),
   movementDate: parseAsArrayOf(parseAsInteger).withDefault([]),
   createdAt: parseAsArrayOf(parseAsInteger).withDefault([]),
+  // Stock Movements filters (for simple toolbar) - productCode and productName are shared with Stock Current
+  quantity: parseAsString.withDefault(""),
   // advanced filter
   filters: getFiltersStateParser().withDefault([]),
   joinOperator: parseAsStringEnum(["and", "or"]).withDefault("and"),

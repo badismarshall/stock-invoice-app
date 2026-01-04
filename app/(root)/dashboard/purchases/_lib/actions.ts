@@ -4,7 +4,7 @@ import { updateTag } from "next/cache";
 import { getErrorMessage } from "@/lib/handle-error";
 import { generateId } from "@/lib/data-table/id";
 import db from "@/db";
-import { purchaseOrder, purchaseOrderItem, partner, product, stockCurrent, stockMovement, invoice, invoiceItem, payment, user } from "@/db/schema";
+import { purchaseOrder, purchaseOrderItem, partner, product, stockCurrent, stockMovement, invoice, invoiceItem, payment, user, unitOfMeasure } from "@/db/schema";
 import { eq, inArray, and, asc, desc, not, or, gte, lte, ilike, sql } from "drizzle-orm";
 import { getCurrentUser } from "@/data/user/user-auth";
 import { getPurchaseOrderById } from "@/data/purchase-order/purchase-order.dal";
@@ -77,9 +77,12 @@ export async function getAllActiveProducts() {
         salePriceLocal: product.salePriceLocal,
         salePriceExport: product.salePriceExport,
         taxRate: product.taxRate,
-        unitOfMeasure: product.unitOfMeasure,
+        unitOfMeasure: {
+          symbol: unitOfMeasure.symbol,
+        },
       })
       .from(product)
+      .leftJoin(unitOfMeasure, eq(product.unitOfMeasureId, unitOfMeasure.id))
       .where(eq(product.isActive, true))
       .orderBy(asc(product.name));
 
@@ -92,7 +95,7 @@ export async function getAllActiveProducts() {
         salePriceLocal: p.salePriceLocal,
         salePriceExport: p.salePriceExport,
         taxRate: p.taxRate,
-        unitOfMeasure: p.unitOfMeasure || "unité",
+        unitOfMeasure: p.unitOfMeasure?.symbol || null,
       })),
       error: null,
     };
@@ -149,9 +152,12 @@ export async function getActiveProductsPaginated(input: {
         salePriceLocal: product.salePriceLocal,
         salePriceExport: product.salePriceExport,
         taxRate: product.taxRate,
-        unitOfMeasure: product.unitOfMeasure,
+        unitOfMeasure: {
+          symbol: unitOfMeasure.symbol,
+        },
       })
       .from(product)
+      .leftJoin(unitOfMeasure, eq(product.unitOfMeasureId, unitOfMeasure.id))
       .where(and(...conditions))
       .limit(limit)
       .offset(offset)
@@ -166,7 +172,7 @@ export async function getActiveProductsPaginated(input: {
         salePriceLocal: p.salePriceLocal,
         salePriceExport: p.salePriceExport,
         taxRate: p.taxRate,
-        unitOfMeasure: p.unitOfMeasure || "unité",
+        unitOfMeasure: p.unitOfMeasure?.symbol || null,
       })),
       pagination: {
         page,
@@ -305,13 +311,13 @@ export async function addPurchaseOrder(input: {
   orderDate: Date;
   receptionDate?: Date | null;
   status?: "pending" | "received" | "cancelled";
-  supplierOrderNumber?: string;
   totalAmount?: string;
   notes?: string;
   items?: Array<{
     productId: string;
     quantity: number;
     unitCost: number;
+    taxRate?: number;
     lineTotal: number;
   }>;
 }) {
@@ -370,7 +376,6 @@ export async function addPurchaseOrder(input: {
         orderDate: orderDateValue,
         receptionDate: receptionDateValue,
         status: input.status || "pending",
-        supplierOrderNumber: input.supplierOrderNumber || null,
         totalAmount: input.totalAmount || null,
         notes: input.notes || null,
         createdBy: user.id
@@ -384,6 +389,7 @@ export async function addPurchaseOrder(input: {
           productId: item.productId,
           quantity: item.quantity.toString(),
           unitCost: item.unitCost.toString(),
+          taxRate: (item.taxRate ?? 0).toString(),
           lineTotal: item.lineTotal.toString()
         }));
 
@@ -433,6 +439,7 @@ export async function updatePurchaseOrder(input: {
     productId: string;
     quantity: number;
     unitCost: number;
+    taxRate?: number;
     lineTotal: number;
   }>;
 }) {
@@ -562,6 +569,7 @@ export async function updatePurchaseOrder(input: {
           productId: item.productId,
           quantity: item.quantity.toString(),
           unitCost: item.unitCost.toString(),
+          taxRate: (item.taxRate ?? 0).toString(),
           lineTotal: item.lineTotal.toString(),
         }));
 
@@ -1120,7 +1128,6 @@ export async function getAllPurchaseOrdersForExport(input?: {
           orderDate,
           receptionDate,
           status: order.purchaseOrder.status || "pending",
-          supplierOrderNumber: order.purchaseOrder.supplierOrderNumber || null,
           totalAmount: order.purchaseOrder.totalAmount ? parseFloat(order.purchaseOrder.totalAmount) : 0,
           notes: order.purchaseOrder.notes,
           createdBy: order.purchaseOrder.createdBy,

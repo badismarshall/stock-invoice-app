@@ -36,7 +36,7 @@ export function NewDeliveryNoteForm() {
     name: string; 
     code: string;
     salePriceExport: number | null;
-    unitOfMeasure: string;
+    unitOfMeasure: string | null;
   }>>([]);
 
   const [formData, setFormData] = useState({

@@ -4,7 +4,7 @@ import { updateTag } from "next/cache";
 import { getErrorMessage } from "@/lib/handle-error";
 import { generateId } from "@/lib/data-table/id";
 import db from "@/db";
-import { stockCurrent, stockMovement, product, category } from "@/db/schema";
+import { stockCurrent, stockMovement, product, category, unitOfMeasure } from "@/db/schema";
 import { eq, asc } from "drizzle-orm";
 import { getCurrentUser } from "@/data/user/user-auth";
 
@@ -140,14 +140,23 @@ export async function getAllActiveProducts() {
         name: product.name,
         code: product.code,
         purchasePrice: product.purchasePrice,
-        unitOfMeasure: product.unitOfMeasure,
+        unitOfMeasure: {
+          symbol: unitOfMeasure.symbol,
+        },
       })
       .from(product)
+      .leftJoin(unitOfMeasure, eq(product.unitOfMeasureId, unitOfMeasure.id))
       .where(eq(product.isActive, true))
       .orderBy(product.name);
 
     return {
-      data: products,
+      data: products.map((p) => ({
+        id: p.id,
+        name: p.name,
+        code: p.code,
+        purchasePrice: p.purchasePrice,
+        unitOfMeasure: p.unitOfMeasure?.symbol || null,
+      })),
       error: null,
     };
   } catch (err) {

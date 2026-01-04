@@ -4,7 +4,7 @@ import { updateTag } from "next/cache";
 import { getErrorMessage } from "@/lib/handle-error";
 import { generateId } from "@/lib/data-table/id";
 import db from "@/db";
-import { partner, invoice, invoiceItem, product, purchaseOrder, companySettings, deliveryNote } from "@/db/schema";
+import { partner, invoice, invoiceItem, product, purchaseOrder, companySettings, deliveryNote, unitOfMeasure } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { getCurrentUser } from "@/data/user/user-auth";
 
@@ -65,9 +65,13 @@ export async function getAllActiveProducts() {
         salePriceLocal: product.salePriceLocal,
         salePriceExport: product.salePriceExport,
         taxRate: product.taxRate,
-        unitOfMeasure: product.unitOfMeasure,
+        unitOfMeasureId: product.unitOfMeasureId,
+        unitOfMeasure: {
+          symbol: unitOfMeasure.symbol,
+        },
       })
       .from(product)
+      .leftJoin(unitOfMeasure, eq(product.unitOfMeasureId, unitOfMeasure.id))
       .where(eq(product.isActive, true));
 
     return {
@@ -79,7 +83,7 @@ export async function getAllActiveProducts() {
         salePriceLocal: p.salePriceLocal ? parseFloat(p.salePriceLocal) : null,
         salePriceExport: p.salePriceExport ? parseFloat(p.salePriceExport) : null,
         taxRate: parseFloat(p.taxRate || "0"),
-        unitOfMeasure: p.unitOfMeasure || "unité",
+        unitOfMeasure: p.unitOfMeasure?.symbol || null,
       })),
       error: null,
     };

@@ -17,6 +17,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { usePathname } from "next/navigation";
@@ -74,24 +75,42 @@ function CollapsibleNavItem({
       className="group/collapsible"
     >
       <SidebarMenuItem>
-        <CollapsibleTrigger asChild>
-          <SidebarMenuButton tooltip={item.title}>
-            {item.icon && <item.icon />}
-            <span>{item.title}</span>
-            <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-          </SidebarMenuButton>
-        </CollapsibleTrigger>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <CollapsibleTrigger asChild>
+              <SidebarMenuButton>
+                {item.icon && <item.icon />}
+                <span>{item.title}</span>
+                <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+              </SidebarMenuButton>
+            </CollapsibleTrigger>
+          </TooltipTrigger>
+          <TooltipContent side="right" align="center">
+            {item.title}
+          </TooltipContent>
+        </Tooltip>
         <CollapsibleContent>
           <SidebarMenuSub>
             {item.items?.map((subItem) => {
-              const isSubItemActive = pathname === subItem.url
+              // Check if current pathname matches the sub-item URL exactly or starts with it
+              const isSubItemActive = pathname === subItem.url 
               return (
                 <SidebarMenuSubItem key={subItem.title}>
-                  <SidebarMenuSubButton asChild>
-                    <Link href={subItem.url} className={cn(isSubItemActive ? 'bg-primary' : '',"transition-colors hover:text-foreground")}>
-                      <span>{subItem.title}</span>
-                    </Link>
-                  </SidebarMenuSubButton>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <SidebarMenuSubButton asChild isActive={isSubItemActive}>
+                        <Link href={subItem.url} className="transition-colors hover:text-foreground">
+                          <span>{subItem.title}</span>
+                        </Link>
+                      </SidebarMenuSubButton>
+                    </TooltipTrigger>
+                    <TooltipContent 
+                      side="right" 
+                      align="center"
+                    >
+                      {subItem.title}
+                    </TooltipContent>
+                  </Tooltip>
                 </SidebarMenuSubItem>
               )
             })}
@@ -127,7 +146,8 @@ export function NavMain({
       <SidebarMenu >
         {items.map((item) => {
 
-        const isActive = pathname === item.url
+        // Check if current pathname matches the item URL exactly or starts with it
+        const isActive = item.url ? (pathname === item.url) : false
 
         return (
             <div key={item.title}>
@@ -135,16 +155,18 @@ export function NavMain({
                     (!item.items || item.items.length === 0 ) ? (
                         <Tooltip key={item.title}>
                           <TooltipTrigger asChild>
-                              <SidebarMenuItem key={item.title}>
-                                  <SidebarMenuButton asChild>
-                                      <Link href={item.url || '#'} className={cn(isActive ? 'bg-primary' : '',"transition-colors hover:text-foreground")}>
-                                          {item.icon && <item.icon />}    
-                                          <span>{item.title}</span>
-                                      </Link>
-                                  </SidebarMenuButton>
-                              </SidebarMenuItem>
+                            <SidebarMenuItem key={item.title}>
+                              <SidebarMenuButton asChild isActive={isActive}>
+                                <Link href={item.url || '#'} className="transition-colors hover:text-foreground">
+                                  {item.icon && <item.icon />}    
+                                  <span>{item.title}</span>
+                                </Link>
+                              </SidebarMenuButton>
+                            </SidebarMenuItem>
                           </TooltipTrigger>
-                          <TooltipContent side="right">{item.title}</TooltipContent>
+                          <TooltipContent side="right" align="center">
+                            {item.title}
+                          </TooltipContent>
                         </Tooltip>
                     ) : (
                         <CollapsibleNavItem key={item.title} item={item} pathname={pathname} />

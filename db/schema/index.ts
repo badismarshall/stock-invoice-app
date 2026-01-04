@@ -12,6 +12,7 @@ export { default as partner } from "./partner";
 // Stock & Invoice Management schemas
 export { default as permission } from "./permission";
 export { default as category } from "./category";
+export { default as unitOfMeasure } from "./unit-of-measure";
 export { default as product } from "./product";
 export { default as deliveryNote } from "./delivery-note";
 export { default as deliveryNoteItem } from "./delivery-note-item";
@@ -45,6 +46,7 @@ export type { Partner, NewPartner } from "./partner";
 // Type exports - Stock & Invoice Management
 export type { Permission, NewPermission } from "./permission";
 export type { Category, NewCategory } from "./category";
+export type { UnitOfMeasure, NewUnitOfMeasure } from "./unit-of-measure";
 export type { Product, NewProduct } from "./product";
 export type { DeliveryNote, NewDeliveryNote } from "./delivery-note";
 export type {

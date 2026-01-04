@@ -2,6 +2,7 @@ import { searchParamsCache } from "../../_lib/validation";
 import { getValidFilters } from "@/lib/data-table/data-table";
 import { getPurchaseOrders } from "../../_lib/queries";
 import { PurchaseOrdersTable } from "./purchase-orders-table";
+import { getAllSuppliers } from "../../_lib/actions";
 import type { SearchParams } from "@/types";
 
 interface PurchaseOrdersTableWrapperProps {
@@ -13,6 +14,9 @@ export async function PurchaseOrdersTableWrapper({ searchParams }: PurchaseOrder
   const search = searchParamsCache.parse(searchParamsResolved);
 
   const validFilters = getValidFilters(search.filters);
+
+  const suppliersResult = await getAllSuppliers();
+  const suppliers = suppliersResult.data || [];
 
   const promises = getPurchaseOrders({
     ...search,
@@ -28,6 +32,6 @@ export async function PurchaseOrdersTableWrapper({ searchParams }: PurchaseOrder
     filters: search.filters,
   });
 
-  return <PurchaseOrdersTable key={tableKey} promises={promises} />
+  return <PurchaseOrdersTable key={tableKey} promises={promises} suppliers={suppliers} />
 }
 

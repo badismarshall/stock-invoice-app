@@ -43,9 +43,10 @@ async function StockCurrentPageContent(props: StockCurrentPageProps) {
         <Suspense 
           fallback={
             <DataTableSkeleton
-              columnCount={9}
+              columnCount={10}
               filterCount={2}
               cellWidths={[
+                "6rem",
                 "10rem",
                 "15rem",
                 "12rem",

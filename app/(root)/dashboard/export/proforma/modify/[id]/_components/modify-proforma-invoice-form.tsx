@@ -74,7 +74,7 @@ export function ModifyProformaInvoiceForm({ invoice }: ModifyProformaInvoiceForm
     code: string;
     salePriceExport: number | null;
     taxRate: number;
-    unitOfMeasure: string;
+    unitOfMeasure: string | null;
   }>>([]);
 
   const [formData, setFormData] = useState({

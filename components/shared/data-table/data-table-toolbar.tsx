@@ -2,6 +2,7 @@
 
 import type { Column, Table } from "@tanstack/react-table";
 import { X } from "lucide-react";
+import { parseAsInteger, parseAsString, useQueryState } from "nuqs";
 import * as React from "react";
 
 import { DataTableDateFilter } from "@/components/shared/data-table/data-table-date-filter";
@@ -10,6 +11,7 @@ import { DataTableSliderFilter } from "@/components/shared/data-table/data-table
 import { DataTableViewOptions } from "@/components/shared/data-table/data-table-view-options";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useDebouncedCallback } from "@/hooks/data-table/use-debounced-callback";
 import { cn } from "@/lib/utils";
 
 // Libellés en français
@@ -50,7 +52,7 @@ export function DataTableToolbar<TData>({
     >
       <div className="flex flex-1 flex-wrap items-center gap-2">
         {columns.map((column) => (
-          <DataTableToolbarFilter key={column.id} column={column} />
+          <DataTableToolbarFilter key={column.id} column={column} table={table} />
         ))}
         {isFiltered && (
           <Button
@@ -74,46 +76,91 @@ export function DataTableToolbar<TData>({
 }
 interface DataTableToolbarFilterProps<TData> {
   column: Column<TData>;
+  table: Table<TData>;
 }
 
 function DataTableToolbarFilter<TData>({
   column,
+  table,
 }: DataTableToolbarFilterProps<TData>) {
-  {
-    const columnMeta = column.columnDef.meta;
+  const columnMeta = column.columnDef.meta;
+  const queryKeys = table.options.meta?.queryKeys;
+  
+  // Use the column ID as the query key, or fallback to the column ID
+  const filterKey = column.id;
+  
+  // Create a parser for this filter
+  const filterParser = React.useMemo(
+    () => parseAsString.withDefault("").withOptions({
+      history: "replace",
+      shallow: false,
+      clearOnDefault: true,
+    }),
+    []
+  );
 
-    const onFilterRender = React.useCallback(() => {
-      if (!columnMeta?.variant) return null;
+  const [filterValue, setFilterValue] = useQueryState(filterKey, filterParser);
+  const [page, setPage] = useQueryState(
+    table.options.meta?.queryKeys?.page ?? "page",
+    parseAsInteger.withDefault(1)
+  );
+  
+  // Local state for immediate UI update
+  const [localValue, setLocalValue] = React.useState(filterValue ?? "");
+  
+  // Sync local state with URL state when it changes externally
+  React.useEffect(() => {
+    setLocalValue(filterValue ?? "");
+  }, [filterValue]);
+  
+  const debouncedSetFilterValue = useDebouncedCallback(
+    (value: string | null) => {
+      void setPage(1);
+      void setFilterValue(value);
+    },
+    300
+  );
 
-      switch (columnMeta.variant) {
-        case "text":
-          return (
+  const onFilterRender = React.useCallback(() => {
+    if (!columnMeta?.variant) return null;
+
+    switch (columnMeta.variant) {
+      case "text":
+        return (
+          <Input
+            placeholder={columnMeta.placeholder ?? columnMeta.label}
+            value={localValue}
+            onChange={(event) => {
+              const value = event.target.value;
+              setLocalValue(value); // Update immediately for UI
+              debouncedSetFilterValue(value || null); // Debounce URL update
+            }}
+            className="h-8 w-40 lg:w-56"
+          />
+        );
+
+      case "number":
+        return (
+          <div className="relative">
             <Input
+              type="number"
+              inputMode="numeric"
               placeholder={columnMeta.placeholder ?? columnMeta.label}
-              value={(column.getFilterValue() as string) ?? ""}
-              onChange={(event) => column.setFilterValue(event.target.value)}
-              className="h-8 w-40 lg:w-56"
+              value={localValue}
+              onChange={(event) => {
+                const value = event.target.value;
+                setLocalValue(value); // Update immediately for UI
+                debouncedSetFilterValue(value || null); // Debounce URL update
+              }}
+              className={cn("h-8 w-[120px]", columnMeta.unit && "pr-8")}
             />
-          );
-
-        case "number":
-          return (
-            <div className="relative">
-              <Input
-                type="number"
-                inputMode="numeric"
-                placeholder={columnMeta.placeholder ?? columnMeta.label}
-                value={(column.getFilterValue() as string) ?? ""}
-                onChange={(event) => column.setFilterValue(event.target.value)}
-                className={cn("h-8 w-[120px]", columnMeta.unit && "pr-8")}
-              />
-              {columnMeta.unit && (
-                <span className="absolute top-0 right-0 bottom-0 flex items-center rounded-r-md bg-accent px-2 text-muted-foreground text-sm">
-                  {columnMeta.unit}
-                </span>
-              )}
-            </div>
-          );
+            {columnMeta.unit && (
+              <span className="absolute top-0 right-0 bottom-0 flex items-center rounded-r-md bg-accent px-2 text-muted-foreground text-sm">
+                {columnMeta.unit}
+              </span>
+            )}
+          </div>
+        );
 
         case "range":
           return (
@@ -144,11 +191,10 @@ function DataTableToolbarFilter<TData>({
             />
           );
 
-        default:
-          return null;
-      }
-    }, [column, columnMeta]);
+      default:
+        return null;
+    }
+  }, [column, columnMeta, localValue, debouncedSetFilterValue]);
 
-    return onFilterRender();
-  }
+  return onFilterRender();
 }

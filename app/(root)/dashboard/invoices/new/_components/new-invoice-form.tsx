@@ -44,7 +44,7 @@ export function NewInvoiceForm() {
     salePriceExport: number | null;
     purchasePrice: number;
     taxRate: number;
-    unitOfMeasure: string;
+    unitOfMeasure: string | null;
   }>>([]);
 
   const [formData, setFormData] = useState({

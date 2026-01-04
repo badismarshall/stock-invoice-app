@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useQueryState } from "nuqs";
 import * as React from "react";
+import { fr } from "date-fns/locale";
 
 import { DataTableRangeFilter } from "@/components/shared/data-table/data-table-range-filter";
 import { Button } from "@/components/ui/button";
@@ -465,7 +466,29 @@ function DataTableFilterItem<TData>({
             aria-controls={operatorListboxId}
             className="h-8 rounded-none border-r-0 px-2.5 lowercase data-size:h-8 [&_svg]:hidden"
           >
-            <SelectValue placeholder={filter.operator} />
+            <SelectValue
+              placeholder={
+                (() => {
+                  switch (filter.operator) {
+                    case "iLike": return "contient";
+                    case "notILike": return "ne contient pas";
+                    case "eq": return "égal à";
+                    case "ne": return "différent de";
+                    case "isEmpty": return "est vide";
+                    case "isNotEmpty": return "n'est pas vide";
+                    case "lt": return "inférieur à";
+                    case "lte": return "inférieur ou égal à";
+                    case "gt": return "supérieur à";
+                    case "gte": return "supérieur ou égal à";
+                    case "isBetween": return "est entre";
+                    case "inArray": return "contient au moins un de";
+                    case "notInArray": return "ne contient aucun de";
+                    case "isRelativeToToday": return "relatif à aujourd'hui";
+                    default: return filter.operator;
+                  }
+                })()
+              }
+            />
           </SelectTrigger>
           <SelectContent id={operatorListboxId}>
             {filterOperators.map((operator) => (
@@ -556,6 +579,7 @@ function FilterValueSelector<TData>({
           autoFocus
           captionLayout="dropdown"
           mode="single"
+          locale={fr}
           selected={value ? new Date(value) : undefined}
           onSelect={(date) => onSelect(date?.getTime().toString() ?? "")}
         />
@@ -829,6 +853,7 @@ function onFilterInputRender<TData>({
                 autoFocus
                 captionLayout="dropdown"
                 mode="range"
+                locale={fr}
                 selected={
                   dateValue.length === 2
                     ? {
@@ -856,6 +881,7 @@ function onFilterInputRender<TData>({
                 autoFocus
                 captionLayout="dropdown"
                 mode="single"
+                locale={fr}
                 selected={
                   dateValue[0] ? new Date(Number(dateValue[0])) : undefined
                 }

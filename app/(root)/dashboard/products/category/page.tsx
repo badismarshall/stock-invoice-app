@@ -6,6 +6,7 @@ import { FeatureFlagsProvider } from "../../_components/feature-flags-provider"
 import { SearchParams } from "@/types"
 import { DataTableSkeleton } from "@/components/shared/data-table/data-table-skeleton"
 import { CategoryContent } from "./_components/category-content"
+import { CategoryPrimaryButtons } from "./_components/category-primary-buttons"
 
 export const metadata: Metadata = {
     title: "Catégories",
@@ -24,6 +25,15 @@ async function CategoryPageContent(props: IndexPageProps) {
 
     return (
       <div className="h-full flex-1 flex-col space-y-8">
+              <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Catégories</h2>
+          <p className="text-muted-foreground">
+            Gérez vos catégories de produits
+          </p>
+        </div>
+        <CategoryPrimaryButtons />
+      </div>
         <Suspense 
             fallback={    
               <DataTableSkeleton
@@ -49,6 +59,15 @@ async function CategoryPageContent(props: IndexPageProps) {
 function CategoryPageLoading() {
   return (
     <div className="h-full flex-1 flex-col space-y-8">
+            <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Catégories</h2>
+          <p className="text-muted-foreground">
+            Gérez vos catégories de produits
+          </p>
+        </div>
+        <CategoryPrimaryButtons />
+      </div>
       <DataTableSkeleton
         columnCount={4}
         filterCount={1}

@@ -4,7 +4,7 @@ import { updateTag } from "next/cache";
 import { getErrorMessage } from "@/lib/handle-error";
 import { generateId } from "@/lib/data-table/id";
 import db from "@/db";
-import { product, category } from "@/db/schema";
+import { product, category, unitOfMeasure } from "@/db/schema";
 import { eq, inArray, and, ne } from "drizzle-orm";
 import { asc } from "drizzle-orm";
 
@@ -13,7 +13,7 @@ export async function addProduct(input: {
   name: string;
   description?: string;
   categoryId?: string;
-  unitOfMeasure: string;
+  unitOfMeasureId: string;
   purchasePrice?: string;
   salePriceLocal?: string;
   salePriceExport?: string;
@@ -44,7 +44,7 @@ export async function addProduct(input: {
       name: input.name,
       description: input.description || null,
       categoryId: input.categoryId || null,
-      unitOfMeasure: input.unitOfMeasure,
+      unitOfMeasureId: input.unitOfMeasureId,
       purchasePrice: input.purchasePrice || "0",
       salePriceLocal: input.salePriceLocal || "0",
       salePriceExport: input.salePriceExport || null,
@@ -136,7 +136,7 @@ export async function updateProduct(input: {
   name: string;
   description?: string;
   categoryId?: string;
-  unitOfMeasure: string;
+  unitOfMeasureId: string;
   purchasePrice?: string;
   salePriceLocal?: string;
   salePriceExport?: string;
@@ -169,7 +169,7 @@ export async function updateProduct(input: {
         name: input.name,
         description: input.description || null,
         categoryId: input.categoryId || null,
-        unitOfMeasure: input.unitOfMeasure,
+        unitOfMeasureId: input.unitOfMeasureId,
         purchasePrice: input.purchasePrice || "0",
         salePriceLocal: input.salePriceLocal || "0",
         salePriceExport: input.salePriceExport || null,

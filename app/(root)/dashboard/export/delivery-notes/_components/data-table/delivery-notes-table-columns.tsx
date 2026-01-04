@@ -388,27 +388,31 @@ export function getDeliveryNotesTableColumns({
                   </DropdownMenuRadioGroup>
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onSelect={handleCreateDeliveryNoteInvoice}
-                disabled={isCreatingDeliveryNoteInvoice || isCreatingExportInvoice}
-              >
-                <FileText className="mr-2 h-4 w-4" />
-                {isCreatingDeliveryNoteInvoice ? "Création..." : deliveryNoteInvoice ? "Imprimer Bon de Livraison" : "Créer Bon de Livraison"}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onSelect={handleCreateExportInvoice}
-                disabled={isCreatingExportInvoice || isCreatingDeliveryNoteInvoice}
-              >
-                <FileText className="mr-2 h-4 w-4" />
-                {isCreatingExportInvoice ? "Création..." : exportInvoice ? "Imprimer Facture Export" : "Créer Facture Export"}
-              </DropdownMenuItem>
-              {exportInvoice && (
-                <DropdownMenuItem
-                  onSelect={() => router.push(`/dashboard/payments?invoiceId=${exportInvoice.id}`)}
-                >
-                  Créer un paiement
-                </DropdownMenuItem>
+              {deliveryNote.status !== "cancelled" && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onSelect={handleCreateDeliveryNoteInvoice}
+                    disabled={isCreatingDeliveryNoteInvoice || isCreatingExportInvoice}
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    {isCreatingDeliveryNoteInvoice ? "Création..." : deliveryNoteInvoice ? "Imprimer Bon de Livraison" : "Créer Bon de Livraison"}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={handleCreateExportInvoice}
+                    disabled={isCreatingExportInvoice || isCreatingDeliveryNoteInvoice}
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    {isCreatingExportInvoice ? "Création..." : exportInvoice ? "Imprimer Facture Export" : "Créer Facture Export"}
+                  </DropdownMenuItem>
+                  {exportInvoice && (
+                    <DropdownMenuItem
+                      onSelect={() => router.push(`/dashboard/payments?invoiceId=${exportInvoice.id}`)}
+                    >
+                      Créer un paiement
+                    </DropdownMenuItem>
+                  )}
+                </>
               )}
               <DropdownMenuSeparator />
               <DropdownMenuItem

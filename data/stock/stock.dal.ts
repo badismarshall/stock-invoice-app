@@ -21,7 +21,7 @@ import {
 } from "drizzle-orm";
 import { addDays, endOfDay, startOfDay } from "date-fns";
 import db from "@/db";
-import { stockCurrent, stockMovement, product, category, user } from "@/db/schema";
+import { stockCurrent, stockMovement, product, category, user, unitOfMeasure } from "@/db/schema";
 import type { GetStockCurrentSchema, GetStockMovementsSchema } from "@/app/(root)/dashboard/stock/_lib/validation";
 import type { StockCurrentDTO, StockMovementDTO, StockMovementDTOItem } from "./stock.dto";
 import { isEmpty } from "@/db/utils";
@@ -42,7 +42,7 @@ export const getStockCurrent = async (input: GetStockCurrentSchema): Promise<Sto
       productName: product.name,
       categoryName: product.categoryId, // Map categoryName filter to product.categoryId for multiSelect
       categoryId: product.categoryId,
-      unitOfMeasure: product.unitOfMeasure,
+      unitOfMeasureId: product.unitOfMeasureId,
       quantityAvailable: stockCurrent.quantityAvailable,
       averageCost: stockCurrent.averageCost,
       stockValue: sql`CAST(${stockCurrent.quantityAvailable} AS NUMERIC) * CAST(${stockCurrent.averageCost} AS NUMERIC)`,
@@ -498,16 +498,19 @@ export const getStockCurrent = async (input: GetStockCurrentSchema): Promise<Sto
             id: product.id,
             code: product.code,
             name: product.name,
-            unitOfMeasure: product.unitOfMeasure,
           },
           category: {
             id: category.id,
             name: category.name,
           },
+          unitOfMeasure: {
+            symbol: unitOfMeasure.symbol,
+          },
         })
         .from(stockCurrent)
         .leftJoin(product, eq(stockCurrent.productId, product.id))
         .leftJoin(category, eq(product.categoryId, category.id))
+        .leftJoin(unitOfMeasure, eq(product.unitOfMeasureId, unitOfMeasure.id))
         .where(where)
         .limit(input.perPage)
         .offset(offset)
@@ -556,7 +559,7 @@ export const getStockCurrent = async (input: GetStockCurrentSchema): Promise<Sto
           productCode: item.product?.code || null,
           productName: item.product?.name || null,
           categoryName: item.category?.name || null,
-          unitOfMeasure: item.product?.unitOfMeasure || null,
+          unitOfMeasure: item.unitOfMeasure?.symbol || null,
           quantityAvailable,
           averageCost,
           stockValue,
@@ -610,11 +613,26 @@ export const getStockMovements = async (input: GetStockMovementsSchema): Promise
     const where = advancedTable
       ? advancedWhere
       : and(
-          // Search by product name or code
-          input.search
+          // Search by product name or code (general search)
+          input.search && input.search.trim() !== ""
             ? or(
                 ilike(product.name, `%${input.search}%`),
                 ilike(product.code, `%${input.search}%`)
+              )
+            : undefined,
+          // Filter by product code
+          input.productCode && input.productCode.trim() !== ""
+            ? ilike(product.code, `%${input.productCode}%`)
+            : undefined,
+          // Filter by product name
+          input.productName && input.productName.trim() !== ""
+            ? ilike(product.name, `%${input.productName}%`)
+            : undefined,
+          // Filter by quantity (numeric comparison)
+          input.quantity && input.quantity.trim() !== ""
+            ? gte(
+                sql`CAST(${stockMovement.quantity} AS NUMERIC)`,
+                sql`CAST(${input.quantity} AS NUMERIC)`
               )
             : undefined,
           // Filter by movement type
@@ -707,7 +725,7 @@ export const getStockMovements = async (input: GetStockMovementsSchema): Promise
               return item.desc ? desc(column) : asc(column);
             })
             .filter((item): item is ReturnType<typeof desc> | ReturnType<typeof asc> => item !== null)
-        : [desc(stockMovement.movementDate), desc(stockMovement.createdAt)];
+        : [desc(stockMovement.createdAt)];
 
     const { data, total } = await db.transaction(async (tx) => {
       const data = await tx

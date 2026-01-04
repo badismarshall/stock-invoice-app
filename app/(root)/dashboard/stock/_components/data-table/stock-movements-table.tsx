@@ -50,7 +50,7 @@ export function StockMovementsTable({ promises, queryKeys }: StockMovementsTable
     pageCount,
     enableAdvancedFilter,
     initialState: {
-      sorting: [{ id: "movementDate", desc: true }],
+      sorting: [{ id: "createdAt", desc: true }],
       columnVisibility: {
         referenceType: false,
         createdByName: false,
@@ -61,9 +61,17 @@ export function StockMovementsTable({ promises, queryKeys }: StockMovementsTable
     queryKeys,
     getRowId: (originalRow) => originalRow.id,
     shallow: false,
-    clearOnDefault: true,
+    clearOnDefault: false,
     startTransition,
   });
+
+  // Ensure default sorting is applied on initial load and synced with URL
+  React.useEffect(() => {
+    const currentSorting = table.getState().sorting;
+    if (currentSorting.length === 0) {
+      table.options.onSortingChange?.([{ id: "createdAt", desc: true }]);
+    }
+  }, [table]);
 
   return (
     <>

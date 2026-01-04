@@ -13,7 +13,7 @@
  * - cancelled sale_export: FAC-EXP-AN
  * - delivery_note (local): BL
  * - delivery_note (export): BL-EXP
- * - purchase_order: CMD-ACH
+ * - purchase_order: BC
  */
 
 export type InvoiceType = 
@@ -116,7 +116,7 @@ export function generateDeliveryNoteNumber(
 
 /**
  * Generate a purchase order number
- * Format: CMD-ACH-YYYY-XXXXXX
+ * Format: BC-YYYY-XXXXXX
  * 
  * @param customSuffix - Optional custom suffix (default: random 6-digit number)
  * @returns Generated purchase order number
@@ -124,7 +124,7 @@ export function generateDeliveryNoteNumber(
 export function generatePurchaseOrderNumber(
   customSuffix?: string
 ): string {
-  const prefix = "CMD-ACH";
+  const prefix = "BC";
   const year = new Date().getFullYear();
   const suffix = customSuffix || String(Math.floor(Math.random() * 1000000)).padStart(6, '0');
   

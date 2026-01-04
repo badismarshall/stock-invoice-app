@@ -22,7 +22,7 @@ const updateProductSchema = z.object({
   name: z.string().min(1, "Le nom est requis"),
   description: z.string().optional(),
   categoryId: z.string().optional(),
-  unitOfMeasure: z.string().min(1, "L'unité de mesure est requise"),
+  unitOfMeasureId: z.string().min(1, "L'unité de mesure est requise"),
   purchasePrice: z.string().optional(),
   salePriceLocal: z.string().optional(),
   salePriceExport: z.string().optional(),
@@ -40,6 +40,7 @@ export function ModifyProductForm({ product }: ModifyProductFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState<Array<{ id: string; name: string }>>([]);
+  const [unitsOfMeasure, setUnitsOfMeasure] = useState<Array<{ id: string; name: string; symbol: string }>>([]);
 
   useEffect(() => {
     // Fetch categories on mount
@@ -55,6 +56,20 @@ export function ModifyProductForm({ product }: ModifyProductFormProps) {
       }
     };
     fetchCategories();
+
+    // Fetch units of measure on mount
+    const fetchUnitsOfMeasure = async () => {
+      try {
+        const { getAllActiveUnitsOfMeasure } = await import("../../../_lib/unit-of-measure-actions");
+        const result = await getAllActiveUnitsOfMeasure();
+        if (result.data) {
+          setUnitsOfMeasure(result.data);
+        }
+      } catch (error) {
+        console.error("Error fetching units of measure", error);
+      }
+    };
+    fetchUnitsOfMeasure();
   }, []);
 
   const form = useForm<UpdateProductFormValues>({
@@ -64,7 +79,7 @@ export function ModifyProductForm({ product }: ModifyProductFormProps) {
       name: product.name,
       description: product.description || '',
       categoryId: product.categoryId || '',
-      unitOfMeasure: product.unitOfMeasure,
+      unitOfMeasureId: product.unitOfMeasureId || '',
       purchasePrice: product.purchasePrice || '0',
       salePriceLocal: product.salePriceLocal || '0',
       salePriceExport: product.salePriceExport || '',
@@ -154,22 +169,30 @@ export function ModifyProductForm({ product }: ModifyProductFormProps) {
               />
               <FormField
                 control={form.control}
-                name="unitOfMeasure"
+                name="unitOfMeasureId"
                 render={({ field }) => (
                   <FormItem className="grid gap-1">
-                    <FormLabel htmlFor="unitOfMeasure">
+                    <FormLabel htmlFor="unitOfMeasureId">
                       Unité de mesure
                     </FormLabel>
-                    <FormControl>
-                      <Input
-                        id="unitOfMeasure"
-                        placeholder="unité, kg, L, etc."
-                        type="text"
-                        disabled={loading}
-                        required
-                        {...field}
-                      />
-                    </FormControl>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                      disabled={loading}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sélectionner une unité de mesure" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {unitsOfMeasure.map((unit) => (
+                          <SelectItem key={unit.id} value={unit.id}>
+                            {unit.name} ({unit.symbol})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}

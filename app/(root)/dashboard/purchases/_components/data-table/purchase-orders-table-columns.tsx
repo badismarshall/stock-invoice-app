@@ -37,13 +37,14 @@ import { getErrorMessage } from "@/lib/handle-error";
 import { toast } from "sonner";
 import type { DataTableRowAction } from "@/types/data-table";
 import type { PurchaseOrderDTOItem } from "@/data/purchase-order/purchase-order.dto";
-import { updatePurchaseOrderStatus, createInvoiceFromPurchaseOrder } from "@/app/(root)/dashboard/purchases/_lib/actions";
+import { updatePurchaseOrderStatus } from "@/app/(root)/dashboard/purchases/_lib/actions";
 import { FileText } from "lucide-react";
 
 interface GetPurchaseOrdersTableColumnsProps {
   setRowAction: React.Dispatch<
     React.SetStateAction<DataTableRowAction<PurchaseOrderDTOItem> | null>
   >;
+  suppliers?: Array<{ id: string; name: string }>;
 }
 
 const translations = {
@@ -58,8 +59,7 @@ const translations = {
   createdAt: "Créé le",
   edit: "Modifier",
   delete: "Supprimer",
-  createInvoice: "Créer facture",
-  printInvoice: "Imprimer facture",
+  printPurchaseOrder: "Imprimer bon de commande",
   addPayment: "Créer un paiement",
   managePayments: "Gérer les paiements",
   selectAll: "Tout sélectionner",
@@ -69,9 +69,6 @@ const translations = {
   cancelled: "Annulé",
   updating: "Mise à jour...",
   statusUpdated: "Statut mis à jour",
-  creatingInvoice: "Création de la facture...",
-  invoiceCreated: "Facture créée avec succès",
-  invoiceAlreadyExists: "Une facture existe déjà pour cette commande",
 };
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -82,6 +79,7 @@ const statusConfig: Record<string, { label: string; variant: "default" | "second
 
 export function getPurchaseOrdersTableColumns({
   setRowAction,
+  suppliers = [],
 }: GetPurchaseOrdersTableColumnsProps): ColumnDef<PurchaseOrderDTOItem>[] {
   return [
     {
@@ -131,20 +129,31 @@ export function getPurchaseOrdersTableColumns({
       enableColumnFilter: true,
     },
     {
-      id: "supplierName",
+      id: "supplierId",
       accessorKey: "supplierName",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} label={translations.supplier} title={translations.supplier} />
       ),
       cell: ({ row }) => {
-        const supplierName = row.getValue<string | null>("supplierName");
+        const supplierName = row.original.supplierName;
         return (
           <span className="max-w-125 truncate">
             {supplierName || "-"}
           </span>
         );
       },
-      enableColumnFilter: false,
+      meta: {
+        label: translations.supplier,
+        variant: "multiSelect",
+        options: suppliers.map((supplier) => ({
+          label: supplier.name,
+          value: supplier.id,
+          count: 0, // Counts would need to be fetched separately if needed
+          icon: Building2,
+        })),
+        icon: Building2,
+      },
+      enableColumnFilter: true,
     },
     {
       id: "orderDate",
@@ -272,37 +281,6 @@ export function getPurchaseOrdersTableColumns({
       cell: function Cell({ row }) {
         const router = useRouter();
         const [isUpdatePending, startUpdateTransition] = React.useTransition();
-        const [isCreatingInvoice, setIsCreatingInvoice] = React.useState(false);
-
-        const handleCreateInvoice = async () => {
-          setIsCreatingInvoice(true);
-          try {
-            const result = await createInvoiceFromPurchaseOrder({
-              purchaseOrderId: row.original.id,
-            });
-
-            if (result.error) {
-              toast.error(result.error);
-              return;
-            }
-
-            if (result.alreadyExists && result.data) {
-              toast.info(translations.invoiceAlreadyExists, {
-                description: `Facture: ${result.data.invoiceNumber}`,
-              });
-              router.push(`/dashboard/invoices/print/${result.data.invoiceId}`);
-            } else if (result.data) {
-              toast.success(translations.invoiceCreated, {
-                description: `Facture: ${result.data.invoiceNumber}`,
-              });
-              router.push(`/dashboard/invoices/print/${result.data.invoiceId}`);
-            }
-          } catch (error) {
-            toast.error(getErrorMessage(error));
-          } finally {
-            setIsCreatingInvoice(false);
-          }
-        };
 
         return (
           <DropdownMenu>
@@ -365,35 +343,11 @@ export function getPurchaseOrdersTableColumns({
               </DropdownMenuSub>
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                onSelect={handleCreateInvoice}
-                disabled={isCreatingInvoice}
+                onSelect={() => router.push(`/dashboard/purchases/print/${row.original.id}`)}
               >
                 <FileText className="mr-2 h-4 w-4" />
-                {isCreatingInvoice ? translations.creatingInvoice : translations.createInvoice}
+                {translations.printPurchaseOrder}
               </DropdownMenuItem>
-              {row.original.invoiceId && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onSelect={() => router.push(`/dashboard/payments/add?invoiceId=${row.original.invoiceId}`)}
-                  >
-                    <Wallet className="mr-2 h-4 w-4" />
-                    {translations.addPayment}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onSelect={() => router.push(`/dashboard/payments?invoiceId=${row.original.invoiceId}`)}
-                  >
-                    <Wallet className="mr-2 h-4 w-4" />
-                    {translations.managePayments}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onSelect={() => router.push(`/dashboard/invoices/print/${row.original.invoiceId}`)}
-                  >
-                    <FileText className="mr-2 h-4 w-4" />
-                    {translations.printInvoice}
-                  </DropdownMenuItem>
-                </>
-              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onSelect={() => setRowAction({ row, variant: "delete" })}

@@ -12,6 +12,7 @@ export const purchaseOrderItem = pgTable("purchase_order_item", {
     .references(() => product.id, { onDelete: "restrict" }),
   quantity: numeric("quantity", { precision: 15, scale: 3 }).notNull(),
   unitCost: numeric("unit_cost", { precision: 15, scale: 2 }).notNull(),
+  taxRate: numeric("tax_rate", { precision: 5, scale: 2 }).default("0"),
   lineTotal: numeric("line_total", { precision: 15, scale: 2 }).notNull(),
 });
 

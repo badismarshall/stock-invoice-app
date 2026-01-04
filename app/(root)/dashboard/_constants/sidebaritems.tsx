@@ -1,4 +1,4 @@
-import { Home, Settings, Package, Boxes, ShoppingCart, FileBarChart, Users, HandCoins, Truck, List, Plus, AlertTriangle, Wallet, Lock, Database } from "lucide-react"
+import { Home, Settings, Package, Boxes, ShoppingCart, FileBarChart, Users, HandCoins, Truck, List, Plus, AlertTriangle, Wallet, Lock, Database, Globe, Ruler, FileText } from "lucide-react"
 
 export const adminSidebarItemsGeneralSetting = [
   {
@@ -28,6 +28,12 @@ export const adminSidebarItemsGeneralSetting = [
         title: 'Catégories',
         url: '/dashboard/products/category',
         icon: List,
+        isActive: false,
+      },
+      {
+        title: 'Unités de mesure',
+        url: '/dashboard/products/unit-of-measure',
+        icon: Ruler,
         isActive: false,
       },
     ],
@@ -116,7 +122,7 @@ export const adminSidebarItemsGeneralSetting = [
   {
     title: 'Export',
     url: '/dashboard/export',
-    icon: FileBarChart,
+    icon: Globe,
     isActive: false,
     items: [
       {
@@ -128,18 +134,6 @@ export const adminSidebarItemsGeneralSetting = [
       {
         title: 'Ajouter un bon de livraison',
         url: '/dashboard/export/delivery-note/new',
-        icon: Plus,
-        isActive: false,
-      },
-      {
-        title: 'Liste des factures proforma',
-        url: '/dashboard/export/proforma',
-        icon: List,
-        isActive: false,
-      },
-      {
-        title: 'Ajouter une facture proforma',
-        url: '/dashboard/export/proforma/new',
         icon: Plus,
         isActive: false,
       },
@@ -170,18 +164,37 @@ export const adminSidebarItemsGeneralSetting = [
     ],
   },
   {
+    title: 'Factures de Proforma',
+    icon: FileText,
+    isActive: false,
+    items: [
+      {
+        title: 'Liste des factures proforma',
+        url: '/dashboard/export/proforma',
+        icon: List,
+        isActive: true,
+      },
+      {
+        title: 'Ajouter une facture proforma',
+        url: '/dashboard/export/proforma/new',
+        icon: Plus,
+        isActive: false,
+      },
+    ],
+  },
+  {
     title: 'Achats',
     icon: ShoppingCart,
     isActive: false,
     items: [
       {
-        title: 'Liste des achats',
+        title: 'Liste des bons de commande',
         url: '/dashboard/purchases',
         icon: List,
         isActive: true,
       },
       {
-        title: 'Nouvel achat',
+        title: 'Nouveau Bon de Commande',
         url: '/dashboard/purchases/new',
         icon: Plus,
         isActive: false,

@@ -75,3 +75,34 @@ export async function deleteCategories(input: { ids: string[] }) {
   }
 }
 
+export async function updateCategory(input: {
+  id: string;
+  name: string;
+  description?: string;
+  isActive?: boolean;
+}) {
+  try {
+    await db
+      .update(category)
+      .set({
+        name: input.name,
+        description: input.description || null,
+        isActive: input.isActive ?? true,
+      })
+      .where(eq(category.id, input.id));
+
+    updateTag("categories");
+
+    return {
+      data: { id: input.id },
+      error: null,
+    };
+  } catch (err) {
+    console.error("Error updating category", err);
+    return {
+      data: null,
+      error: getErrorMessage(err),
+    };
+  }
+}
+

@@ -35,7 +35,7 @@ export function NewStockForm() {
     name: string; 
     code: string;
     purchasePrice: string | null;
-    unitOfMeasure: string;
+    unitOfMeasure: string | null;
   }>>([]);
 
   const [formData, setFormData] = useState({

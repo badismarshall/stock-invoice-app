@@ -103,12 +103,17 @@ export function getCategoryTableColumns({
       cell: ({ row }) => {
         const description = row.getValue<string | null>("description");
         return (
-          <span className="max-w-125 truncate">
-            {description || "-"}
-          </span>
+          <div className="max-w-[150px]">
+            <span className="block truncate text-sm text-muted-foreground" title={description || undefined}>
+              {description || "-"}
+            </span>
+          </div>
         );
       },
       enableColumnFilter: false,
+      size: 150,
+      minSize: 100,
+      maxSize: 150,
     },
     {
       id: "isActive",

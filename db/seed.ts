@@ -10,6 +10,7 @@ import {
   user,
   organization,
   category,
+  unitOfMeasure,
   product,
   partner,
   stockCurrent,
@@ -135,10 +136,29 @@ async function seedCategories() {
   return categories;
 }
 
-async function seedProducts(categories: Array<{ id: string }>) {
+async function seedUnitsOfMeasure() {
+  console.log("🌱 Seeding units of measure...");
+  const units = [
+    { id: generateId("uom"), name: "Unité", symbol: "unité", description: "Unité de mesure standard" },
+    { id: generateId("uom"), name: "Kilogramme", symbol: "kg", description: "Unité de masse" },
+    { id: generateId("uom"), name: "Gramme", symbol: "g", description: "Unité de masse" },
+    { id: generateId("uom"), name: "Litre", symbol: "L", description: "Unité de volume" },
+    { id: generateId("uom"), name: "Millilitre", symbol: "ml", description: "Unité de volume" },
+    { id: generateId("uom"), name: "Mètre", symbol: "m", description: "Unité de longueur" },
+    { id: generateId("uom"), name: "Centimètre", symbol: "cm", description: "Unité de longueur" },
+    { id: generateId("uom"), name: "Paquet", symbol: "paquet", description: "Unité de comptage" },
+    { id: generateId("uom"), name: "Boîte", symbol: "boîte", description: "Unité de comptage" },
+    { id: generateId("uom"), name: "Carton", symbol: "carton", description: "Unité de comptage" },
+  ];
+  
+  await db.insert(unitOfMeasure).values(units).onConflictDoNothing();
+  console.log(`✅ Seeded ${units.length} units of measure`);
+  return units;
+}
+
+async function seedProducts(categories: Array<{ id: string }>, unitsOfMeasure: Array<{ id: string }>) {
   console.log("🌱 Seeding products...");
   const products = [];
-  const units = ["kg", "g", "L", "mL", "m", "cm", "unité", "paquet", "boîte", "carton"];
   
   for (let i = 0; i < CONFIG.products; i++) {
     const purchasePrice = parseFloat(faker.commerce.price({ min: 10, max: 1000 }));
@@ -152,7 +172,7 @@ async function seedProducts(categories: Array<{ id: string }>) {
       name: faker.commerce.productName(),
       description: faker.commerce.productDescription(),
       categoryId: faker.helpers.arrayElement(categories).id,
-      unitOfMeasure: faker.helpers.arrayElement(units),
+      unitOfMeasureId: faker.helpers.arrayElement(unitsOfMeasure).id,
       purchasePrice: purchasePrice.toFixed(2),
       salePriceLocal: salePriceLocal.toFixed(2),
       salePriceExport: salePriceExport.toFixed(2),
@@ -740,7 +760,8 @@ async function main() {
     const users = await seedUsers();
     const organizations = await seedOrganizations();
     const categories = await seedCategories();
-    const products = await seedProducts(categories);
+    const unitsOfMeasure = await seedUnitsOfMeasure();
+    const products = await seedProducts(categories, unitsOfMeasure);
     const partners = await seedPartners();
     const clients = partners.filter(p => p.type === "client");
     const suppliers = partners.filter(p => p.type === "fournisseur");
