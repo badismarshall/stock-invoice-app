@@ -16,6 +16,7 @@ import { InvoicesTableActionBar } from "./invoices-table-action-bar";
 import { getInvoicesTableColumns } from "./invoices-table-columns";
 import { useFeatureFlags } from "@/app/(root)/dashboard/_components/feature-flags-provider";
 import { DataTableBodySkeleton } from "@/components/shared/data-table/data-table-body-skeleton";
+import { ExportInvoicesButtons } from "./export-invoices-buttons";
 
 interface InvoicesTableProps {
   promises: Promise<
@@ -24,9 +25,14 @@ interface InvoicesTableProps {
   clients?: Array<{ id: string; name: string }>;
   suppliers?: Array<{ id: string; name: string }>;
   queryKeys?: Partial<QueryKeys>;
+  hideSupplierFilter?: boolean;
+  hideInvoiceTypeFilter?: boolean;
+  hideSupplierColumn?: boolean;
+  hideClientColumn?: boolean;
+  hideClientFilter?: boolean;
 }
 
-export function InvoicesTable({ promises, clients = [], suppliers = [], queryKeys }: InvoicesTableProps) {
+export function InvoicesTable({ promises, clients = [], suppliers = [], queryKeys, hideSupplierFilter = false, hideInvoiceTypeFilter = false, hideSupplierColumn = false, hideClientColumn = false, hideClientFilter = false }: InvoicesTableProps) {
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
   const { showLoading, startTransition, resetLoading } = useTableLoading();
 
@@ -48,8 +54,11 @@ export function InvoicesTable({ promises, clients = [], suppliers = [], queryKey
         setRowAction,
         clients,
         suppliers,
+        hideSupplierFilter,
+        hideInvoiceTypeFilter,
+        hideClientFilter,
       }),
-    [setRowAction, clients, suppliers],
+    [setRowAction, clients, suppliers, hideSupplierFilter, hideInvoiceTypeFilter, hideClientFilter],
   );
 
   const { table, shallow, debounceMs, throttleMs } = useDataTable({
@@ -60,6 +69,12 @@ export function InvoicesTable({ promises, clients = [], suppliers = [], queryKey
     initialState: {
       sorting: [{ id: "invoiceDate", desc: true }],
       columnPinning: { right: ["actions"] },
+      columnVisibility: {
+        createdByName: false,
+        createdAt: false,
+        ...(hideSupplierColumn && { supplierId: false }),
+        ...(hideClientColumn && { clientId: false }),
+      },
     },
     queryKeys,
     getRowId: (originalRow) => originalRow.id,
@@ -104,10 +119,12 @@ export function InvoicesTable({ promises, clients = [], suppliers = [], queryKey
                 throttleMs={throttleMs}
               />
             )}
+            <ExportInvoicesButtons />
           </DataTableAdvancedToolbar>
         ) : (
           <DataTableToolbar table={table}>
             <DataTableSortList table={table} align="end" />
+            <ExportInvoicesButtons />
           </DataTableToolbar>
         )}
       </DataTable>

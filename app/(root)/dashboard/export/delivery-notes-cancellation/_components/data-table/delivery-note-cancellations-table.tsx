@@ -17,6 +17,7 @@ import { DeliveryNoteCancellationsTableActionBar } from "./delivery-note-cancell
 import { useFeatureFlags } from "@/app/(root)/dashboard/_components/feature-flags-provider";
 import { DeleteDeliveryNoteCancellationsDialog } from "./delete-delivery-note-cancellations-dialog";
 import { DataTableBodySkeleton } from "@/components/shared/data-table/data-table-body-skeleton";
+import { ExportCancellationsButtons } from "./export-cancellations-buttons";
 
 interface DeliveryNoteCancellationsTableProps {
   promises: Promise<
@@ -100,10 +101,12 @@ export function DeliveryNoteCancellationsTable({ promises, clients = [], queryKe
                 throttleMs={throttleMs}
               />
             )}
+            <ExportCancellationsButtons />
           </DataTableAdvancedToolbar>
         ) : (
           <DataTableToolbar table={table}>
             <DataTableSortList table={table} align="end" />
+            <ExportCancellationsButtons />
           </DataTableToolbar>
         )}
       </DataTable>

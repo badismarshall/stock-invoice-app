@@ -16,15 +16,17 @@ import { getPartnersTableColumns } from "./partners-table-columns";
 import { useFeatureFlags } from "../../../_components/feature-flags-provider";
 import { DeletePartnersDialog } from "./delete-partners-dialog";
 import { ModifyPartnerDialog } from "../modify-partner-dialog";
+import { ExportPartnersButtons } from "./export-partners-buttons";
 
 interface PartnersTableProps {
   promises: Promise<
     Awaited<ReturnType<typeof getPartners>>
   >;
+  type?: "client" | "fournisseur";
   queryKeys?: Partial<QueryKeys>;
 }
 
-export function PartnersTable({ promises, queryKeys }: PartnersTableProps) {
+export function PartnersTable({ promises, type, queryKeys }: PartnersTableProps) {
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
 
   const { data, pageCount } = React.use(promises);
@@ -36,8 +38,9 @@ export function PartnersTable({ promises, queryKeys }: PartnersTableProps) {
     () =>
       getPartnersTableColumns({
         setRowAction,
+        type,
       }),
-    [],
+    [setRowAction, type],
   );
 
   const { table, shallow, debounceMs, throttleMs } = useDataTable({
@@ -46,7 +49,7 @@ export function PartnersTable({ promises, queryKeys }: PartnersTableProps) {
     pageCount,
     enableAdvancedFilter,
     initialState: {
-      sorting: [{ id: "createdAt", desc: true }],
+      sorting: [{ id: "name", desc: false }],
       columnPinning: { right: ["actions"] },
     },
     queryKeys,
@@ -59,7 +62,7 @@ export function PartnersTable({ promises, queryKeys }: PartnersTableProps) {
     <>
       <DataTable
         table={table}
-        actionBar={<PartnersTableActionBar table={table} />}
+        actionBar={<PartnersTableActionBar table={table} type={type} />}
       >
         {enableAdvancedFilter ? (
           <DataTableAdvancedToolbar table={table}>
@@ -80,10 +83,12 @@ export function PartnersTable({ promises, queryKeys }: PartnersTableProps) {
                 throttleMs={throttleMs}
               />
             )}
+            <ExportPartnersButtons type={type} />
           </DataTableAdvancedToolbar>
         ) : (
           <DataTableToolbar table={table}>
             <DataTableSortList table={table} align="end" />
+            <ExportPartnersButtons type={type} />
           </DataTableToolbar>
         )}
       </DataTable>

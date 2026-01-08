@@ -104,7 +104,7 @@ export function DashboardStatsCards({ stats }: DashboardStatsCardsProps) {
       description: formatCurrency(stats.unpaidInvoices.totalAmount),
       icon: FileText,
       trend: stats.unpaidInvoices.count > 0 ? "warning" : null,
-      link: "/dashboard/invoices?paymentStatus=unpaid",
+      link: "/dashboard/invoices/sale_locale?paymentStatus=unpaid",
       footer: "Nécessitent une attention",
     },
     {
@@ -113,7 +113,7 @@ export function DashboardStatsCards({ stats }: DashboardStatsCardsProps) {
       description: formatCurrency(stats.partiallyPaidInvoices.totalAmount),
       icon: CreditCard,
       trend: stats.partiallyPaidInvoices.count > 0 ? "warning" : null,
-      link: "/dashboard/invoices?paymentStatus=partially_paid",
+      link: "/dashboard/invoices/sale_locale?paymentStatus=partially_paid",
       footer: "En attente de paiement",
     },
     {

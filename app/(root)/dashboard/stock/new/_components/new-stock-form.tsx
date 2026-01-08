@@ -6,7 +6,6 @@ import { ArrowLeft, Save, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { CalendarIcon } from "lucide-react"
@@ -14,8 +13,9 @@ import { format } from "date-fns"
 import { fr } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Icons } from "@/components/ui/icons"
+import { ProductSelect } from "./product-select"
 
 interface StockEntryItem {
   id: string;
@@ -30,35 +30,10 @@ interface StockEntryItem {
 export function NewStockForm() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [products, setProducts] = useState<Array<{ 
-    id: string; 
-    name: string; 
-    code: string;
-    purchasePrice: string | null;
-    unitOfMeasure: string | null;
-  }>>([]);
 
   const [formData, setFormData] = useState({
     items: [] as StockEntryItem[],
   });
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const { getAllActiveProducts } = await import("../../_lib/actions");
-
-        const productsResult = await getAllActiveProducts();
-
-        if (productsResult.data) {
-          setProducts(productsResult.data);
-        }
-      } catch (error) {
-        console.error("Error fetching data", error);
-        toast.error("Erreur lors du chargement des données");
-      }
-    };
-    fetchData();
-  }, []);
 
   const addItem = () => {
     setFormData((prev) => ({
@@ -77,18 +52,15 @@ export function NewStockForm() {
     }));
   };
 
-  const updateItem = (index: number, field: keyof StockEntryItem, value: any) => {
+  const updateItem = (index: number, field: keyof StockEntryItem, value: any, product?: { id: string; name: string; code: string; purchasePrice: number }) => {
     setFormData((prev) => {
       const newItems = [...prev.items];
       const item = { ...newItems[index], [field]: value };
 
       // If product changed, update related fields
-      if (field === "productId") {
-        const product = products.find((p) => p.id === value);
-        if (product) {
-          item.productName = product.name;
-          item.unitCost = product.purchasePrice ? parseFloat(product.purchasePrice) : 0;
-        }
+      if (field === "productId" && product) {
+        item.productName = product.name;
+        item.unitCost = product.purchasePrice || 0;
       }
 
       newItems[index] = item;
@@ -219,22 +191,12 @@ export function NewStockForm() {
                 {formData.items.map((item, index) => (
                   <tr key={item.id} className="text-card-foreground">
                     <td className="px-4 py-2">
-                      <Select
+                      <ProductSelect
                         value={item.productId}
-                        onValueChange={(value) => updateItem(index, "productId", value)}
+                        onValueChange={(value, product) => updateItem(index, "productId", value, product)}
                         disabled={loading}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Sélectionner..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {products.map((product) => (
-                            <SelectItem key={product.id} value={product.id}>
-                              {product.name} ({product.code})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        placeholder="Sélectionner un produit..."
+                      />
                     </td>
                     <td className="px-4 py-2">
                       <Input

@@ -38,6 +38,9 @@ interface GetInvoicesTableColumnsProps {
   >;
   clients?: Array<{ id: string; name: string }>;
   suppliers?: Array<{ id: string; name: string }>;
+  hideSupplierFilter?: boolean;
+  hideInvoiceTypeFilter?: boolean;
+  hideClientFilter?: boolean;
 }
 
 const translations = {
@@ -96,6 +99,9 @@ export function getInvoicesTableColumns({
   setRowAction,
   clients = [],
   suppliers = [],
+  hideSupplierFilter = false,
+  hideInvoiceTypeFilter = false,
+  hideClientFilter = false,
 }: GetInvoicesTableColumnsProps): ColumnDef<InvoiceDTOItem>[] {
   return [
     {
@@ -170,7 +176,7 @@ export function getInvoicesTableColumns({
               ],
         icon: BadgeIcon,
       },
-      enableColumnFilter: true,
+      enableColumnFilter: !hideInvoiceTypeFilter,
     },
     {
       id: "clientId",
@@ -197,7 +203,7 @@ export function getInvoicesTableColumns({
         })),
         icon: Building2,
       },
-      enableColumnFilter: true,
+      enableColumnFilter: !hideClientFilter,
     },
     {
       id: "supplierId",
@@ -224,7 +230,7 @@ export function getInvoicesTableColumns({
         })),
         icon: Building2,
       },
-      enableColumnFilter: true,
+      enableColumnFilter: !hideSupplierFilter,
     },
     {
       id: "invoiceDate",
@@ -318,7 +324,9 @@ export function getInvoicesTableColumns({
       id: "totalAmount",
       accessorKey: "totalAmount",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} label={translations.totalAmount} title={translations.totalAmount} />
+        <div className="flex justify-end">
+          <DataTableColumnHeader column={column} label={translations.totalAmount} title={translations.totalAmount} />
+        </div>
       ),
       cell: ({ row }) => {
         const amount = row.getValue<number>("totalAmount");

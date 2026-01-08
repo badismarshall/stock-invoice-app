@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { Save } from "lucide-react"
+import { Save, Upload, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -10,6 +10,7 @@ import { toast } from "sonner"
 import { getCompanySettings, updateCompanySettings } from "../../../invoices/_lib/actions"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Icons } from "@/components/ui/icons"
+import Image from "next/image"
 
 interface CompanySettingsData {
   id: string;
@@ -29,6 +30,11 @@ export function CompanySettingsForm() {
   const [saving, setSaving] = React.useState(false);
   const [settings, setSettings] = React.useState<CompanySettingsData | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [logoPreview, setLogoPreview] = React.useState<string | null>(null);
+  const [logoFile, setLogoFile] = React.useState<File | null>(null);
+  const [uploadingLogo, setUploadingLogo] = React.useState(false);
+  const [logoError, setLogoError] = React.useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
     const fetchSettings = async () => {
@@ -103,6 +109,94 @@ export function CompanySettingsForm() {
     });
   };
 
+  const handleLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      toast.error("Le fichier doit être une image");
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      toast.error("Le fichier est trop volumineux (maximum 5MB)");
+      return;
+    }
+
+    setLogoFile(file);
+    
+    // Create preview URL
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setLogoPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleLogoUpload = async () => {
+    if (!logoFile) {
+      toast.error("Veuillez sélectionner un fichier");
+      return;
+    }
+
+    setUploadingLogo(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", logoFile);
+
+      const response = await fetch("/api/upload/logo", {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        toast.error(result.error || "Erreur lors de l'upload du logo");
+        return;
+      }
+
+      toast.success(result.message || "Logo mis à jour avec succès", {
+        position: "bottom-center",
+        duration: 3000,
+      });
+
+      // Reset file and preview, but keep showing the new logo
+      setLogoFile(null);
+      setLogoPreview(null);
+      setLogoError(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+
+      // Refresh the page to show the new logo (add timestamp to force reload)
+      window.location.reload();
+    } catch (error) {
+      console.error("Error uploading logo:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Erreur lors de l'upload du logo",
+        {
+          position: "bottom-center",
+          duration: 3000,
+        }
+      );
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
+  const handleRemoveLogoPreview = () => {
+    setLogoFile(null);
+    setLogoPreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
   if (loading) {
     return (
       <div className="h-full flex-1 flex-col space-y-8 p-8">
@@ -141,6 +235,107 @@ export function CompanySettingsForm() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Logo Upload Section */}
+        <div className="bg-card rounded-xl shadow-sm border border-border p-6 space-y-4">
+          <div className="space-y-2">
+            <Label>Logo de l'entreprise</Label>
+            <div className="flex items-start gap-6">
+              {/* Current/Preview Logo */}
+              <div className="relative">
+                {logoPreview ? (
+                  <div className="relative w-32 h-32 border-2 border-border rounded-lg overflow-hidden bg-muted/50">
+                    <Image
+                      src={logoPreview}
+                      alt="Aperçu du logo"
+                      fill
+                      className="object-contain p-2"
+                      unoptimized
+                    />
+                  </div>
+                ) : logoError ? (
+                  <div className="w-32 h-32 border-2 border-dashed border-border rounded-lg flex items-center justify-center bg-muted/50">
+                    <div className="text-center text-muted-foreground text-sm">
+                      <Upload className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      <p>Aucun logo</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="relative w-32 h-32 border-2 border-border rounded-lg overflow-hidden bg-muted/50">
+                    <Image
+                      src={`/logo.png?t=${Date.now()}`}
+                      alt="Logo de l'entreprise"
+                      fill
+                      className="object-contain p-2"
+                      unoptimized
+                      onError={() => {
+                        setLogoError(true);
+                      }}
+                      onLoad={() => {
+                        setLogoError(false);
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Upload Controls */}
+              <div className="flex-1 space-y-4">
+                <div className="space-y-2">
+                  <Input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoFileChange}
+                    disabled={uploadingLogo}
+                    className="cursor-pointer"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Formats acceptés: JPG, PNG, GIF (max 5MB)
+                  </p>
+                </div>
+
+                {logoFile && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      onClick={handleLogoUpload}
+                      disabled={uploadingLogo}
+                      size="sm"
+                    >
+                      {uploadingLogo ? (
+                        <>
+                          <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
+                          Upload en cours...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="mr-2 h-4 w-4" />
+                          Uploader le logo
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleRemoveLogoPreview}
+                      disabled={uploadingLogo}
+                      size="sm"
+                    >
+                      <X className="mr-2 h-4 w-4" />
+                      Annuler
+                    </Button>
+                  </div>
+                )}
+                {!logoFile && (
+                  <p className="text-xs text-muted-foreground">
+                    Sélectionnez une image pour la remplacer
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="bg-card rounded-xl shadow-sm border border-border p-6 space-y-6">
           <div className="space-y-2">
             <Label htmlFor="name">

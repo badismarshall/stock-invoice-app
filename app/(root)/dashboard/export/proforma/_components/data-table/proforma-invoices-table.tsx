@@ -17,6 +17,7 @@ import { getProformaInvoicesTableColumns } from "./proforma-invoices-table-colum
 import { useFeatureFlags } from "@/app/(root)/dashboard/_components/feature-flags-provider";
 import { DeleteProformaInvoiceDialog } from "./delete-proforma-invoice-dialog";
 import { DataTableBodySkeleton } from "@/components/shared/data-table/data-table-body-skeleton";
+import { ExportProformaButtons } from "./export-proforma-buttons";
 
 interface ProformaInvoicesTableProps {
   promises: Promise<
@@ -59,6 +60,10 @@ export function ProformaInvoicesTable({ promises, clients = [], queryKeys }: Pro
     initialState: {
       sorting: [{ id: "invoiceDate", desc: true }],
       columnPinning: { right: ["actions"] },
+      columnVisibility: {
+        createdByName: false,
+        createdAt: false,
+      },
     },
     queryKeys,
     getRowId: (originalRow) => originalRow.id,
@@ -103,10 +108,12 @@ export function ProformaInvoicesTable({ promises, clients = [], queryKeys }: Pro
                 throttleMs={throttleMs}
               />
             )}
+            <ExportProformaButtons />
           </DataTableAdvancedToolbar>
         ) : (
           <DataTableToolbar table={table}>
             <DataTableSortList table={table} align="end" />
+            <ExportProformaButtons />
           </DataTableToolbar>
         )}
       </DataTable>

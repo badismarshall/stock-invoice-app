@@ -30,6 +30,7 @@ interface GetPartnersTableColumnsProps {
   setRowAction: React.Dispatch<
     React.SetStateAction<DataTableRowAction<PartnerDTOItem> | null>
   >;
+  type?: "client" | "fournisseur";
 }
 
 const translations = {
@@ -46,6 +47,10 @@ const translations = {
   searchNafApe: "Rechercher un NAF-APE...",
   rcsRm: "RCS/RM",
   searchRcsRm: "Rechercher un RCS/RM...",
+  eori: "EORI",
+  searchEori: "Rechercher un EORI...",
+  tvaNumber: "N° TVA",
+  searchTvaNumber: "Rechercher un N° TVA...",
   createdAt: "Créé le",
   edit: "Modifier",
   delete: "Supprimer",
@@ -55,6 +60,7 @@ const translations = {
 
 export function getPartnersTableColumns({
   setRowAction,
+  type,
 }: GetPartnersTableColumnsProps): ColumnDef<PartnerDTOItem>[] {
   return [
     {
@@ -164,26 +170,6 @@ export function getPartnersTableColumns({
       enableColumnFilter: false,
     },
     {
-      id: "credit",
-      accessorKey: "credit",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} label={translations.credit} title={translations.credit} />
-      ),
-      cell: ({ row }) => {
-        const credit = row.getValue<string | null>("credit");
-        const creditValue = credit ? parseFloat(credit) : 0;
-        return (
-          <span className="max-w-125 truncate font-medium">
-            {creditValue.toLocaleString("fr-FR", {
-              style: "currency",
-              currency: "EUR",
-            })}
-          </span>
-        );
-      },
-      enableColumnFilter: false,
-    },
-    {
       id: "nafApe",
       accessorKey: "nafApe",
       header: ({ column }) => (
@@ -228,16 +214,46 @@ export function getPartnersTableColumns({
       enableColumnFilter: true,
     },
     {
-      id: "createdAt",
-      accessorKey: "createdAt",
+      id: "eori",
+      accessorKey: "eori",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} label={translations.createdAt} title={translations.createdAt} />
+        <DataTableColumnHeader column={column} label={translations.eori} title={translations.eori} />
       ),
-      cell: ({ cell }) => formatDate(cell.getValue<Date>()),
+      cell: ({ row }) => {
+        const eori = row.getValue<string | null>("eori");
+        return (
+          <span className="max-w-125 truncate">
+            {eori || "-"}
+          </span>
+        );
+      },
       meta: {
-        label: translations.createdAt,
-        variant: "dateRange",
-        icon: CalendarIcon,
+        label: translations.eori,
+        placeholder: translations.searchEori,
+        variant: "text",
+        icon: Hash,
+      },
+      enableColumnFilter: true,
+    },
+    {
+      id: "tvaNumber",
+      accessorKey: "tvaNumber",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} label={translations.tvaNumber} title={translations.tvaNumber} />
+      ),
+      cell: ({ row }) => {
+        const tvaNumber = row.getValue<string | null>("tvaNumber");
+        return (
+          <span className="max-w-125 truncate">
+            {tvaNumber || "-"}
+          </span>
+        );
+      },
+      meta: {
+        label: translations.tvaNumber,
+        placeholder: translations.searchTvaNumber,
+        variant: "text",
+        icon: Hash,
       },
       enableColumnFilter: true,
     },

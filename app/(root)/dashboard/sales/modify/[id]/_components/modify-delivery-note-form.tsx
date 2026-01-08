@@ -72,6 +72,270 @@ interface ModifyDeliveryNoteFormProps {
   deliveryNote: DeliveryNoteData;
 }
 
+// Memoized row component to fix input issues with taxRate, discountPercent, and margin
+const DeliveryNoteItemRow = React.memo(({
+  item,
+  index,
+  products,
+  loading,
+  updateItem,
+  removeItem,
+  currency,
+}: {
+  item: DeliveryNoteItem;
+  index: number;
+  products: Array<{ id: string; name: string; code: string; purchasePrice: number; salePriceLocal: number | null; taxRate: number; unitOfMeasure: string | null; }>;
+  loading: boolean;
+  updateItem: (index: number, field: keyof DeliveryNoteItem, value: any) => void;
+  removeItem: (index: number) => void;
+  currency: string;
+}) => {
+  // Local state for input values to avoid re-renders and toFixed issues
+  const [localQuantity, setLocalQuantity] = React.useState(item.quantity.toString());
+  const [localUnitPrice, setLocalUnitPrice] = React.useState(item.unitPrice.toString());
+  const [localDiscountPercent, setLocalDiscountPercent] = React.useState(item.discountPercent.toString());
+  const [localTaxRate, setLocalTaxRate] = React.useState(item.taxRate.toString());
+  const [localMargin, setLocalMargin] = React.useState(item.margin.toString());
+
+  // Sync local state when item changes externally (don't format during typing)
+  React.useEffect(() => {
+    setLocalQuantity(item.quantity.toString());
+    setLocalUnitPrice(item.unitPrice.toString());
+    setLocalDiscountPercent(item.discountPercent.toString());
+    setLocalTaxRate(item.taxRate.toString());
+    setLocalMargin(item.margin.toString());
+  }, [item.quantity, item.unitPrice, item.discountPercent, item.taxRate, item.margin]);
+
+  const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setLocalQuantity(val);
+    if (val === "" || val === "-") {
+      updateItem(index, "quantity", 0);
+    } else {
+      const numVal = parseFloat(val);
+      if (!isNaN(numVal)) {
+        updateItem(index, "quantity", numVal);
+      }
+    }
+  };
+
+  const handleUnitPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setLocalUnitPrice(val);
+    if (val === "" || val === "-") {
+      updateItem(index, "unitPrice", 0);
+    } else {
+      const numVal = parseFloat(val);
+      if (!isNaN(numVal)) {
+        // Round to 2 decimal places
+        const rounded = Math.round(numVal * 100) / 100;
+        updateItem(index, "unitPrice", rounded);
+      }
+    }
+  };
+
+  const handleDiscountPercentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setLocalDiscountPercent(val);
+    if (val === "" || val === "-") {
+      updateItem(index, "discountPercent", 0);
+    } else {
+      const numVal = parseFloat(val);
+      if (!isNaN(numVal)) {
+        // Round to 2 decimal places
+        const rounded = Math.round(numVal * 100) / 100;
+        updateItem(index, "discountPercent", rounded);
+      }
+    }
+  };
+
+  const handleTaxRateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setLocalTaxRate(val);
+    if (val === "" || val === "-") {
+      updateItem(index, "taxRate", 0);
+    } else {
+      const numVal = parseFloat(val);
+      if (!isNaN(numVal)) {
+        // Round to 2 decimal places
+        const rounded = Math.round(numVal * 100) / 100;
+        updateItem(index, "taxRate", rounded);
+      }
+    }
+  };
+
+  const handleMarginChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setLocalMargin(val);
+    if (val === "" || val === "-") {
+      updateItem(index, "margin", 0);
+    } else {
+      const numVal = parseFloat(val);
+      if (!isNaN(numVal)) {
+        // Round to 2 decimal places
+        const rounded = Math.round(numVal * 100) / 100;
+        updateItem(index, "margin", rounded);
+      }
+    }
+  };
+
+  // Format to 2 decimals on blur
+  const handleDiscountPercentBlur = () => {
+    const numVal = parseFloat(localDiscountPercent);
+    if (!isNaN(numVal)) {
+      const rounded = Math.round(numVal * 100) / 100;
+      setLocalDiscountPercent(rounded.toFixed(2));
+    }
+  };
+
+  const handleTaxRateBlur = () => {
+    const numVal = parseFloat(localTaxRate);
+    if (!isNaN(numVal)) {
+      const rounded = Math.round(numVal * 100) / 100;
+      setLocalTaxRate(rounded.toFixed(2));
+    }
+  };
+
+  const handleMarginBlur = () => {
+    const numVal = parseFloat(localMargin);
+    if (!isNaN(numVal)) {
+      const rounded = Math.round(numVal * 100) / 100;
+      setLocalMargin(rounded.toFixed(2));
+    }
+  };
+
+  const handleUnitPriceBlur = () => {
+    const numVal = parseFloat(localUnitPrice);
+    if (!isNaN(numVal)) {
+      const rounded = Math.round(numVal * 100) / 100;
+      setLocalUnitPrice(rounded.toFixed(2));
+    }
+  };
+
+  return (
+    <tr className="border-b hover:bg-muted/50">
+      <td className="px-4 py-2 min-w-[200px]">
+        <Select
+          value={item.productId}
+          onValueChange={(value) => updateItem(index, "productId", value)}
+          disabled={loading}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Sélectionner un produit" />
+          </SelectTrigger>
+          <SelectContent>
+            {products.map((product) => (
+              <SelectItem key={product.id} value={product.id}>
+                {product.name} ({product.code})
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </td>
+      <td className="px-4 py-2 text-right min-w-[100px]">
+        <Input
+          type="number"
+          min={0}
+          step="0.001"
+          value={localQuantity}
+          onChange={handleQuantityChange}
+          className="w-full text-right no-spinner"
+          disabled={loading}
+        />
+      </td>
+      <td className="px-4 py-2 text-right min-w-[110px]">
+        <Input
+          type="number"
+          min={0}
+          step="0.01"
+          value={item.purchasePrice.toFixed(2)}
+          disabled
+          className="w-full text-right bg-muted/50 no-spinner"
+        />
+      </td>
+      <td className="px-4 py-2 text-right min-w-[110px]">
+        <Input
+          type="number"
+          min={0}
+          step="0.01"
+          value={localUnitPrice}
+          onChange={handleUnitPriceChange}
+          onBlur={handleUnitPriceBlur}
+          className="w-full text-right no-spinner"
+          disabled={loading}
+        />
+      </td>
+      <td className="px-4 py-2 text-right min-w-[90px]">
+        <Input
+          type="number"
+          min={0}
+          max={100}
+          step="0.01"
+          value={localDiscountPercent}
+          onChange={handleDiscountPercentChange}
+          onBlur={handleDiscountPercentBlur}
+          className="w-full text-right no-spinner"
+          disabled={loading}
+        />
+      </td>
+      <td className="px-4 py-2 text-right min-w-[90px]">
+        <Input
+          type="number"
+          min={0}
+          step="0.01"
+          value={localTaxRate}
+          onChange={handleTaxRateChange}
+          onBlur={handleTaxRateBlur}
+          className="w-full text-right no-spinner"
+          disabled={loading}
+        />
+      </td>
+      <td className="px-4 py-2 text-right min-w-[100px]">
+        <Input
+          type="number"
+          step="0.01"
+          value={localMargin}
+          onChange={handleMarginChange}
+          onBlur={handleMarginBlur}
+          className="w-full text-right no-spinner"
+          disabled={loading}
+        />
+      </td>
+      <td className="px-4 py-2 text-right min-w-[100px]">
+        <Input
+          type="number"
+          value={Number.isFinite(item.marginPercent) ? item.marginPercent.toFixed(2) : "0.00"}
+          disabled
+          className="w-full text-right bg-muted/50 no-spinner"
+        />
+      </td>
+      <td className="px-4 py-2 text-sm text-right min-w-[110px]">
+        {item.lineSubtotal.toFixed(2)} {currency}
+      </td>
+      <td className="px-4 py-2 text-sm text-right min-w-[100px]">
+        {item.lineTax.toFixed(2)} {currency}
+      </td>
+      <td className="px-4 py-2 text-sm text-right min-w-[120px]">
+        {item.lineTotal.toFixed(2)} {currency}
+      </td>
+      <td className="px-4 py-2 text-center min-w-[80px]">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={() => removeItem(index)}
+          className="hover:bg-destructive/10 hover:text-destructive"
+          disabled={loading}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </td>
+    </tr>
+  );
+});
+
+DeliveryNoteItemRow.displayName = "DeliveryNoteItemRow";
+
 export function ModifyDeliveryNoteForm({ deliveryNote }: ModifyDeliveryNoteFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -529,129 +793,16 @@ export function ModifyDeliveryNoteForm({ deliveryNote }: ModifyDeliveryNoteFormP
                 </thead>
                 <tbody>
                   {formData.items.map((item, index) => (
-                    <tr key={item.id} className="border-b hover:bg-muted/50">
-                      <td className="px-4 py-2 min-w-[200px]">
-                        <Select
-                          value={item.productId}
-                          onValueChange={(value) =>
-                            updateItem(index, "productId", value)
-                          }
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Sélectionner un produit" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {products.map((product) => (
-                              <SelectItem key={product.id} value={product.id}>
-                                {product.name} ({product.code})
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </td>
-                      <td className="px-4 py-2 text-right min-w-[100px]">
-                        <Input
-                          type="number"
-                          min={0}
-                          step="0.001"
-                          value={item.quantity}
-                          onChange={(e) =>
-                            updateItem(index, "quantity", Number(e.target.value) || 0)
-                          }
-                          className="w-full text-right no-spinner"
-                        />
-                      </td>
-                      <td className="px-4 py-2 text-right min-w-[110px]">
-                        <Input
-                          type="number"
-                          min={0}
-                          step="0.01"
-                          value={item.purchasePrice.toFixed(2)}
-                          disabled
-                          className="w-full text-right bg-muted/50 no-spinner"
-                        />
-                      </td>
-                      <td className="px-4 py-2 text-right min-w-[110px]">
-                        <Input
-                          type="number"
-                          min={0}
-                          step="0.01"
-                          value={item.unitPrice}
-                          onChange={(e) =>
-                            updateItem(index, "unitPrice", Number(e.target.value) || 0)
-                          }
-                          className="w-full text-right no-spinner"
-                        />
-                      </td>
-                      <td className="px-4 py-2 text-right min-w-[90px]">
-                        <Input
-                          type="number"
-                          min={0}
-                          max={100}
-                          step="0.01"
-                          value={item.discountPercent}
-                          onChange={(e) =>
-                            updateItem(
-                              index,
-                              "discountPercent",
-                              Number(e.target.value) || 0
-                            )
-                          }
-                          className="w-full text-right no-spinner"
-                        />
-                      </td>
-                      <td className="px-4 py-2 text-right min-w-[90px]">
-                        <Input
-                          type="number"
-                          min={0}
-                          step="0.01"
-                          value={item.taxRate}
-                          onChange={(e) =>
-                            updateItem(index, "taxRate", Number(e.target.value) || 0)
-                          }
-                          className="w-full text-right no-spinner"
-                        />
-                      </td>
-                      <td className="px-4 py-2 text-right min-w-[100px]">
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={item.margin.toFixed(2)}
-                          onChange={(e) =>
-                            updateItem(index, "margin", Number(e.target.value) || 0)
-                          }
-                          className="w-full text-right no-spinner"
-                        />
-                      </td>
-                      <td className="px-4 py-2 text-right min-w-[100px]">
-                        <Input
-                          type="number"
-                          value={Number.isFinite(item.marginPercent) ? item.marginPercent.toFixed(2) : "0.00"}
-                          disabled
-                          className="w-full text-right bg-muted/50 no-spinner"
-                        />
-                      </td>
-                      <td className="px-4 py-2 text-sm text-right min-w-[110px]">
-                        {item.lineSubtotal.toFixed(2)} DZD
-                      </td>
-                      <td className="px-4 py-2 text-sm text-right min-w-[100px]">
-                        {item.lineTax.toFixed(2)} DZD
-                      </td>
-                      <td className="px-4 py-2 text-sm text-right min-w-[120px]">
-                        {item.lineTotal.toFixed(2)} DZD
-                      </td>
-                      <td className="px-4 py-2 text-center min-w-[80px]">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeItem(index)}
-                          className="hover:bg-destructive/10 hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </td>
-                    </tr>
+                    <DeliveryNoteItemRow
+                      key={item.id}
+                      item={item}
+                      index={index}
+                      products={products}
+                      loading={loading}
+                      updateItem={updateItem}
+                      removeItem={removeItem}
+                      currency={formData.currency}
+                    />
                   ))}
 
                   {formData.items.length === 0 && (

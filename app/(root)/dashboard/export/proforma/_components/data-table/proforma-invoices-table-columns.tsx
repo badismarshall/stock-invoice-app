@@ -41,6 +41,7 @@ const translations = {
   searchInvoiceNumber: "Rechercher un numéro...",
   client: "Client",
   invoiceDate: "Date facture",
+  dueDate: "Date d'échéance",
   status: "Statut",
   totalAmount: "Montant total",
   createdBy: "Créé par",
@@ -155,6 +156,24 @@ export function getProformaInvoicesTableColumns({
       enableColumnFilter: true,
     },
     {
+      id: "dueDate",
+      accessorKey: "dueDate",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} label={translations.dueDate} title={translations.dueDate} />
+      ),
+      cell: ({ row }) => {
+        const date = row.getValue<Date | null>("dueDate");
+        if (!date) return "-";
+        return formatDate(date);
+      },
+      meta: {
+        label: translations.dueDate,
+        variant: "dateRange",
+        icon: CalendarIcon,
+      },
+      enableColumnFilter: true,
+    },
+    {
       id: "status",
       accessorKey: "status",
       header: ({ column }) => (
@@ -184,18 +203,23 @@ export function getProformaInvoicesTableColumns({
       id: "totalAmount",
       accessorKey: "totalAmount",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} label={translations.totalAmount} title={translations.totalAmount} />
+        <div className="flex justify-center">
+          <DataTableColumnHeader column={column} label={translations.totalAmount} title={translations.totalAmount} />
+        </div>
       ),
       cell: ({ row }) => {
         const amount = row.getValue<number>("totalAmount");
+        const currency = row.original.currency || "DZD";
         return (
-          <span className="max-w-125 truncate">
-            {amount.toFixed(2)} DZD
-          </span>
+          <div className="flex justify-center">
+            <span className="max-w-125 truncate">
+              {amount.toFixed(2)} {currency}
+            </span>
+          </div>
         );
       },
       meta: {
-        align: "right",
+        align: "center",
       },
       enableColumnFilter: false,
     },

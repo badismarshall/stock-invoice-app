@@ -235,11 +235,14 @@ export function getPurchaseOrdersTableColumns({
       cell: ({ row }) => {
         const amount = row.getValue<string | null>("totalAmount");
         const amountValue = amount ? parseFloat(amount) : 0;
+        const currency = row.original.currency || "DZD";
         return (
           <span className="max-w-125 truncate font-medium">
             {amountValue.toLocaleString("fr-FR", {
               style: "currency",
-              currency: "DZD",
+              currency: currency,
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 0,
             })}
           </span>
         );

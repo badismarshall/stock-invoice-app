@@ -17,6 +17,7 @@ import { getCategoryTableColumns } from "./category-table-columns";
 import { useFeatureFlags } from "@/app/(root)/dashboard/_components/feature-flags-provider";
 import { DeleteCategoriesDialog } from "./delete-categories-dialog";
 import { UpdateCategoryDialog } from "./update-category-dialog";
+import { ExportCategoriesButtons } from "./export-categories-buttons";
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 
@@ -103,10 +104,12 @@ export function CategoryTable({ promises, queryKeys }: CategoryTableProps) {
                 throttleMs={throttleMs}
               />
             )}
+            <ExportCategoriesButtons />
           </DataTableAdvancedToolbar>
         ) : (
           <DataTableToolbar table={table}>
             <DataTableSortList table={table} align="end" />
+            <ExportCategoriesButtons />
         </DataTableToolbar>
       )}
     </DataTable>

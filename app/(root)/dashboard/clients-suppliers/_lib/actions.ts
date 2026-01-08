@@ -66,6 +66,80 @@ export async function deletePartner(input: { id: string }) {
     };
   } catch (err) {
     console.error("Error deleting partner", err);
+    console.error("Error details:", {
+      code: (err as any)?.code,
+      message: err instanceof Error ? err.message : String(err),
+      name: (err as any)?.name,
+      severity: (err as any)?.severity,
+      detail: (err as any)?.detail,
+      constraint: (err as any)?.constraint,
+      table: (err as any)?.table,
+      fullError: err,
+    });
+    
+    // Check if error is a foreign key constraint violation
+    // PostgreSQL error code 23503 = foreign key constraint violation
+    const errorCode = (err as any)?.code;
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    const errorString = String(err).toLowerCase();
+    const fullErrorString = JSON.stringify(err).toLowerCase();
+    const errorDetail = (err as any)?.detail || "";
+    const errorConstraint = (err as any)?.constraint || "";
+    
+    // Check for PostgreSQL foreign key constraint violation (error code 23503)
+    if (errorCode === "23503" || errorString.includes("23503")) {
+      // Check if the error is specifically about purchase_order (suppliers)
+      const constraintLower = errorConstraint.toLowerCase();
+      const detailLower = errorDetail.toLowerCase();
+      if (
+        errorString.includes("purchase_order") || 
+        errorString.includes("purchase order") || 
+        fullErrorString.includes("purchase_order") ||
+        constraintLower.includes("purchase_order") ||
+        detailLower.includes("purchase_order")
+      ) {
+        return {
+          data: null,
+          error: "Impossible de supprimer ce fournisseur car il est lié à un ou plusieurs achats.",
+        };
+      }
+      
+      return {
+        data: null,
+        error: "Impossible de supprimer ce partenaire car il est lié à des factures, paiements ou bons de livraison.",
+      };
+    }
+    
+    // Fallback: check error message/string for constraint keywords
+    const isForeignKeyError = 
+      errorMessage.includes("foreign key constraint") ||
+      errorMessage.includes("violates foreign key constraint") ||
+      errorString.includes("purchase_order") ||
+      errorString.includes("restrict") ||
+      errorConstraint.includes("purchase_order") ||
+      errorDetail.includes("purchase_order");
+    
+    if (isForeignKeyError) {
+      const constraintLower = errorConstraint.toLowerCase();
+      const detailLower = errorDetail.toLowerCase();
+      if (
+        errorString.includes("purchase_order") || 
+        errorString.includes("purchase order") ||
+        constraintLower.includes("purchase_order") ||
+        detailLower.includes("purchase_order")
+      ) {
+        return {
+          data: null,
+          error: "Impossible de supprimer ce fournisseur car il est lié à un ou plusieurs achats.",
+        };
+      }
+      
+      return {
+        data: null,
+        error: "Impossible de supprimer ce partenaire car il est lié à des factures, paiements ou bons de livraison.",
+      };
+    }
+
     return {
       data: null,
       error: getErrorMessage(err),
@@ -85,6 +159,80 @@ export async function deletePartners(input: { ids: string[] }) {
     };
   } catch (err) {
     console.error("Error deleting partners", err);
+    console.error("Error details:", {
+      code: (err as any)?.code,
+      message: err instanceof Error ? err.message : String(err),
+      name: (err as any)?.name,
+      severity: (err as any)?.severity,
+      detail: (err as any)?.detail,
+      constraint: (err as any)?.constraint,
+      table: (err as any)?.table,
+      fullError: err,
+    });
+    
+    // Check if error is a foreign key constraint violation
+    // PostgreSQL error code 23503 = foreign key constraint violation
+    const errorCode = (err as any)?.code;
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    const errorString = String(err).toLowerCase();
+    const fullErrorString = JSON.stringify(err).toLowerCase();
+    const errorDetail = (err as any)?.detail || "";
+    const errorConstraint = (err as any)?.constraint || "";
+    
+    // Check for PostgreSQL foreign key constraint violation (error code 23503)
+    if (errorCode === "23503" || errorString.includes("23503")) {
+      // Check if the error is specifically about purchase_order (suppliers)
+      const constraintLower = errorConstraint.toLowerCase();
+      const detailLower = errorDetail.toLowerCase();
+      if (
+        errorString.includes("purchase_order") || 
+        errorString.includes("purchase order") || 
+        fullErrorString.includes("purchase_order") ||
+        constraintLower.includes("purchase_order") ||
+        detailLower.includes("purchase_order")
+      ) {
+        return {
+          data: null,
+          error: "Impossible de supprimer ce(s) fournisseur(s) car il(s) est(sont) lié(s) à un ou plusieurs achats.",
+        };
+      }
+      
+      return {
+        data: null,
+        error: "Impossible de supprimer ce(s) partenaire(s) car il(s) est(sont) lié(s) à des factures, paiements ou bons de livraison.",
+      };
+    }
+    
+    // Fallback: check error message/string for constraint keywords
+    const isForeignKeyError = 
+      errorMessage.includes("foreign key constraint") ||
+      errorMessage.includes("violates foreign key constraint") ||
+      errorString.includes("purchase_order") ||
+      errorString.includes("restrict") ||
+      errorConstraint.includes("purchase_order") ||
+      errorDetail.includes("purchase_order");
+    
+    if (isForeignKeyError) {
+      const constraintLower = errorConstraint.toLowerCase();
+      const detailLower = errorDetail.toLowerCase();
+      if (
+        errorString.includes("purchase_order") || 
+        errorString.includes("purchase order") ||
+        constraintLower.includes("purchase_order") ||
+        detailLower.includes("purchase_order")
+      ) {
+        return {
+          data: null,
+          error: "Impossible de supprimer ce(s) fournisseur(s) car il(s) est(sont) lié(s) à un ou plusieurs achats.",
+        };
+      }
+      
+      return {
+        data: null,
+        error: "Impossible de supprimer ce(s) partenaire(s) car il(s) est(sont) lié(s) à des factures, paiements ou bons de livraison.",
+      };
+    }
+
     return {
       data: null,
       error: getErrorMessage(err),

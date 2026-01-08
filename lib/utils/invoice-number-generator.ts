@@ -49,7 +49,7 @@ export function getInvoicePrefix(invoiceType: InvoiceType): string {
  */
 export function getCancellationPrefix(cancellationType: CancellationType): string {
   const prefixMap: Record<CancellationType, string> = {
-    delivery_note_cancellation: "BL-ANL",
+    delivery_note_cancellation: "FC-AVOIR",
     sale_local_cancellation: "FAC-LOC-AN",
     sale_export_cancellation: "FAC-EXP-AN",
   };

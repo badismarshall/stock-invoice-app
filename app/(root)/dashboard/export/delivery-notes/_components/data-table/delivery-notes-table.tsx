@@ -17,6 +17,7 @@ import { getDeliveryNotesTableColumns } from "./delivery-notes-table-columns";
 import { useFeatureFlags } from "@/app/(root)/dashboard/_components/feature-flags-provider";
 import { DeleteDeliveryNotesDialog } from "./delete-delivery-notes-dialog";
 import { DataTableBodySkeleton } from "@/components/shared/data-table/data-table-body-skeleton";
+import { ExportDeliveryNotesButtons } from "./export-delivery-notes-buttons";
 
 interface DeliveryNotesTableProps {
   promises: Promise<
@@ -112,10 +113,12 @@ export function DeliveryNotesTable({ promises, queryKeys }: DeliveryNotesTablePr
                 throttleMs={throttleMs}
               />
             )}
+            <ExportDeliveryNotesButtons />
           </DataTableAdvancedToolbar>
         ) : (
           <DataTableToolbar table={table}>
             <DataTableSortList table={table} align="end" />
+            <ExportDeliveryNotesButtons />
           </DataTableToolbar>
         )}
       </DataTable>

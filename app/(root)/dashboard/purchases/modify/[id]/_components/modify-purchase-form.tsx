@@ -14,7 +14,7 @@ import { format } from "date-fns"
 import { fr } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { Icons } from "@/components/ui/icons"
 
 interface PurchaseOrderItem {
@@ -36,6 +36,7 @@ interface PurchaseOrderData {
   orderDate: Date;
   receptionDate: Date | null;
   status: string;
+  currency?: string | null;
   totalAmount: string | null;
   notes: string | null;
   createdBy: string | null;
@@ -57,6 +58,190 @@ interface ModifyPurchaseFormProps {
   purchaseOrder: PurchaseOrderData;
 }
 
+// Memoized row component to prevent unnecessary re-renders
+const PurchaseOrderItemRow = React.memo(({
+  item,
+  index,
+  products,
+  loading,
+  updateItem,
+  removeItem,
+}: {
+  item: PurchaseOrderItem;
+  index: number;
+  products: Array<{ id: string; name: string; code: string; purchasePrice: string | null; taxRate: string | null; unitOfMeasure: string | null; }>;
+  loading: boolean;
+  updateItem: (index: number, field: keyof PurchaseOrderItem, value: any) => void;
+  removeItem: (index: number) => void;
+}) => {
+  // Local state for input values to avoid re-renders of parent
+  const [localQuantity, setLocalQuantity] = React.useState(item.quantity.toString());
+  const [localUnitCost, setLocalUnitCost] = React.useState(item.unitCost.toString());
+  const [localTaxRate, setLocalTaxRate] = React.useState(item.taxRate.toString());
+
+  // Sync local state when item changes externally (don't format during typing)
+  React.useEffect(() => {
+    setLocalQuantity(item.quantity.toString());
+    setLocalUnitCost(item.unitCost.toString());
+    setLocalTaxRate(item.taxRate.toString());
+  }, [item.quantity, item.unitCost, item.taxRate]);
+
+  const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setLocalQuantity(val);
+    
+    // Update immediately
+    if (val === "" || val === "-") {
+      updateItem(index, "quantity", 0);
+    } else {
+      const numVal = parseFloat(val);
+      if (!isNaN(numVal)) {
+        updateItem(index, "quantity", numVal);
+      }
+    }
+  };
+
+  const handleUnitCostChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setLocalUnitCost(val);
+    
+    // Update immediately with rounding to 2 decimal places
+    if (val === "" || val === "-") {
+      updateItem(index, "unitCost", 0);
+    } else {
+      const numVal = parseFloat(val);
+      if (!isNaN(numVal)) {
+        // Round to 2 decimal places
+        const rounded = Math.round(numVal * 100) / 100;
+        updateItem(index, "unitCost", rounded);
+      }
+    }
+  };
+
+  const handleTaxRateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setLocalTaxRate(val);
+    
+    // Update immediately with rounding to 2 decimal places
+    if (val === "" || val === "-") {
+      updateItem(index, "taxRate", 0);
+    } else {
+      const numVal = parseFloat(val);
+      if (!isNaN(numVal)) {
+        // Round to 2 decimal places
+        const rounded = Math.round(numVal * 100) / 100;
+        updateItem(index, "taxRate", rounded);
+      }
+    }
+  };
+
+  // Format to 2 decimals on blur for unitCost
+  const handleUnitCostBlur = () => {
+    const numVal = parseFloat(localUnitCost);
+    if (!isNaN(numVal)) {
+      const rounded = Math.round(numVal * 100) / 100;
+      setLocalUnitCost(rounded.toFixed(2));
+    }
+  };
+
+  // Format to 2 decimals on blur for taxRate
+  const handleTaxRateBlur = () => {
+    const numVal = parseFloat(localTaxRate);
+    if (!isNaN(numVal)) {
+      const rounded = Math.round(numVal * 100) / 100;
+      setLocalTaxRate(rounded.toFixed(2));
+    }
+  };
+
+  // Format to 3 decimals on blur for quantity
+  const handleQuantityBlur = () => {
+    const numVal = parseFloat(localQuantity);
+    if (!isNaN(numVal)) {
+      const rounded = Math.round(numVal * 1000) / 1000;
+      setLocalQuantity(rounded.toFixed(3));
+    }
+  };
+
+  return (
+    <tr className="text-card-foreground">
+      <td className="px-4 py-2">
+        <Select
+          value={item.productId}
+          onValueChange={(value) => updateItem(index, "productId", value)}
+          disabled={loading}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Sélectionner..." />
+          </SelectTrigger>
+          <SelectContent>
+            {products.map((product) => (
+              <SelectItem key={product.id} value={product.id}>
+                {product.name} ({product.code})
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </td>
+      <td className="px-4 py-2">
+        <Input
+          type="number"
+          min="0.001"
+          step="0.001"
+          value={localQuantity}
+          onChange={handleQuantityChange}
+          onBlur={handleQuantityBlur}
+          className="w-full text-right no-spinner"
+          disabled={loading}
+        />
+      </td>
+      <td className="px-4 py-2">
+        <Input
+          type="number"
+          min="0"
+          step="0.01"
+          value={localUnitCost}
+          onChange={handleUnitCostChange}
+          onBlur={handleUnitCostBlur}
+          className="w-full text-right no-spinner"
+          disabled={loading}
+        />
+      </td>
+      <td className="px-4 py-2">
+        <Input
+          type="number"
+          min="0"
+          step="0.01"
+          value={localTaxRate}
+          onChange={handleTaxRateChange}
+          onBlur={handleTaxRateBlur}
+          className="w-full text-right no-spinner"
+          disabled={loading}
+        />
+      </td>
+      <td className="px-4 py-2 text-right font-medium text-card-foreground">
+        {item.lineTotal.toLocaleString("fr-FR", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })}
+      </td>
+      <td className="px-4 py-2 text-center">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={() => removeItem(index)}
+          disabled={loading}
+          className="text-muted-foreground hover:text-destructive"
+        >
+          <Trash2 size={16} />
+        </Button>
+      </td>
+    </tr>
+  );
+});
+
+PurchaseOrderItemRow.displayName = "PurchaseOrderItemRow";
+
 export function ModifyPurchaseForm({ purchaseOrder }: ModifyPurchaseFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -76,6 +261,7 @@ export function ModifyPurchaseForm({ purchaseOrder }: ModifyPurchaseFormProps) {
     orderDate: purchaseOrder.orderDate,
     receptionDate: purchaseOrder.receptionDate || new Date(),
     status: purchaseOrder.status as "pending" | "received" | "cancelled",
+    currency: purchaseOrder.currency || "DZD",
     notes: purchaseOrder.notes || "",
     items: purchaseOrder.items.map((item) => ({
       id: item.id,
@@ -146,10 +332,20 @@ export function ModifyPurchaseForm({ purchaseOrder }: ModifyPurchaseFormProps) {
     }));
   };
 
-  const updateItem = (index: number, field: keyof PurchaseOrderItem, value: any) => {
+  const updateItem = useCallback((index: number, field: keyof PurchaseOrderItem, value: any) => {
     setFormData((prev) => {
       const newItems = [...prev.items];
-      const item = { ...newItems[index], [field]: value };
+      // Create a shallow copy of the item to avoid mutating the original
+      const item: PurchaseOrderItem = { ...newItems[index] };
+      
+      // Parse numeric values only if they're valid
+      if (field === "quantity" || field === "unitCost" || field === "taxRate") {
+        const numValue = typeof value === "string" ? parseFloat(value) : value;
+        // Only update if it's a valid number or 0
+        (item as any)[field] = isNaN(numValue) ? 0 : numValue;
+      } else {
+        (item as any)[field] = value;
+      }
 
       // If product changed, update related fields
       if (field === "productId") {
@@ -162,15 +358,17 @@ export function ModifyPurchaseForm({ purchaseOrder }: ModifyPurchaseFormProps) {
         }
       }
 
-      // Recalculate line total
-      const subtotal = item.quantity * item.unitCost;
-      const taxAmount = subtotal * (item.taxRate / 100);
-      item.lineTotal = subtotal + taxAmount;
+      // Recalculate line total (only if quantity, unitCost, or taxRate changed)
+      if (field === "quantity" || field === "unitCost" || field === "taxRate" || field === "productId") {
+        const subtotal = item.quantity * item.unitCost;
+        const taxAmount = subtotal * (item.taxRate / 100);
+        item.lineTotal = subtotal + taxAmount;
+      }
 
       newItems[index] = item;
       return { ...prev, items: newItems };
     });
-  };
+  }, [products]);
 
   const removeItem = (index: number) => {
     setFormData((prev) => ({
@@ -179,16 +377,19 @@ export function ModifyPurchaseForm({ purchaseOrder }: ModifyPurchaseFormProps) {
     }));
   };
 
-  // Calculate totals
-  const totalHT = formData.items.reduce(
-    (acc, item) => acc + item.quantity * item.unitCost,
-    0
-  );
-  const totalTax = formData.items.reduce(
-    (acc, item) => acc + item.quantity * item.unitCost * (item.taxRate / 100),
-    0
-  );
-  const totalTTC = formData.items.reduce((acc, item) => acc + item.lineTotal, 0);
+  // Calculate totals with useMemo to avoid recalculation on every render
+  const { totalHT, totalTax, totalTTC } = useMemo(() => {
+    const ht = formData.items.reduce(
+      (acc, item) => acc + item.quantity * item.unitCost,
+      0
+    );
+    const tax = formData.items.reduce(
+      (acc, item) => acc + item.quantity * item.unitCost * (item.taxRate / 100),
+      0
+    );
+    const ttc = formData.items.reduce((acc, item) => acc + item.lineTotal, 0);
+    return { totalHT: ht, totalTax: tax, totalTTC: ttc };
+  }, [formData.items]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -211,6 +412,7 @@ export function ModifyPurchaseForm({ purchaseOrder }: ModifyPurchaseFormProps) {
         orderDate: formData.orderDate,
         receptionDate: formData.receptionDate,
         status: formData.status,
+        currency: formData.currency,
         totalAmount: totalTTC.toString(),
         notes: formData.notes || undefined,
         items: formData.items.length > 0 
@@ -270,7 +472,7 @@ export function ModifyPurchaseForm({ purchaseOrder }: ModifyPurchaseFormProps) {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Invoice Details Section */}
-        <div className="bg-card rounded-xl shadow-sm border border-border p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-card rounded-xl shadow-sm border border-border p-6 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
           <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">
               N° Facture Fournisseur
@@ -403,6 +605,27 @@ export function ModifyPurchaseForm({ purchaseOrder }: ModifyPurchaseFormProps) {
               </SelectContent>
             </Select>
           </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Devise</label>
+            <Select
+              value={formData.currency}
+              onValueChange={(value) =>
+                setFormData((prev) => ({ ...prev, currency: value }))
+              }
+              disabled={loading}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="USD">USD</SelectItem>
+                <SelectItem value="EUR">EUR</SelectItem>
+                <SelectItem value="GBP">GBP</SelectItem>
+                <SelectItem value="DZD">DZD</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Product Lines Section */}
@@ -435,83 +658,15 @@ export function ModifyPurchaseForm({ purchaseOrder }: ModifyPurchaseFormProps) {
               </thead>
               <tbody className="divide-y divide-border">
                 {formData.items.map((item, index) => (
-                  <tr key={item.id} className="text-card-foreground">
-                    <td className="px-4 py-2">
-                      <Select
-                        value={item.productId}
-                        onValueChange={(value) => updateItem(index, "productId", value)}
-                        disabled={loading}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Sélectionner..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {products.map((product) => (
-                            <SelectItem key={product.id} value={product.id}>
-                              {product.name} ({product.code})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </td>
-                    <td className="px-4 py-2">
-                      <Input
-                        type="number"
-                        min="0.001"
-                        step="0.001"
-                        value={item.quantity}
-                        onChange={(e) =>
-                          updateItem(index, "quantity", parseFloat(e.target.value) || 0)
-                        }
-                        className="w-full text-right no-spinner"
-                        disabled={loading}
-                      />
-                    </td>
-                    <td className="px-4 py-2">
-                      <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={item.unitCost}
-                        onChange={(e) =>
-                          updateItem(index, "unitCost", parseFloat(e.target.value) || 0)
-                        }
-                        className="w-full text-right no-spinner"
-                        disabled={loading}
-                      />
-                    </td>
-                    <td className="px-4 py-2">
-                      <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={item.taxRate}
-                        onChange={(e) =>
-                          updateItem(index, "taxRate", parseFloat(e.target.value) || 0)
-                        }
-                        className="w-full text-right no-spinner"
-                        disabled={loading}
-                      />
-                    </td>
-                    <td className="px-4 py-2 text-right font-medium text-card-foreground">
-                      {item.lineTotal.toLocaleString("fr-FR", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
-                    </td>
-                    <td className="px-4 py-2 text-center">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeItem(index)}
-                        disabled={loading}
-                        className="text-muted-foreground hover:text-destructive"
-                      >
-                        <Trash2 size={16} />
-                      </Button>
-                    </td>
-                  </tr>
+                  <PurchaseOrderItemRow
+                    key={item.id}
+                    item={item}
+                    index={index}
+                    products={products}
+                    loading={loading}
+                    updateItem={updateItem}
+                    removeItem={removeItem}
+                  />
                 ))}
               </tbody>
               {formData.items.length > 0 && (
@@ -549,7 +704,7 @@ export function ModifyPurchaseForm({ purchaseOrder }: ModifyPurchaseFormProps) {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2,
                       })}{" "}
-                      DZD
+                      {formData.currency}
                     </td>
                     <td></td>
                   </tr>

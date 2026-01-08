@@ -263,15 +263,15 @@ export function PurchaseOrdersTableActionBar({ table }: PurchaseOrdersTableActio
                       <tr>
                         <td>${item.productCode && item.productName ? `${item.productCode} - ${item.productName}` : item.productName || item.productCode || "-"}</td>
                         <td class="text-right">${item.quantity.toFixed(3).replace(',', '.')}</td>
-                        <td class="text-right">${item.unitCost.toFixed(2).replace(',', '.')} DZD</td>
+                        <td class="text-right">${item.unitCost.toFixed(2).replace(',', '.')} ${order.currency || "DZD"}</td>
                         <td class="text-right">${item.taxRate.toFixed(2).replace(',', '.')} %</td>
-                        <td class="text-right">${item.lineTotal.toFixed(2).replace(',', '.')} DZD</td>
+                        <td class="text-right">${item.lineTotal.toFixed(2).replace(',', '.')} ${order.currency || "DZD"}</td>
                       </tr>
                     `).join("")}
                   </tbody>
                 </table>
                 <div class="order-total">
-                  <p>Total TTC: ${order.totalAmount.toFixed(2).replace(',', '.')} DZD</p>
+                  <p>Total TTC: ${order.totalAmount.toFixed(2).replace(',', '.')} ${order.currency || "DZD"}</p>
                 </div>
               </div>
             `).join("")}
