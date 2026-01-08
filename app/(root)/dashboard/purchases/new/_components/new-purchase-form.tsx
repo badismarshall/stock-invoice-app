@@ -40,11 +40,12 @@ export function NewPurchaseForm() {
     orderDate: new Date(),
     receptionDate: new Date(),
     status: "pending" as "pending" | "received" | "cancelled",
+    currency: "DZD",
     notes: "",
     items: [] as PurchaseOrderItem[],
   });
 
-  // Reset form state when component mounts or when pathname changes (useful when navigating back to this page)
+    // Reset form state when component mounts or when pathname changes (useful when navigating back to this page)
   useEffect(() => {
     setFormData({
       orderNumber: "",
@@ -52,6 +53,7 @@ export function NewPurchaseForm() {
       orderDate: new Date(),
       receptionDate: new Date(),
       status: "pending",
+      currency: "DZD",
       notes: "",
       items: [],
     });
@@ -156,6 +158,7 @@ export function NewPurchaseForm() {
         orderDate: formData.orderDate,
         receptionDate: formData.receptionDate,
         status: formData.status,
+        currency: formData.currency,
         totalAmount: totalTTC.toString(),
         notes: formData.notes || undefined,
         items: formData.items.map((item) => ({
@@ -212,7 +215,7 @@ export function NewPurchaseForm() {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Invoice Details Section */}
-        <div className="bg-card rounded-xl shadow-sm border border-border p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-card rounded-xl shadow-sm border border-border p-6 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
           <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">
               N° Commande (Généré automatiquement)
@@ -338,6 +341,27 @@ export function NewPurchaseForm() {
                 <SelectItem value="pending">En attente</SelectItem>
                 <SelectItem value="received">Reçu</SelectItem>
                 <SelectItem value="cancelled">Annulé</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Devise</label>
+            <Select
+              value={formData.currency}
+              onValueChange={(value) =>
+                setFormData((prev) => ({ ...prev, currency: value }))
+              }
+              disabled={loading}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="USD">USD</SelectItem>
+                <SelectItem value="EUR">EUR</SelectItem>
+                <SelectItem value="GBP">GBP</SelectItem>
+                <SelectItem value="DZD">DZD</SelectItem>
               </SelectContent>
             </Select>
           </div>

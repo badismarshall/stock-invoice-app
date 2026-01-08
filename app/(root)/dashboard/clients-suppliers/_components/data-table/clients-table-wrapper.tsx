@@ -20,6 +20,6 @@ export async function ClientsTableWrapper({ searchParams }: ClientsTableWrapperP
     type: "client",
   });
 
-  return <PartnersTable promises={promises} />
+  return <PartnersTable promises={promises} type="client" />
 }
 

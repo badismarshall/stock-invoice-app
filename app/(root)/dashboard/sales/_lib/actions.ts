@@ -40,16 +40,18 @@ async function updateStockFromDeliveryNote(
   isReversal: boolean = false
 ) {
   for (const item of items) {
-    // Check if product exists
-    const productExists = await tx
-      .select({ id: product.id })
+    // Check if product exists and get its name
+    const productData = await tx
+      .select({ id: product.id, name: product.name })
       .from(product)
       .where(eq(product.id, item.productId))
       .limit(1);
 
-    if (productExists.length === 0) {
+    if (productData.length === 0) {
       throw new Error(`Produit avec l'ID ${item.productId} non trouvé`);
     }
+
+    const productName = productData[0].name || item.productId;
 
     // Get current stock
     const existingStock = await tx
@@ -60,7 +62,7 @@ async function updateStockFromDeliveryNote(
 
     if (existingStock.length === 0) {
       throw new Error(
-        `Produit ${item.productId} n'existe pas en stock`
+        `Produit ${productName} n'existe pas en stock`
       );
     }
 
@@ -73,7 +75,7 @@ async function updateStockFromDeliveryNote(
 
     if (newQuantity < 0) {
       throw new Error(
-        `Quantité insuffisante en stock pour le produit ${item.productId}. Stock actuel: ${currentQuantity}, Tentative de retrait: ${Math.abs(quantityChange)}`
+        `Quantité insuffisante en stock pour le produit ${productName}. Stock actuel: ${currentQuantity}, Tentative de retrait: ${Math.abs(quantityChange)}`
       );
     }
 
@@ -295,6 +297,8 @@ export async function updateDeliveryNote(input: {
       }
 
       const note = existingNote[0];
+      const currentStatus = (note.status as "active" | "cancelled") || "active";
+      const newStatus = (input.status as "active" | "cancelled") || note.status || "active";
 
       // Determine movement date based on new noteDate
       const noteDateValue =
@@ -302,41 +306,44 @@ export async function updateDeliveryNote(input: {
           ? formatDateLocal(input.noteDate)
           : formatDateLocal(new Date(input.noteDate));
 
-      // 1) Reverse existing stock movements for this delivery note
-      const movements = await tx
-        .select()
-        .from(stockMovement)
-        .where(
-          and(
-            eq(stockMovement.referenceType, "delivery_note"),
-            eq(stockMovement.referenceId, input.id)
-          )
-        );
-
-      for (const movement of movements) {
-        const existingStock = await tx
+      // 1) Reverse existing stock movements for this delivery note ONLY if current status is "active"
+      // If the note is cancelled, stock movements were already reversed, so we don't need to reverse again
+      if (currentStatus === "active") {
+        const movements = await tx
           .select()
-          .from(stockCurrent)
-          .where(eq(stockCurrent.productId, movement.productId))
-          .limit(1);
+          .from(stockMovement)
+          .where(
+            and(
+              eq(stockMovement.referenceType, "delivery_note"),
+              eq(stockMovement.referenceId, input.id)
+            )
+          );
 
-        if (existingStock.length > 0) {
-          const currentStock = existingStock[0];
-          const currentQuantity = parseFloat(currentStock.quantityAvailable || "0");
-          const movementQuantity = parseFloat(movement.quantity || "0");
-          const newQuantity = currentQuantity + movementQuantity; // reverse 'out'
+        for (const movement of movements) {
+          const existingStock = await tx
+            .select()
+            .from(stockCurrent)
+            .where(eq(stockCurrent.productId, movement.productId))
+            .limit(1);
 
-          await tx
-            .update(stockCurrent)
-            .set({
-              quantityAvailable: newQuantity.toString(),
-              lastMovementDate: noteDateValue,
-              lastUpdated: new Date(),
-            })
-            .where(eq(stockCurrent.productId, movement.productId));
+          if (existingStock.length > 0) {
+            const currentStock = existingStock[0];
+            const currentQuantity = parseFloat(currentStock.quantityAvailable || "0");
+            const movementQuantity = parseFloat(movement.quantity || "0");
+            const newQuantity = currentQuantity + movementQuantity; // reverse 'out'
+
+            await tx
+              .update(stockCurrent)
+              .set({
+                quantityAvailable: newQuantity.toString(),
+                lastMovementDate: noteDateValue,
+                lastUpdated: new Date(),
+              })
+              .where(eq(stockCurrent.productId, movement.productId));
+          }
+
+          await tx.delete(stockMovement).where(eq(stockMovement.id, movement.id));
         }
-
-        await tx.delete(stockMovement).where(eq(stockMovement.id, movement.id));
       }
 
       // 2) Get existing items and check which ones are referenced by cancellations
@@ -426,10 +433,11 @@ export async function updateDeliveryNote(input: {
         await tx.insert(deliveryNoteItem).values(itemsToInsert);
       }
 
-      // 5) Re-apply stock movements for ALL items in the input (out movement)
+      // 5) Re-apply stock movements for ALL items in the input (out movement) ONLY if new status is "active"
       // This includes both existing (updated) and new items
-      // The stock movements were already reversed at step 1, so we need to re-apply them
-      if (input.items.length > 0) {
+      // The stock movements were already reversed at step 1 (if current status was active), so we need to re-apply them
+      // But only if the new status is "active". If the new status is "cancelled", we don't apply stock movements
+      if (input.items.length > 0 && newStatus === "active") {
         await updateStockFromDeliveryNote(
           tx,
           input.items.map((item) => ({
@@ -558,8 +566,8 @@ export async function updateDeliveryNoteStatus(input: {
 
         if (existingCancellation.length === 0) {
           cancellationId = generateId();
-          const { generateCancellationNumber } = await import("@/lib/utils/invoice-number-generator");
-          const cancellationNumber = generateCancellationNumber("delivery_note_cancellation", cancellationId.slice(-6));
+          const { getNextCancellationNumber } = await import("@/app/(root)/dashboard/delivery-notes-cancellation/_lib/actions");
+          const cancellationNumber = await getNextCancellationNumber(tx);
 
           await tx.insert(deliveryNoteCancellation).values({
             id: cancellationId,

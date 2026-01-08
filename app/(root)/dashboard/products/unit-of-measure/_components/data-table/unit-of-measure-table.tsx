@@ -17,6 +17,7 @@ import { getUnitOfMeasureTableColumns } from "./unit-of-measure-table-columns";
 import { useFeatureFlags } from "@/app/(root)/dashboard/_components/feature-flags-provider";
 import { DeleteUnitsOfMeasureDialog } from "./delete-units-of-measure-dialog";
 import { UpdateUnitOfMeasureDialog } from "./update-unit-of-measure-dialog";
+import { ExportUnitsOfMeasureButtons } from "./export-units-of-measure-buttons";
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 
@@ -102,10 +103,12 @@ export function UnitOfMeasureTable({ promises, queryKeys }: UnitOfMeasureTablePr
                 throttleMs={throttleMs}
               />
             )}
+            <ExportUnitsOfMeasureButtons />
           </DataTableAdvancedToolbar>
         ) : (
           <DataTableToolbar table={table}>
             <DataTableSortList table={table} align="end" />
+            <ExportUnitsOfMeasureButtons />
         </DataTableToolbar>
       )}
     </DataTable>

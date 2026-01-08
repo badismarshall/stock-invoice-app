@@ -67,7 +67,7 @@ export function DeletePartnersDialog({
       });
 
       if (error) {
-        toast.error(fr.error);
+        toast.error("Impossible de supprimer ce(s) partenaire(s) car il(s) est(sont) lié(s) à des factures, paiements ou bons de livraison.");
         return;
       }
 

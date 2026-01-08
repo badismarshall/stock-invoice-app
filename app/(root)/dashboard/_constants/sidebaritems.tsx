@@ -1,4 +1,4 @@
-import { Home, Settings, Package, Boxes, ShoppingCart, FileBarChart, Users, HandCoins, Truck, List, Plus, AlertTriangle, Wallet, Lock, Database, Globe, Ruler, FileText } from "lucide-react"
+import { Home, Settings, Package, Boxes, ShoppingCart, FileBarChart, Users, HandCoins, Truck, List, Plus, AlertTriangle, Wallet, Lock, Database, Globe, Ruler, FileText, BarChart3 } from "lucide-react"
 
 export const adminSidebarItemsGeneralSetting = [
   {
@@ -112,11 +112,17 @@ export const adminSidebarItemsGeneralSetting = [
         isActive: false,
       },
       {
-        title: 'Liste des factures de vente',
-        url: '/dashboard/sales/sale_invoice',
-        icon: List,
+        title: 'État de Vente Local',
+        url: '/dashboard/sales/stats',
+        icon: BarChart3,
         isActive: false,
       },
+      // {
+      //   title: 'Liste des factures de vente',
+      //   url: '/dashboard/sales/sale_invoice',
+      //   icon: List,
+      //   isActive: false,
+      // },
     ],
   },
   {
@@ -137,12 +143,12 @@ export const adminSidebarItemsGeneralSetting = [
         icon: Plus,
         isActive: false,
       },
-      {
-        title: 'Liste des factures export',
-        url: '/dashboard/export/invoices',
-        icon: List,
-        isActive: false,
-      },
+      // {
+      //   title: 'Liste des factures export',
+      //   url: '/dashboard/export/invoices',
+      //   icon: List,
+      //   isActive: false,
+      // },
       {
         title: 'Ajouter une facture export',
         url: '/dashboard/export/invoice/new',
@@ -161,6 +167,38 @@ export const adminSidebarItemsGeneralSetting = [
         icon: Plus,
         isActive: false,
       },
+      {
+        title: 'État de Vente Export',
+        url: '/dashboard/export/stats',
+        icon: BarChart3,
+        isActive: false,
+      },
+    ],
+  },
+  
+  {
+    title: 'Achats',
+    icon: ShoppingCart,
+    isActive: false,
+    items: [
+      {
+        title: 'Liste des bons de commande',
+        url: '/dashboard/purchases',
+        icon: List,
+        isActive: true,
+      },
+      {
+        title: 'Nouveau Bon de Commande',
+        url: '/dashboard/purchases/new',
+        icon: Plus,
+        isActive: false,
+      },
+      // {
+      //   title: 'Liste des factures d\'achat',
+      //   url: '/dashboard/purchases/purchase_invoice',
+      //   icon: List,
+      //   isActive: false,
+      // },
     ],
   },
   {
@@ -183,39 +221,26 @@ export const adminSidebarItemsGeneralSetting = [
     ],
   },
   {
-    title: 'Achats',
-    icon: ShoppingCart,
-    isActive: false,
-    items: [
-      {
-        title: 'Liste des bons de commande',
-        url: '/dashboard/purchases',
-        icon: List,
-        isActive: true,
-      },
-      {
-        title: 'Nouveau Bon de Commande',
-        url: '/dashboard/purchases/new',
-        icon: Plus,
-        isActive: false,
-      },
-      {
-        title: 'Liste des factures d\'achat',
-        url: '/dashboard/purchases/purchase_invoice',
-        icon: List,
-        isActive: false,
-      },
-    ],
-  },
-  {
     title: 'Facturation',
-    url: '/dashboard/invoices',
+    url: '/dashboard/invoices/sale_locale',
     icon: FileBarChart,
     isActive: false,
     items: [
       {
-        title: 'Liste des factures',
-        url: '/dashboard/invoices',
+        title: 'Factures de vente locale',
+        url: '/dashboard/invoices/sale_locale',
+        icon: List,
+        isActive: false,
+      },
+      {
+        title: 'Factures de vente export',
+        url: '/dashboard/invoices/sale_export',
+        icon: List,
+        isActive: false,
+      },
+      {
+        title: 'Factures d\'achat',
+        url: '/dashboard/invoices/purchase',
         icon: List,
         isActive: false,
       },

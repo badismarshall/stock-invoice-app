@@ -11,6 +11,7 @@ export const purchaseOrderSchema = z.object({
       orderDate: z.date(),
       receptionDate: z.date().nullable(),
       status: z.string(),
+      currency: z.string().nullable(),
       totalAmount: z.string().nullable(),
       notes: z.string().nullable(),
       createdBy: z.string().nullable(),

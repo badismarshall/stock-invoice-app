@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ProductSelect } from "./product-select"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { CalendarIcon } from "lucide-react"
@@ -36,16 +37,6 @@ export function NewInvoiceForm() {
   const [loading, setLoading] = useState(false);
   const [clients, setClients] = useState<Array<{ id: string; name: string }>>([]);
   const [suppliers, setSuppliers] = useState<Array<{ id: string; name: string }>>([]);
-  const [products, setProducts] = useState<Array<{ 
-    id: string; 
-    name: string; 
-    code: string;
-    salePriceLocal: number | null;
-    salePriceExport: number | null;
-    purchasePrice: number;
-    taxRate: number;
-    unitOfMeasure: string | null;
-  }>>([]);
 
   const [formData, setFormData] = useState({
     invoiceNumber: "",
@@ -72,12 +63,11 @@ export function NewInvoiceForm() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const { getAllClients, getAllSuppliers, getAllActiveProducts } = await import("../../_lib/actions");
+        const { getAllClients, getAllSuppliers } = await import("../../_lib/actions");
 
-        const [clientsResult, suppliersResult, productsResult] = await Promise.all([
+        const [clientsResult, suppliersResult] = await Promise.all([
           getAllClients(),
           getAllSuppliers(),
-          getAllActiveProducts(),
         ]);
 
         if (clientsResult.data) {
@@ -85,9 +75,6 @@ export function NewInvoiceForm() {
         }
         if (suppliersResult.data) {
           setSuppliers(suppliersResult.data);
-        }
-        if (productsResult.data) {
-          setProducts(productsResult.data);
         }
       } catch (error) {
         console.error("Error fetching data", error);
@@ -124,7 +111,16 @@ export function NewInvoiceForm() {
     }));
   };
 
-  const updateItem = (id: string, field: keyof InvoiceItem, value: any) => {
+  const updateItem = (id: string, field: keyof InvoiceItem, value: any, product?: {
+    id: string;
+    name: string;
+    code: string;
+    purchasePrice: number;
+    salePriceLocal: number | null;
+    salePriceExport: number | null;
+    taxRate: number;
+    unitOfMeasure: string | null;
+  }) => {
     setFormData((prev) => ({
       ...prev,
       items: prev.items.map((item) => {
@@ -133,16 +129,15 @@ export function NewInvoiceForm() {
         const updated = { ...item, [field]: value };
 
         // Recalculate when product, quantity, unitPrice, discountPercent, or taxRate changes
-        if (field === "productId") {
-          const product = products.find((p) => p.id === value);
-          if (product) {
-            const price = formData.invoiceType === "sale_export" 
-              ? (product.salePriceExport || 0)
-              : (product.salePriceLocal || product.purchasePrice || 0);
-            updated.unitPrice = price;
-            updated.taxRate = product.taxRate;
-            updated.productName = product.name;
-          }
+        if (field === "productId" && product) {
+          const price = formData.invoiceType === "sale_export" 
+            ? (product.salePriceExport || 0)
+            : formData.invoiceType === "purchase"
+            ? product.purchasePrice
+            : (product.salePriceLocal || product.purchasePrice || 0);
+          updated.unitPrice = price;
+          updated.taxRate = product.taxRate;
+          updated.productName = product.name;
         }
 
         if (field === "quantity" || field === "unitPrice" || field === "discountPercent" || field === "taxRate" || field === "productId") {
@@ -227,7 +222,7 @@ export function NewInvoiceForm() {
         duration: 3000,
       });
 
-      router.push("/dashboard/invoices");
+      router.push("/dashboard/invoices/sale_locale");
       router.refresh();
     } catch (error) {
       toast.error(
@@ -249,7 +244,7 @@ export function NewInvoiceForm() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => router.push("/dashboard/invoices")}
+            onClick={() => router.push("/dashboard/invoices/sale_locale")}
             className="hover:bg-muted"
           >
             <ArrowLeft size={24} />
@@ -442,40 +437,39 @@ export function NewInvoiceForm() {
             </Popover>
           </div>
 
-          {(formData.invoiceType === "sale_export" || formData.invoiceType === "proforma" || formData.invoiceType === "delivery_note_invoice") && (
-            <>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Pays de destination</label>
-                <Input
-                  placeholder="Ex: France, Espagne..."
-                  value={formData.destinationCountry}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, destinationCountry: e.target.value }))
-                  }
-                  disabled={loading}
-                />
-              </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Devise *</label>
+            <Select
+              value={formData.currency}
+              onValueChange={(value) =>
+                setFormData((prev) => ({ ...prev, currency: value }))
+              }
+              disabled={loading}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="DZD">DZD</SelectItem>
+                <SelectItem value="USD">USD</SelectItem>
+                <SelectItem value="EUR">EUR</SelectItem>
+                <SelectItem value="GBP">GBP</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Devise</label>
-                <Select
-                  value={formData.currency}
-                  onValueChange={(value) =>
-                    setFormData((prev) => ({ ...prev, currency: value }))
-                  }
-                  disabled={loading}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="DZD">DZD</SelectItem>
-                    <SelectItem value="USD">USD</SelectItem>
-                    <SelectItem value="EUR">EUR</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </>
+          {(formData.invoiceType === "sale_export" || formData.invoiceType === "proforma" || formData.invoiceType === "delivery_note_invoice") && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Pays de destination</label>
+              <Input
+                placeholder="Ex: France, Espagne..."
+                value={formData.destinationCountry}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, destinationCountry: e.target.value }))
+                }
+                disabled={loading}
+              />
+            </div>
           )}
 
           <div className="space-y-2">
@@ -542,26 +536,15 @@ export function NewInvoiceForm() {
                 </thead>
                 <tbody>
                   {formData.items.map((item, index) => {
-                    const product = products.find((p) => p.id === item.productId);
                     return (
                       <tr key={item.id} className="border-t border-border hover:bg-muted/50">
                         <td className="px-4 py-2">
-                          <Select
+                          <ProductSelect
                             value={item.productId}
-                            onValueChange={(value) => updateItem(item.id, "productId", value)}
+                            onValueChange={(value, product) => updateItem(item.id, "productId", value, product)}
                             disabled={loading}
-                          >
-                            <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Sélectionner un produit" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {products.map((prod) => (
-                                <SelectItem key={prod.id} value={prod.id}>
-                                  {prod.code} - {prod.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                            placeholder="Sélectionner un produit..."
+                          />
                         </td>
                         <td className="px-4 py-2 text-right">
                           <Input
@@ -591,7 +574,7 @@ export function NewInvoiceForm() {
                             min={0}
                             max={100}
                             step="0.01"
-                            value={item.discountPercent.toFixed(2)}
+                            value={item.discountPercent || ""}
                             onChange={(e) => updateItem(item.id, "discountPercent", Number(e.target.value) || 0)}
                             className="w-full text-right no-spinner"
                             disabled={loading}
@@ -602,15 +585,15 @@ export function NewInvoiceForm() {
                             type="number"
                             min={0}
                             step="0.01"
-                            value={item.taxRate.toFixed(2)}
+                            value={item.taxRate || ""}
                             onChange={(e) => updateItem(item.id, "taxRate", Number(e.target.value) || 0)}
                             className="w-full text-right no-spinner"
                             disabled={loading}
                           />
                         </td>
-                        <td className="px-4 py-2 text-sm text-right">{item.lineSubtotal.toFixed(2)} DZD</td>
-                        <td className="px-4 py-2 text-sm text-right">{item.lineTax.toFixed(2)} DZD</td>
-                        <td className="px-4 py-2 text-sm text-right font-medium">{item.lineTotal.toFixed(2)} DZD</td>
+                        <td className="px-4 py-2 text-sm text-right">{item.lineSubtotal.toFixed(2)} {formData.currency}</td>
+                        <td className="px-4 py-2 text-sm text-right">{item.lineTax.toFixed(2)} {formData.currency}</td>
+                        <td className="px-4 py-2 text-sm text-right font-medium">{item.lineTotal.toFixed(2)} {formData.currency}</td>
                         <td className="px-4 py-2 text-center">
                           <Button
                             type="button"
@@ -631,9 +614,9 @@ export function NewInvoiceForm() {
                     <td colSpan={5} className="px-4 py-2 text-right font-semibold">
                       Total HT:
                     </td>
-                    <td className="px-4 py-2 text-right font-semibold">{totalHT.toFixed(2)} DZD</td>
-                    <td className="px-4 py-2 text-right font-semibold">{totalTVA.toFixed(2)} DZD</td>
-                    <td className="px-4 py-2 text-right font-bold text-lg">{totalTTC.toFixed(2)} DZD</td>
+                    <td className="px-4 py-2 text-right font-semibold">{totalHT.toFixed(2)} {formData.currency}</td>
+                    <td className="px-4 py-2 text-right font-semibold">{totalTVA.toFixed(2)} {formData.currency}</td>
+                    <td className="px-4 py-2 text-right font-bold text-lg">{totalTTC.toFixed(2)} {formData.currency}</td>
                     <td></td>
                   </tr>
                 </tfoot>

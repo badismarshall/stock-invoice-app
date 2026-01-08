@@ -20,6 +20,6 @@ export async function SuppliersTableWrapper({ searchParams }: SuppliersTableWrap
     type: "fournisseur",
   });
 
-  return <PartnersTable promises={promises} />
+  return <PartnersTable promises={promises} type="fournisseur" />
 }
 

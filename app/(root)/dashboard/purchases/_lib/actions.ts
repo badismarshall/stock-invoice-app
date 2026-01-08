@@ -311,6 +311,7 @@ export async function addPurchaseOrder(input: {
   orderDate: Date;
   receptionDate?: Date | null;
   status?: "pending" | "received" | "cancelled";
+  currency?: string;
   totalAmount?: string;
   notes?: string;
   items?: Array<{
@@ -376,6 +377,7 @@ export async function addPurchaseOrder(input: {
         orderDate: orderDateValue,
         receptionDate: receptionDateValue,
         status: input.status || "pending",
+        currency: input.currency || "DZD",
         totalAmount: input.totalAmount || null,
         notes: input.notes || null,
         createdBy: user.id
@@ -432,6 +434,7 @@ export async function updatePurchaseOrder(input: {
   orderDate: Date;
   receptionDate?: Date | null;
   status?: "pending" | "received" | "cancelled";
+  currency?: string;
   totalAmount?: string;
   notes?: string;
   items?: Array<{
@@ -550,6 +553,7 @@ export async function updatePurchaseOrder(input: {
           orderDate: orderDateValue,
           receptionDate: receptionDateValue,
           status: newStatus,
+          currency: input.currency || "DZD",
           totalAmount: input.totalAmount || null,
           notes: input.notes || null,
           updatedAt: new Date(),
@@ -627,7 +631,7 @@ export async function updatePurchaseOrderStatus(input: {
       };
     }
 
-    // Get purchase order
+    // Get purchase order with items
     const purchaseOrderData = await getPurchaseOrderById(input.id);
     if (!purchaseOrderData) {
       return {
@@ -636,16 +640,119 @@ export async function updatePurchaseOrderStatus(input: {
       };
     }
 
-    // Update status
-    await db
-      .update(purchaseOrder)
-      .set({
-        status: input.status,
-        updatedAt: new Date(),
-      })
-      .where(eq(purchaseOrder.id, input.id));
+    const oldStatus = purchaseOrderData.status || "pending";
+    const newStatus = input.status;
+
+    // Helper to format date as YYYY-MM-DD for PostgreSQL date type
+    const formatDateLocal = (date: Date): string => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+
+    await db.transaction(async (tx) => {
+      const orderDateValue = formatDateLocal(purchaseOrderData.orderDate);
+      const receptionDateValue = purchaseOrderData.receptionDate
+        ? formatDateLocal(purchaseOrderData.receptionDate)
+        : orderDateValue;
+
+      // 1) If old status was "received", reverse existing stock movements
+      if (oldStatus === "received") {
+        const movements = await tx
+          .select()
+          .from(stockMovement)
+          .where(
+            and(
+              eq(stockMovement.referenceType, "purchase_order"),
+              eq(stockMovement.referenceId, input.id)
+            )
+          );
+
+        for (const movement of movements) {
+          const existingStock = await tx
+            .select()
+            .from(stockCurrent)
+            .where(eq(stockCurrent.productId, movement.productId))
+            .limit(1);
+
+          if (existingStock.length > 0) {
+            const currentStock = existingStock[0];
+            const currentQuantity = parseFloat(currentStock.quantityAvailable || "0");
+            const currentAverageCost = parseFloat(currentStock.averageCost || "0");
+            const movementQuantity = parseFloat(movement.quantity || "0");
+            const movementUnitCost = parseFloat(movement.unitCost || "0");
+            const newQuantity = currentQuantity - movementQuantity; // reverse 'in' movement
+
+            if (newQuantity < 0) {
+              // Get product name for error message
+              const productData = await tx
+                .select({ id: product.id, name: product.name })
+                .from(product)
+                .where(eq(product.id, movement.productId))
+                .limit(1);
+              
+              const productName = productData[0]?.name || movement.productId;
+              throw new Error(
+                `Quantité insuffisante en stock pour le produit ${productName}. Stock actuel: ${currentQuantity}, Tentative de retrait: ${movementQuantity}`
+              );
+            }
+
+            // Recalculate average cost when reversing
+            let newAverageCost = currentAverageCost;
+            if (newQuantity > 0 && currentQuantity > 0) {
+              // Calculate what the average cost was before this movement
+              const totalCostBefore = currentQuantity * currentAverageCost;
+              const movementCost = movementQuantity * movementUnitCost;
+              const costBefore = totalCostBefore - movementCost;
+              newAverageCost = costBefore / newQuantity;
+            }
+
+            await tx
+              .update(stockCurrent)
+              .set({
+                quantityAvailable: newQuantity.toString(),
+                averageCost: newAverageCost.toFixed(2),
+                lastMovementDate: orderDateValue,
+                lastUpdated: new Date(),
+              })
+              .where(eq(stockCurrent.productId, movement.productId));
+          }
+
+          await tx.delete(stockMovement).where(eq(stockMovement.id, movement.id));
+        }
+      }
+
+      // 2) Update purchase order status
+      await tx
+        .update(purchaseOrder)
+        .set({
+          status: newStatus,
+          updatedAt: new Date(),
+        })
+        .where(eq(purchaseOrder.id, input.id));
+
+      // 3) If new status is "received", apply stock movements
+      if (newStatus === "received" && purchaseOrderData.items && purchaseOrderData.items.length > 0) {
+        const movementDate = receptionDateValue || orderDateValue;
+        await updateStockFromPurchaseOrder(
+          tx,
+          purchaseOrderData.items.map((item) => ({
+            productId: item.productId,
+            quantity: item.quantity,
+            unitCost: item.unitCost,
+          })),
+          movementDate,
+          input.id,
+          user.id,
+          false
+        );
+      }
+    });
 
     updateTag("purchaseOrders");
+    updateTag("stock");
+    updateTag("stockMovements");
 
     return {
       data: { id: input.id, status: input.status },
@@ -1128,6 +1235,7 @@ export async function getAllPurchaseOrdersForExport(input?: {
           orderDate,
           receptionDate,
           status: order.purchaseOrder.status || "pending",
+          currency: order.purchaseOrder.currency || "DZD",
           totalAmount: order.purchaseOrder.totalAmount ? parseFloat(order.purchaseOrder.totalAmount) : 0,
           notes: order.purchaseOrder.notes,
           createdBy: order.purchaseOrder.createdBy,

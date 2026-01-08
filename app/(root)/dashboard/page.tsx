@@ -124,7 +124,7 @@ async function DashboardContent() {
             </Card>
           </Link>
 
-          <Link href="/dashboard/invoices">
+          <Link href="/dashboard/invoices/sale_locale">
             <Card className="group relative overflow-hidden border hover:border-primary/50 transition-all duration-300 hover:shadow-md cursor-pointer h-full">
               <CardContent className="p-4 flex flex-col items-center justify-center gap-2 text-center">
                 <div className="p-2.5 rounded-lg bg-indigo-500/10 group-hover:bg-indigo-500/20 transition-colors">

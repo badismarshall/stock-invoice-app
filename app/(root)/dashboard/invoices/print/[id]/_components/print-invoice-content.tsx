@@ -23,7 +23,6 @@ export function PrintInvoiceContent({ invoiceId }: PrintInvoiceContentProps) {
   const [companyInfo, setCompanyInfo] = React.useState<any>(null);
   const [payments, setPayments] = React.useState<any>(null);
   const [error, setError] = React.useState<string | null>(null);
-  const [sendingEmail, setSendingEmail] = React.useState(false);
 
   React.useEffect(() => {
     const fetchData = async () => {
@@ -61,36 +60,206 @@ export function PrintInvoiceContent({ invoiceId }: PrintInvoiceContentProps) {
     fetchData();
   }, [invoiceId]);
 
-  const handleSendEmail = async () => {
+
+  const handleSendEmailViaClient = async () => {
     if (!invoice) return;
 
-    const recipientEmail = invoice.client?.email || invoice.supplier?.email;
-    const recipientName = invoice.client?.name || invoice.supplier?.name;
-
-    if (!recipientEmail) {
-      toast.error("Aucune adresse email trouvée pour le client/fournisseur");
+    const printContent = document.getElementById('invoice-print-content');
+    if (!printContent) {
+      toast.error("Contenu d'impression non trouvé");
       return;
     }
 
-    setSendingEmail(true);
-    try {
-      const { sendInvoiceByEmail } = await import("../../../_lib/email-actions");
-      const result = await sendInvoiceByEmail({
-        invoiceId: invoiceId,
-        recipientEmail: recipientEmail,
-        recipientName: recipientName,
-      });
+    const recipientEmail = invoice.client?.email || invoice.supplier?.email;
+    const recipientName = invoice.client?.name || invoice.supplier?.name;
+    const invoiceNumber = invoice.invoiceNumber || 'Facture';
 
-      if (result.error) {
-        toast.error(result.error);
+    // Get the HTML content and prepare it for PDF (same as handlePrint)
+    let content = printContent.innerHTML;
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = content;
+    const notesElements = tempDiv.querySelectorAll('[data-print-remove="true"]');
+    notesElements.forEach(el => el.remove());
+    
+    // Replace logo src
+    const logoImages = tempDiv.querySelectorAll('img[alt*="Logo"]');
+    logoImages.forEach((img) => {
+      if (companyInfo?.logo) {
+        const logoPath = companyInfo.logo.startsWith('/') ? companyInfo.logo : `/${companyInfo.logo}`;
+        const absoluteLogoPath = logoPath.startsWith('http') 
+          ? logoPath 
+          : `${window.location.origin}${logoPath}`;
+        img.setAttribute('src', absoluteLogoPath);
       } else {
-        toast.success(`Facture envoyée par email à ${recipientEmail}`);
+        const absoluteLogoPath = `${window.location.origin}/logo.png`;
+        img.setAttribute('src', absoluteLogoPath);
       }
-    } catch (err) {
-      console.error("Error sending email:", err);
-      toast.error("Erreur lors de l'envoi de l'email");
-    } finally {
-      setSendingEmail(false);
+    });
+    
+    content = tempDiv.innerHTML;
+
+    // Create HTML document for PDF (using same styles as handlePrint)
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>${invoiceNumber}</title>
+          <meta charset="utf-8">
+          <style>
+            @page {
+              size: A4;
+              margin: 1cm;
+            }
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
+            body {
+              font-family: Arial, sans-serif;
+              font-size: 11px;
+              color: #000;
+              background: white;
+              padding: 20px;
+            }
+            .invoice-container {
+              max-width: 100%;
+              margin: 0 auto;
+            }
+            .header {
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-start;
+              border-bottom: 2px solid #333;
+              padding-bottom: 15px;
+              margin-bottom: 20px;
+            }
+            .company-info {
+              flex: 1;
+            }
+            .company-logo {
+              margin-bottom: 10px;
+            }
+            .company-logo img {
+              max-height: 60px;
+              width: auto;
+            }
+            .company-info h1 {
+              font-size: 18px;
+              font-weight: bold;
+              margin-bottom: 6px;
+            }
+            .company-info p {
+              font-size: 9px;
+              margin: 1px 0;
+              line-height: 1.3;
+            }
+            .invoice-title {
+              text-align: right;
+            }
+            .invoice-title h2 {
+              font-size: 18px;
+              font-weight: bold;
+              margin-bottom: 5px;
+            }
+            .invoice-title p {
+              font-size: 10px;
+            }
+            .info-section {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 20px;
+              margin-bottom: 15px;
+            }
+            .info-section h3 {
+              font-size: 10px;
+              font-weight: bold;
+              margin-bottom: 4px;
+              text-transform: uppercase;
+            }
+            .info-section p {
+              font-size: 9px;
+              margin: 1px 0;
+              line-height: 1.3;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 15px;
+              font-size: 9px;
+            }
+            thead {
+              background-color: #f5f5f5;
+            }
+            th {
+              padding: 6px 3px;
+              text-align: left;
+              font-weight: bold;
+              border-bottom: 2px solid #333;
+              font-size: 9px;
+            }
+            th.text-right {
+              text-align: right;
+            }
+            td {
+              padding: 4px 3px;
+              border-bottom: 1px solid #ddd;
+              font-size: 9px;
+            }
+            td.text-right {
+              text-align: right;
+            }
+            .product-code {
+              font-weight: bold;
+              min-width: 80px;
+            }
+            tbody tr:nth-child(even) {
+              background-color: #f9f9f9;
+            }
+            tfoot {
+              border-top: 2px solid #333;
+            }
+            tfoot td {
+              font-weight: bold;
+              padding: 6px 3px;
+            }
+            .footer {
+              margin-top: 20px;
+              padding-top: 8px;
+              border-top: 1px solid #ddd;
+              text-align: center;
+              font-size: 9px;
+              color: #666;
+            }
+            @media print {
+              body {
+                padding: 0;
+              }
+              @page {
+                margin: 1cm;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="invoice-container">
+            ${content}
+          </div>
+        </body>
+      </html>
+    `;
+
+    const filename = `${invoiceNumber}.pdf`;
+    const subject = `${invoiceNumber} - ${companyInfo?.name || 'Sirof Algeria'}`;
+    const body = `Bonjour ${recipientName || ''},\n\nVeuillez trouver ci-joint la ${invoiceNumber}.\n\nVeuillez sélectionner "Enregistrer au format PDF" dans la boîte de dialogue d'impression, puis attacher le fichier téléchargé à cet email.\n\nCordialement`;
+
+    try {
+      const { generatePDFAndSendEmail } = await import("@/lib/utils/pdf-email");
+      generatePDFAndSendEmail(htmlContent, filename, recipientEmail, subject, body);
+      toast.info("Ouvrez la boîte de dialogue d'impression et sélectionnez 'Enregistrer au format PDF', puis votre application email s'ouvrira");
+    } catch (error) {
+      console.error("Error generating PDF and opening email:", error);
+      toast.error("Erreur lors de la génération du PDF");
     }
   };
 
@@ -347,11 +516,10 @@ export function PrintInvoiceContent({ invoiceId }: PrintInvoiceContentProps) {
           {invoice && (invoice.client?.email || invoice.supplier?.email) && (
             <Button
               variant="outline"
-              onClick={handleSendEmail}
-              disabled={sendingEmail}
+              onClick={handleSendEmailViaClient}
             >
               <Mail className="mr-2 h-4 w-4" />
-              {sendingEmail ? "Envoi..." : "Envoyer par email"}
+              Envoyer par email
             </Button>
           )}
           <Button onClick={handlePrint}>

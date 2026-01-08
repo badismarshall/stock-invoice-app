@@ -5,7 +5,7 @@ import { getErrorMessage } from "@/lib/handle-error";
 import { generateId } from "@/lib/data-table/id";
 import db from "@/db";
 import { stockCurrent, stockMovement, product, category, unitOfMeasure } from "@/db/schema";
-import { eq, asc } from "drizzle-orm";
+import { eq, asc, and, or, ilike, sql } from "drizzle-orm";
 import { getCurrentUser } from "@/data/user/user-auth";
 
 export interface StockEntryItem {
@@ -187,6 +187,92 @@ export async function getAllActiveCategories() {
     console.error("Error getting active categories", err);
     return {
       data: [],
+      error: getErrorMessage(err),
+    };
+  }
+}
+
+export async function getActiveProductsPaginated(input: {
+  page?: number;
+  limit?: number;
+  search?: string;
+}) {
+  try {
+    const page = input.page ?? 1;
+    const limit = input.limit ?? 20;
+    const offset = (page - 1) * limit;
+    const searchTerm = input.search?.trim();
+
+    // Build where conditions
+    const conditions = [eq(product.isActive, true)];
+    
+    if (searchTerm) {
+      conditions.push(
+        or(
+          ilike(product.name, `%${searchTerm}%`),
+          ilike(product.code, `%${searchTerm}%`)
+        )!
+      );
+    }
+
+    // Get total count for pagination
+    const [totalResult] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(product)
+      .where(and(...conditions));
+
+    const total = totalResult?.count ?? 0;
+
+    // Get paginated products
+    const products = await db
+      .select({
+        id: product.id,
+        name: product.name,
+        code: product.code,
+        purchasePrice: product.purchasePrice,
+        salePriceLocal: product.salePriceLocal,
+        salePriceExport: product.salePriceExport,
+        taxRate: product.taxRate,
+        unitOfMeasure: {
+          symbol: unitOfMeasure.symbol,
+        },
+      })
+      .from(product)
+      .leftJoin(unitOfMeasure, eq(product.unitOfMeasureId, unitOfMeasure.id))
+      .where(and(...conditions))
+      .limit(limit)
+      .offset(offset)
+      .orderBy(product.name);
+
+    return {
+      data: products.map((p) => ({
+        id: p.id,
+        name: p.name,
+        code: p.code,
+        purchasePrice: p.purchasePrice ? parseFloat(p.purchasePrice) : 0,
+        salePriceLocal: p.salePriceLocal ? parseFloat(p.salePriceLocal) : null,
+        salePriceExport: p.salePriceExport ? parseFloat(p.salePriceExport) : null,
+        taxRate: p.taxRate ? parseFloat(p.taxRate) : 0,
+        unitOfMeasure: p.unitOfMeasure?.symbol || null,
+      })),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+      error: null,
+    };
+  } catch (err) {
+    console.error("Error getting active products paginated", err);
+    return {
+      data: [],
+      pagination: {
+        page: input.page ?? 1,
+        limit: input.limit ?? 20,
+        total: 0,
+        totalPages: 0,
+      },
       error: getErrorMessage(err),
     };
   }

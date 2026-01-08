@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ProductSelect } from "./product-select"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { CalendarIcon } from "lucide-react"
@@ -31,13 +32,6 @@ export function NewDeliveryNoteForm() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [clients, setClients] = useState<Array<{ id: string; name: string }>>([]);
-  const [products, setProducts] = useState<Array<{ 
-    id: string; 
-    name: string; 
-    code: string;
-    salePriceExport: number | null;
-    unitOfMeasure: string | null;
-  }>>([]);
 
   const [formData, setFormData] = useState({
     noteNumber: "",
@@ -53,18 +47,12 @@ export function NewDeliveryNoteForm() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const { getAllClients, getAllActiveProducts } = await import("../../../_lib/actions");
+        const { getAllClients } = await import("../../../_lib/actions");
 
-        const [clientsResult, productsResult] = await Promise.all([
-          getAllClients(),
-          getAllActiveProducts(),
-        ]);
+        const clientsResult = await getAllClients();
 
         if (clientsResult.data) {
           setClients(clientsResult.data);
-        }
-        if (productsResult.data) {
-          setProducts(productsResult.data);
         }
       } catch (error) {
         console.error("Error fetching data", error);
@@ -91,18 +79,15 @@ export function NewDeliveryNoteForm() {
     }));
   };
 
-  const updateItem = (index: number, field: keyof DeliveryNoteItem, value: any) => {
+  const updateItem = (index: number, field: keyof DeliveryNoteItem, value: any, product?: { id: string; name: string; salePriceExport: number | null }) => {
     setFormData((prev) => {
       const newItems = [...prev.items];
       const item = { ...newItems[index], [field]: value };
 
       // If product changed, update related fields
-      if (field === "productId") {
-        const product = products.find((p) => p.id === value);
-        if (product) {
-          item.productName = product.name;
-          item.unitPrice = product.salePriceExport || 0;
-        }
+      if (field === "productId" && product) {
+        item.productName = product.name;
+        item.unitPrice = product.salePriceExport || 0;
       }
 
       // Recalculate line total: (quantity * unitPrice) * (1 - discountPercent/100)
@@ -362,22 +347,12 @@ export function NewDeliveryNoteForm() {
                 {formData.items.map((item, index) => (
                   <tr key={item.id} className="text-card-foreground">
                     <td className="px-4 py-2">
-                      <Select
+                      <ProductSelect
                         value={item.productId}
-                        onValueChange={(value) => updateItem(index, "productId", value)}
+                        onValueChange={(value, product) => updateItem(index, "productId", value, product)}
                         disabled={loading}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Sélectionner..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {products.map((product) => (
-                            <SelectItem key={product.id} value={product.id}>
-                              {product.name} ({product.code})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        placeholder="Sélectionner un produit..."
+                      />
                     </td>
                     <td className="px-4 py-2">
                       <Input

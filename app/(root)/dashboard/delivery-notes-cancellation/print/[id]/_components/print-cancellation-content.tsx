@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Printer } from "lucide-react"
+import { ArrowLeft, Printer, Mail } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { format } from "date-fns"
 import { fr } from "date-fns/locale"
@@ -69,6 +69,206 @@ export function PrintCancellationContent({ cancellationId }: PrintCancellationCo
     );
     return uniqueNumbers;
   }, [cancellation]);
+
+  const handleSendEmailViaClient = async () => {
+    if (!cancellation) return;
+
+    const printContent = document.getElementById('cancellation-print-content');
+    if (!printContent) {
+      toast.error("Contenu d'impression non trouvé");
+      return;
+    }
+
+    const recipientEmail = cancellation.client?.email;
+    const recipientName = cancellation.client?.name;
+    const cancellationNumber = cancellation.cancellationNumber || 'Annulation';
+
+    // Get the HTML content and prepare it for PDF (same as handlePrint)
+    let content = printContent.innerHTML;
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = content;
+    
+    // Replace logo src
+    const logoImages = tempDiv.querySelectorAll('img[alt*="Logo"]');
+    logoImages.forEach((img) => {
+      if (companyInfo?.logo) {
+        const logoPath = companyInfo.logo.startsWith('/') ? companyInfo.logo : `/${companyInfo.logo}`;
+        const absoluteLogoPath = logoPath.startsWith('http') 
+          ? logoPath 
+          : `${window.location.origin}${logoPath}`;
+        img.setAttribute('src', absoluteLogoPath);
+      } else {
+        const absoluteLogoPath = `${window.location.origin}/logo.png`;
+        img.setAttribute('src', absoluteLogoPath);
+      }
+    });
+    
+    content = tempDiv.innerHTML;
+
+    // Create HTML document for PDF (using same styles as handlePrint)
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>${cancellationNumber}</title>
+          <meta charset="utf-8">
+          <style>
+            @page {
+              size: A4;
+              margin: 1cm;
+            }
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
+            body {
+              font-family: Arial, sans-serif;
+              font-size: 11px;
+              color: #000;
+              background: white;
+              padding: 20px;
+            }
+            .cancellation-container {
+              max-width: 100%;
+              margin: 0 auto;
+            }
+            .header {
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-start;
+              border-bottom: 2px solid #333;
+              padding-bottom: 15px;
+              margin-bottom: 20px;
+            }
+            .company-info {
+              flex: 1;
+            }
+            .company-logo {
+              margin-bottom: 10px;
+            }
+            .company-logo img {
+              max-height: 60px;
+              width: auto;
+            }
+            .company-info h1 {
+              font-size: 18px;
+              font-weight: bold;
+              margin-bottom: 6px;
+            }
+            .company-info p {
+              font-size: 9px;
+              margin: 1px 0;
+              line-height: 1.3;
+            }
+            .cancellation-title {
+              text-align: right;
+            }
+            .cancellation-title h2 {
+              font-size: 18px;
+              font-weight: bold;
+              margin-bottom: 5px;
+            }
+            .cancellation-title p {
+              font-size: 10px;
+            }
+            .info-section {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 20px;
+              margin-bottom: 15px;
+            }
+            .info-section h3 {
+              font-size: 10px;
+              font-weight: bold;
+              margin-bottom: 4px;
+              text-transform: uppercase;
+            }
+            .info-section p {
+              font-size: 9px;
+              margin: 1px 0;
+              line-height: 1.3;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 15px;
+              font-size: 9px;
+            }
+            thead {
+              background-color: #f5f5f5;
+            }
+            th {
+              padding: 6px 3px;
+              text-align: left;
+              font-weight: bold;
+              border-bottom: 2px solid #333;
+              font-size: 9px;
+            }
+            th.text-right {
+              text-align: right;
+            }
+            td {
+              padding: 4px 3px;
+              border-bottom: 1px solid #ddd;
+              font-size: 9px;
+            }
+            td.text-right {
+              text-align: right;
+            }
+            .product-code {
+              font-weight: bold;
+              min-width: 80px;
+            }
+            tbody tr:nth-child(even) {
+              background-color: #f9f9f9;
+            }
+            tfoot {
+              border-top: 2px solid #333;
+            }
+            tfoot td {
+              font-weight: bold;
+              padding: 6px 3px;
+            }
+            .footer {
+              margin-top: 20px;
+              padding-top: 8px;
+              border-top: 1px solid #ddd;
+              text-align: center;
+              font-size: 9px;
+              color: #666;
+            }
+            @media print {
+              body {
+                padding: 0;
+              }
+              @page {
+                margin: 1cm;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="cancellation-container">
+            ${content}
+          </div>
+        </body>
+      </html>
+    `;
+
+    const filename = `${cancellationNumber}.pdf`;
+    const subject = `${cancellationNumber} - ${companyInfo?.name || 'Sirof Algeria'}`;
+    const body = `Bonjour ${recipientName || ''},\n\nVeuillez trouver ci-joint le document ${cancellationNumber}.\n\nVeuillez sélectionner "Enregistrer au format PDF" dans la boîte de dialogue d'impression, puis attacher le fichier téléchargé à cet email.\n\nCordialement`;
+
+    try {
+      const { generatePDFAndSendEmail } = await import("@/lib/utils/pdf-email");
+      generatePDFAndSendEmail(htmlContent, filename, recipientEmail, subject, body);
+      toast.info("Ouvrez la boîte de dialogue d'impression et sélectionnez 'Enregistrer au format PDF', puis votre application email s'ouvrira");
+    } catch (error) {
+      console.error("Error generating PDF and opening email:", error);
+      toast.error("Erreur lors de la génération du PDF");
+    }
+  };
 
   const handlePrint = () => {
     // Create a new window for printing to avoid URL in footer
@@ -322,10 +522,21 @@ export function PrintCancellationContent({ cancellationId }: PrintCancellationCo
           <ArrowLeft className="mr-2 h-4 w-4" />
           Retour
         </Button>
-        <Button onClick={handlePrint}>
-          <Printer className="mr-2 h-4 w-4" />
-          Imprimer
-        </Button>
+        <div className="flex gap-2">
+          {cancellation && cancellation.client?.email && (
+            <Button
+              variant="outline"
+              onClick={handleSendEmailViaClient}
+            >
+              <Mail className="mr-2 h-4 w-4" />
+              Envoyer par email
+            </Button>
+          )}
+          <Button onClick={handlePrint}>
+            <Printer className="mr-2 h-4 w-4" />
+            Imprimer
+          </Button>
+        </div>
       </div>
 
       {/* Cancellation Content for Print */}

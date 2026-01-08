@@ -14,7 +14,7 @@ import {
   stockCurrent,
   stockMovement,
 } from "@/db/schema";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, sql, desc, like } from "drizzle-orm";
 import { getCurrentUser } from "@/data/user/user-auth";
 import { getClientDeliveryNoteItems, getDeliveryNoteCancellationById } from "@/data/delivery-note-cancellation/delivery-note-cancellation.dal";
 
@@ -91,6 +91,41 @@ async function updateStockFromCancellation(
       })
       .where(eq(stockCurrent.productId, item.productId));
   }
+}
+
+/**
+ * Get the next sequential cancellation number for delivery note cancellations
+ * Format: FC-AVOIR-YYYY-NNNNNN (where NNNNNN is a 6-digit sequential number)
+ * Can be used within a transaction by passing the transaction object
+ */
+export async function getNextCancellationNumber(
+  tx?: Parameters<Parameters<typeof db.transaction>[0]>[0]
+): Promise<string> {
+  const year = new Date().getFullYear();
+  const prefix = "FC-AVOIR";
+  const yearPrefix = `${prefix}-${year}-`;
+  
+  const dbInstance = tx || db;
+  
+  // Find the last cancellation number for this year
+  const lastCancellation = await dbInstance
+    .select({ cancellationNumber: deliveryNoteCancellation.cancellationNumber })
+    .from(deliveryNoteCancellation)
+    .where(like(deliveryNoteCancellation.cancellationNumber, `${yearPrefix}%`))
+    .orderBy(desc(deliveryNoteCancellation.cancellationNumber))
+    .limit(1);
+  
+  let nextNumber = 1;
+  if (lastCancellation.length > 0 && lastCancellation[0].cancellationNumber) {
+    const lastNumber = lastCancellation[0].cancellationNumber.replace(yearPrefix, "");
+    const numericPart = parseInt(lastNumber, 10);
+    if (!isNaN(numericPart)) {
+      nextNumber = numericPart + 1;
+    }
+  }
+  
+  const { generateCancellationNumber } = await import("@/lib/utils/invoice-number-generator");
+  return generateCancellationNumber("delivery_note_cancellation", String(nextNumber).padStart(6, '0'));
 }
 
 /**
@@ -192,8 +227,7 @@ export async function createPartialDeliveryNoteCancellation(input: {
     };
 
     const cancellationId = generateId();
-    const { generateCancellationNumber } = await import("@/lib/utils/invoice-number-generator");
-    const cancellationNumber = generateCancellationNumber("delivery_note_cancellation", cancellationId.slice(-6));
+    const cancellationNumber = await getNextCancellationNumber();
     const cancellationDateValue = formatDateLocal(input.cancellationDate);
 
     // Get delivery note info for stock update (need noteType)

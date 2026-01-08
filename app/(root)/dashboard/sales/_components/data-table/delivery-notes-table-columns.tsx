@@ -380,19 +380,23 @@ export function getDeliveryNotesTableColumns({
                 <DropdownMenuSubContent>
                   <DropdownMenuRadioGroup
                     value={deliveryNote.status || "active"}
-                    onValueChange={(value) => {
-                      startUpdateTransition(() => {
-                        toast.promise(
-                          updateDeliveryNoteStatus({
-                            id: deliveryNote.id,
-                            status: value as "active" | "cancelled",
-                          }),
-                          {
-                            loading: translations.updating,
-                            success: translations.statusUpdated,
-                            error: (err) => getErrorMessage(err),
-                          }
-                        );
+                    onValueChange={async (value) => {
+                      startUpdateTransition(async () => {
+                        const loadingToast = toast.loading(translations.updating);
+                        const result = await updateDeliveryNoteStatus({
+                          id: deliveryNote.id,
+                          status: value as "active" | "cancelled",
+                        });
+                        
+                        toast.dismiss(loadingToast);
+                        
+                        if (result.error) {
+                          toast.error(result.error, {
+                            duration: 5000,
+                          });
+                        } else {
+                          toast.success(translations.statusUpdated);
+                        }
                       });
                     }}
                   >
