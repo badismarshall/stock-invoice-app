@@ -37,6 +37,7 @@ export const auth = betterAuth({
     emailAndPassword: {
         enabled: true,
         requireEmailVerification: true,
+        passwordStrength: { enabled: true, minLength: 4 },
     },
     plugins: [
         organization({

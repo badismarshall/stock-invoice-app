@@ -8,14 +8,6 @@ import { Input } from "@/components/ui/input"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { toast } from "sonner"
 import { useState, useEffect } from "react"
@@ -35,13 +27,6 @@ interface ModifyUserFormProps extends React.HTMLAttributes<HTMLDivElement> {
   onSuccess?: () => void
 }
 
-const userRoles = ["admin", "user", "moderator"] as const;
-const userRoleLabels: Record<string, string> = {
-  admin: "Administrateur",
-  user: "Utilisateur",
-  moderator: "Modérateur",
-};
-
 export function ModifyUserForm({ className, user, onSuccess, ...props }: ModifyUserFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -58,7 +43,6 @@ export function ModifyUserForm({ className, user, onSuccess, ...props }: ModifyU
       lastName: lastName,
       email: user.email || '',
       password: '',
-      role: user.role || '',
       emailVerified: user.emailVerified ?? false,
     },
   })
@@ -74,7 +58,6 @@ export function ModifyUserForm({ className, user, onSuccess, ...props }: ModifyU
       lastName: lastName,
       email: user.email || '',
       password: '',
-      role: user.role || '',
       emailVerified: user.emailVerified ?? false,
     });
   }, [user, form]);
@@ -198,42 +181,6 @@ export function ModifyUserForm({ className, user, onSuccess, ...props }: ModifyU
                     value={field.value || ""}
                   />
               </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="role"
-          render={({ field }) => (
-            <FormItem className="grid gap-1">
-              <FormLabel htmlFor="role">
-                Rôle
-              </FormLabel>
-              <Select
-                onValueChange={field.onChange}
-                value={field.value || ""}
-                disabled={loading}
-              >
-                <FormControl>
-                  <SelectTrigger className="capitalize">
-                    <SelectValue placeholder="Sélectionner un rôle" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectGroup>
-                    {userRoles.map((role) => (
-                      <SelectItem
-                        key={role}
-                        value={role}
-                        className="capitalize"
-                      >
-                        {userRoleLabels[role] || role.charAt(0).toUpperCase() + role.slice(1)}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
               <FormMessage />
             </FormItem>
           )}

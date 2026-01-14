@@ -22,7 +22,6 @@ import {
     name: parseAsString.withDefault(""),
     email: parseAsString.withDefault(""),
     emailVerified: parseAsArrayOf(parseAsBoolean).withDefault([]),
-    role: parseAsArrayOf(parseAsString).withDefault([]),
     banned: parseAsArrayOf(parseAsBoolean).withDefault([]),
     createdAt: parseAsArrayOf(parseAsInteger).withDefault([]),
     // advanced filter

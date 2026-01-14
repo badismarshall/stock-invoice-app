@@ -69,7 +69,6 @@ export async function updateUser(input: UpdateUserSchema & { id: string }) {
     }
 
     if (input.email !== undefined) updateData.email = input.email;
-    if (input.role !== undefined) updateData.role = input.role || null;
     if (input.emailVerified !== undefined) {
       updateData.emailVerified = input.emailVerified;
     }

@@ -50,10 +50,6 @@ export const getUsers = async (input: GetUsersSchema): Promise<UserDTO> => {
       input.emailVerified.length > 0
         ? inArray(user.emailVerified, input.emailVerified)
         : undefined,
-      // Filter by role
-      input.role.length > 0
-        ? inArray(user.role, input.role)
-        : undefined,
       // Filter by banned status
       input.banned.length > 0
         ? inArray(user.banned, input.banned)

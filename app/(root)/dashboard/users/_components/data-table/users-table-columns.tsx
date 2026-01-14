@@ -4,16 +4,13 @@ import type { ColumnDef } from "@tanstack/react-table";
 import {
   CalendarIcon,
   CheckCircle2,
-  CircleIcon,
   CircleX,
   Ellipsis,
   Mail,
-  Shield,
   Text,
   UserX,
 } from "lucide-react";
 import * as React from "react";
-import { toast } from "sonner";
 import { DataTableColumnHeader } from "@/components/shared/data-table/data-table-column-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,28 +19,18 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { formatDate } from "@/lib/data-table/format";
-import { getErrorMessage } from "@/lib/handle-error";
 import type { DataTableRowAction } from "@/types/data-table";
 import type { UserDTOItem } from "@/data/user/user.dto";
-
-import { updateUser } from "../../_lib/actions";
 import {
   getBannedStatusIcon,
   getEmailVerifiedIcon,
-  getRoleIcon,
 } from "../../_lib/utils";
 
 interface GetUsersTableColumnsProps {
-  roleCounts: Record<string, number>;
   bannedCounts: { banned: number; active: number };
   emailVerifiedCounts: { verified: number; unverified: number };
   setRowAction: React.Dispatch<
@@ -60,29 +47,17 @@ const translations = {
   emailVerified: "E-mail vérifié",
   verified: "Vérifié",
   unverified: "Non vérifié",
-  role: "Rôle",
-  none: "Aucun",
   status: "Statut",
   active: "Actif",
   banned: "Banni",
   createdAt: "Créé le",
   edit: "Modifier",
   delete: "Supprimer",
-  updating: "Mise à jour...",
-  roleUpdated: "Rôle mis à jour",
   selectAll: "Tout sélectionner",
   selectRow: "Sélectionner la ligne",
 };
 
-const userRoles = ["admin", "user", "moderator"] as const;
-const userRoleLabels: Record<string, string> = {
-  admin: "Administrateur",
-  user: "Utilisateur",
-  moderator: "Modérateur",
-};
-
 export function getUsersTableColumns({
-  roleCounts,
   bannedCounts,
   emailVerifiedCounts,
   setRowAction,
@@ -194,55 +169,6 @@ export function getUsersTableColumns({
       enableColumnFilter: true,
     },
     {
-      id: "role",
-      accessorKey: "role",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} label={translations.role} title={translations.role} />
-      ),
-      cell: ({ cell }) => {
-        const role = cell.getValue<string>();
-
-        if (!role || role === "") {
-          return (
-            <Badge variant="outline" className="py-1">
-              <CircleIcon className="size-3.5" />
-              <span>{translations.none}</span>
-            </Badge>
-          );
-        }
-
-        const Icon = getRoleIcon(role);
-        const label = userRoleLabels[role] || role.charAt(0).toUpperCase() + role.slice(1);
-
-        return (
-          <Badge variant="outline" className="py-1 [&>svg]:size-3.5">
-            <Icon />
-            <span className="capitalize">{label}</span>
-          </Badge>
-        );
-      },
-      meta: {
-        label: translations.role,
-        variant: "multiSelect",
-        options: [
-          {
-            label: translations.none,
-            value: "",
-            count: 0,
-            icon: CircleIcon,
-          },
-          ...userRoles.map((role) => ({
-            label: userRoleLabels[role] || role.charAt(0).toUpperCase() + role.slice(1),
-            value: role,
-            count: roleCounts[role] || 0,
-            icon: getRoleIcon(role),
-          })),
-        ],
-        icon: Shield,
-      },
-      enableColumnFilter: true,
-    },
-    {
       id: "banned",
       accessorKey: "banned",
       header: ({ column }) => (
@@ -297,8 +223,6 @@ export function getUsersTableColumns({
     {
       id: "actions",
       cell: function Cell({ row }) {
-        const [isUpdatePending, startUpdateTransition] = React.useTransition();
-
         return (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -316,47 +240,6 @@ export function getUsersTableColumns({
               >
                 {translations.edit}
               </DropdownMenuItem>
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger>{translations.role}</DropdownMenuSubTrigger>
-                <DropdownMenuSubContent>
-                  <DropdownMenuRadioGroup
-                    value={row.original.role || ""}
-                    onValueChange={(value) => {
-                      startUpdateTransition(() => {
-                        toast.promise(
-                          updateUser({
-                            id: row.original.id,
-                            role: value || undefined,
-                          }),
-                          {
-                            loading: translations.updating,
-                            success: translations.roleUpdated,
-                            error: (err) => getErrorMessage(err),
-                          },
-                        );
-                      });
-                    }}
-                  >
-                    <DropdownMenuRadioItem
-                      value=""
-                      className="capitalize"
-                      disabled={isUpdatePending}
-                    >
-                      {translations.none}
-                    </DropdownMenuRadioItem>
-                    {userRoles.map((role) => (
-                      <DropdownMenuRadioItem
-                        key={role}
-                        value={role}
-                        className="capitalize"
-                        disabled={isUpdatePending}
-                      >
-                        {userRoleLabels[role] || role.charAt(0).toUpperCase() + role.slice(1)}
-                      </DropdownMenuRadioItem>
-                    ))}
-                  </DropdownMenuRadioGroup>
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onSelect={() => setRowAction({ row, variant: "delete" })}

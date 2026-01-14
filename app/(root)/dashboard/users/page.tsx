@@ -7,7 +7,7 @@ import { FeatureFlagsProvider } from "../_components/feature-flags-provider"
 import { SearchParams } from "@/types"
 import { searchParamsCache } from "./_lib/validation"
 import { getValidFilters } from "@/lib/data-table/data-table"
-import { getUserBannedCounts, getUserEmailVerifiedCounts, getUserRoleCounts, getUsers } from "./_lib/queries"
+import { getUserBannedCounts, getUserEmailVerifiedCounts, getUsers } from "./_lib/queries"
 import { UsersTable } from "./_components/data-table/users-table"
 import { DataTableSkeleton } from "@/components/shared/data-table/data-table-skeleton"
 import { HasPermissionUser } from "@/data/user/user-permision"
@@ -116,7 +116,6 @@ async function UsersTableWrapper(props: IndexPageProps ) {
         ...search,
         filters: validFilters,
       }),
-      getUserRoleCounts(),
       getUserBannedCounts(),
       getUserEmailVerifiedCounts(),
     ]);

@@ -2,7 +2,7 @@
 
 import { SelectTrigger } from "@radix-ui/react-select";
 import type { Table } from "@tanstack/react-table";
-import { CheckCircle2, Download, Shield, Trash2 } from "lucide-react";
+import { CheckCircle2, Download, Trash2 } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
 import {
@@ -22,16 +22,12 @@ import { deleteUsers, updateUsers } from "../../_lib/actions";
 import type { UserDTOItem } from "@/data/user/user.dto";
 
 const actions = [
-  "update-role",
   "update-email-verified",
   "export",
   "delete",
 ] as const;
 
 type Action = (typeof actions)[number];
-
-// Common user roles - adjust based on your application needs
-const userRoles = ["admin", "user", "moderator"] as const;
 
 interface UsersTableActionBarProps {
   table: Table<UserDTOItem>;
@@ -52,22 +48,15 @@ export function UsersTableActionBar({ table }: UsersTableActionBarProps) {
       field,
       value,
     }: {
-      field: "role" | "emailVerified";
-      value: UserDTOItem["role"] | UserDTOItem["emailVerified"];
+      field: "emailVerified";
+      value: UserDTOItem["emailVerified"];
     }) => {
-      setCurrentAction(
-        field === "role" ? "update-role" : "update-email-verified",
-      );
+      setCurrentAction("update-email-verified");
       startTransition(async () => {
         const updateData: Parameters<typeof updateUsers>[0] = {
           ids: rows.map((row) => row.original.id),
+          emailVerified: value,
         };
-
-        if (field === "role") {
-          updateData.role = value as UserDTOItem["role"];
-        } else if (field === "emailVerified") {
-          updateData.emailVerified = value as UserDTOItem["emailVerified"];
-        }
 
         const { error } = await updateUsers(updateData);
 
@@ -115,30 +104,6 @@ export function UsersTableActionBar({ table }: UsersTableActionBarProps) {
         className="hidden data-[orientation=vertical]:h-5 sm:block"
       />
       <div className="flex items-center gap-1.5">
-        <Select
-        onValueChange={(value: UserDTOItem["role"]) =>
-            onUserUpdate({ field: "role", value: value })
-        }
-        >
-          <SelectTrigger asChild>
-            <DataTableActionBarAction
-              size="icon"
-              tooltip="Update role"
-              isPending={getIsActionPending("update-role")}
-            >
-              <Shield />
-            </DataTableActionBarAction>
-          </SelectTrigger>
-          <SelectContent align="center">
-            <SelectGroup>
-              {userRoles.map((role) => (
-                <SelectItem key={role} value={role} className="capitalize">
-                  {role}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
         <Select
           onValueChange={(value: string) =>
             onUserUpdate({ field: "emailVerified", value: value === "true" ? true : false })

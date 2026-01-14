@@ -31,20 +31,7 @@ export const signUpSchema = z
     }),
     password: z
       .string()
-      .min(8, "Le mot de passe doit être au moins de 8 caractères")
-      .regex(
-        /[A-Z]/,
-        "Le mot de passe doit contenir au moins une lettre majuscule"
-      )
-      .regex(
-        /[a-z]/,
-        "Le mot de passe doit contenir au moins une lettre minuscule"
-      )
-      .regex(/[0-9]/, "Le mot de passe doit contenir au moins un chiffre")
-      .regex(
-        /[@$!%*?&]/,
-        "Le mot de passe doit contenir au moins un caractère spécial"
-      ),
+      .min(5, "Le mot de passe doit être au moins de 8 caractères"),
     password_confirmation: z
       .string()
       .min(1, "La confirmation du mot de passe est requise"),
@@ -102,11 +89,7 @@ export function getSignUpSchema(t?: (key: string) => string) {
       }),
       password: z
         .string()
-        .min(8, t("password_min"))
-        .regex(/[A-Z]/, t("password_uppercase"))
-        .regex(/[a-z]/, t("password_lowercase"))
-        .regex(/[0-9]/, t("password_numbers"))
-        .regex(/[@$!%*?&]/, t("password_special_characters")),
+        .min(8, t("password_min")),
       password_confirmation: z
         .string()
         .min(1, t("password_confirmation_required")),

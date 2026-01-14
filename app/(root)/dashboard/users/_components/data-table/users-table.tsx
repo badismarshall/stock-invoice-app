@@ -11,7 +11,6 @@ import { useDataTable } from "@/hooks/data-table/use-data-table";
 import type { DataTableRowAction, QueryKeys } from "@/types/data-table";
 import type { UserDTOItem } from "@/data/user/user.dto";
 import type {
-  getUserRoleCounts,
   getUserBannedCounts,
   getUserEmailVerifiedCounts,
   getUsers,
@@ -27,7 +26,6 @@ interface UsersTableProps {
   promises: Promise<
     [
       Awaited<ReturnType<typeof getUsers>>,
-      Awaited<ReturnType<typeof getUserRoleCounts>>,
       Awaited<ReturnType<typeof getUserBannedCounts>>,
       Awaited<ReturnType<typeof getUserEmailVerifiedCounts>>,
     ]
@@ -40,7 +38,6 @@ export function UsersTable({ promises, queryKeys }: UsersTableProps) {
 
   const [
     { data, pageCount },
-    roleCounts,
     bannedCounts,
     emailVerifiedCounts,
   ] = React.use(promises);
@@ -51,12 +48,11 @@ export function UsersTable({ promises, queryKeys }: UsersTableProps) {
   const columns = React.useMemo(
     () =>
       getUsersTableColumns({
-        roleCounts,
         bannedCounts,
         emailVerifiedCounts,
         setRowAction,
       }),
-    [roleCounts, bannedCounts, emailVerifiedCounts],
+    [bannedCounts, emailVerifiedCounts],
   );
 
   const { table, shallow, debounceMs, throttleMs } = useDataTable({

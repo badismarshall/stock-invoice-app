@@ -18,7 +18,6 @@ export function getUpdateUserSchema(t?: (key: string) => string) {
         .regex(/[@$!%*?&]/, t ? t("password_special_characters") : "Le mot de passe doit contenir au moins un caractère spécial")
         .optional()
         .or(z.literal("")),
-      role: z.string().min(1, t ? t("role_required") : "Role is required.").optional(),
       emailVerified: z.boolean().optional(),
     });
 }
