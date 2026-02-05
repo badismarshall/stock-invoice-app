@@ -13,7 +13,7 @@ import {
   or,
 } from "drizzle-orm";
 import db from "@/db";
-import { product, category, unitOfMeasure } from "@/db/schema";
+import { product, category, unitOfMeasure, deliveryNoteItem, deliveryNote, partner } from "@/db/schema";
 import type { GetProductsSchema } from "@/app/(root)/dashboard/products/_lib/validation";
 import type { ProductDTO } from "./product.dto";
 import { filterColumns } from "@/lib/data-table/filter-columns";
@@ -232,6 +232,50 @@ export const getProducts = async (input: GetProductsSchema): Promise<ProductDTO>
         offset: 0,
       },
     };
+  }
+};
+
+/**
+ * Get sales history for a product (all delivery notes where this product was sold)
+ * Returns delivery notes with client information and item details
+ */
+export const getProductSalesHistory = async (productId: string) => {
+  try {
+    const sales = await db
+      .select({
+        deliveryNote: {
+          id: deliveryNote.id,
+          noteNumber: deliveryNote.noteNumber,
+          noteType: deliveryNote.noteType,
+          noteDate: deliveryNote.noteDate,
+          status: deliveryNote.status,
+          currency: deliveryNote.currency,
+        },
+        client: {
+          id: partner.id,
+          name: partner.name,
+          phone: partner.phone,
+          email: partner.email,
+          address: partner.address,
+        },
+        item: {
+          id: deliveryNoteItem.id,
+          quantity: deliveryNoteItem.quantity,
+          unitPrice: deliveryNoteItem.unitPrice,
+          discountPercent: deliveryNoteItem.discountPercent,
+          lineTotal: deliveryNoteItem.lineTotal,
+        },
+      })
+      .from(deliveryNoteItem)
+      .innerJoin(deliveryNote, eq(deliveryNoteItem.deliveryNoteId, deliveryNote.id))
+      .leftJoin(partner, eq(deliveryNote.clientId, partner.id))
+      .where(eq(deliveryNoteItem.productId, productId))
+      .orderBy(desc(deliveryNote.noteDate), desc(deliveryNote.createdAt));
+
+    return sales;
+  } catch (error) {
+    console.error("Error getting product sales history", error);
+    return [];
   }
 };
 

@@ -117,6 +117,18 @@ export const adminSidebarItemsGeneralSetting = [
         icon: BarChart3,
         isActive: false,
       },
+      {
+        title: 'Chiffre d\'affaire et règlement clients',
+        url: '/dashboard/sales/sales-customer-payments',
+        icon: Wallet,
+        isActive: false,
+      },
+      {
+        title: 'Etat104',
+        url: '/dashboard/sales/state104',
+        icon: FileBarChart,
+        isActive: false,
+      },
       // {
       //   title: 'Liste des factures de vente',
       //   url: '/dashboard/sales/sale_invoice',
@@ -171,6 +183,18 @@ export const adminSidebarItemsGeneralSetting = [
         title: 'État de Vente Export',
         url: '/dashboard/export/stats',
         icon: BarChart3,
+        isActive: false,
+      },
+      {
+        title: 'Chiffre d\'affaire et règlement clients',
+        url: '/dashboard/export/sales-customer-payments',
+        icon: Wallet,
+        isActive: false,
+      },
+      {
+        title: 'Etat104',
+        url: '/dashboard/export/state104',
+        icon: FileBarChart,
         isActive: false,
       },
     ],

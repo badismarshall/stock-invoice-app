@@ -217,3 +217,21 @@ export async function getAllActiveCategories() {
   }
 }
 
+export async function getProductSalesHistory(input: { productId: string }) {
+  try {
+    const { getProductSalesHistory: getProductSalesHistoryDal } = await import("@/data/product/product.dal");
+    const sales = await getProductSalesHistoryDal(input.productId);
+
+    return {
+      data: sales,
+      error: null,
+    };
+  } catch (err) {
+    console.error("Error getting product sales history", err);
+    return {
+      data: [],
+      error: getErrorMessage(err),
+    };
+  }
+}
+

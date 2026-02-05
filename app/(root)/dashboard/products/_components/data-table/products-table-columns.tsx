@@ -12,6 +12,7 @@ import {
   List,
   Ruler,
   Badge as BadgeIcon,
+  History,
 } from "lucide-react";
 import * as React from "react";
 import { useRouter } from "next/navigation";
@@ -55,6 +56,7 @@ const translations = {
   createdAt: "Créé le",
   edit: "Modifier",
   delete: "Supprimer",
+  salesHistory: "Historique des ventes",
   selectAll: "Tout sélectionner",
   selectRow: "Sélectionner la ligne",
 };
@@ -289,11 +291,17 @@ export function getProductsTableColumns({
                 <Ellipsis className="size-4" aria-hidden="true" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
+            <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuItem
                 onSelect={() => router.push(`/dashboard/products/modify/${row.original.id}`)}
               >
                 {translations.edit}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => router.push(`/dashboard/products/history/${row.original.id}`)}
+              >
+                <History className="mr-2 size-4" />
+                {translations.salesHistory}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
