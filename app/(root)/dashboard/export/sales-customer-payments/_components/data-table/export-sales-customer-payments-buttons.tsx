@@ -45,12 +45,13 @@ export function ExportSalesCustomerPaymentsButtons() {
       const paymentsResult = await getFilteredSalesCustomerPaymentsForExport({
         ...search,
         filters: validFilters,
-        startDate: search.startDate || undefined,
-        endDate: search.endDate || undefined,
-        clientId: search.clientId || [],
-        paymentMethod: search.paymentMethod || [],
-        date: search.date && search.date.length > 0 ? search.date : undefined,
-        invoiceNumber: search.invoiceNumber || undefined,
+        // We pass raw values from search; empty strings/arrays are handled downstream
+        startDate: search.startDate,
+        endDate: search.endDate,
+        clientId: search.clientId,
+        paymentMethod: search.paymentMethod,
+        date: search.date,
+        invoiceNumber: search.invoiceNumber,
       });
 
       const companyResult = await getCompanySettings();
@@ -305,12 +306,12 @@ export function ExportSalesCustomerPaymentsButtons() {
       const paymentsResult = await getFilteredSalesCustomerPaymentsForExport({
         ...search,
         filters: validFilters,
-        startDate: search.startDate || undefined,
-        endDate: search.endDate || undefined,
-        clientId: search.clientId || [],
-        paymentMethod: search.paymentMethod || [],
-        date: search.date && search.date.length > 0 ? search.date : undefined,
-        invoiceNumber: search.invoiceNumber || undefined,
+        startDate: search.startDate,
+        endDate: search.endDate,
+        clientId: search.clientId,
+        paymentMethod: search.paymentMethod,
+        date: search.date,
+        invoiceNumber: search.invoiceNumber,
       });
 
       if (paymentsResult.error) {

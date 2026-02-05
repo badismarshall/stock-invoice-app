@@ -11,7 +11,7 @@ export async function getFilteredSalesCustomerPaymentsForExport(input: GetSalesC
       perPage: 100000, // Get all for export
       sort: input.sort || [{ id: "date", desc: true }],
       filters: input.filters || [],
-      filterFlag: input.filterFlag,
+      filterFlag: input.filterFlag || undefined,
       joinOperator: input.joinOperator || "and",
       startDate: input.startDate,
       endDate: input.endDate,

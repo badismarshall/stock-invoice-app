@@ -16,7 +16,7 @@ export const searchParamsCache = createSearchParamsCache({
   page: parseAsInteger.withDefault(1),
   perPage: parseAsInteger.withDefault(10),
   sort: getSortingStateParser<Payment>().withDefault([
-    { id: "date", desc: true },
+    { id: "paymentDate", desc: true },
   ]),
   search: parseAsString.withDefault(""),
   startDate: parseAsString.withDefault(""),
